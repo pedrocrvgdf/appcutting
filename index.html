@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#0E7C6B">
 <meta name="color-scheme" content="light dark">
+<!-- a variante da Apple foi descontinuada; a padronizada é que faz o Android
+     abrir o app em tela cheia. As duas juntas cobrem os dois sistemas. -->
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="T - Results">
@@ -26,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v6";
+window.APP_RELEASE = "tresults-v7";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -125,6 +128,42 @@ window.APP_RELEASE = "tresults-v6";
   .num{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
   button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
   input,select{font-family:inherit;font-size:16px}
+  /* ============ ABERTURA ============
+     Enquanto o Firebase confirma o login, todas as telas ficam escondidas e o
+     usuário olhava para o nada. Na academia, com sinal ruim, isso parecia app
+     travado. O fundo já é o do app, então uma abertura rápida não pisca nada:
+     a marca só aparece se a espera passar de 150ms. */
+  #splash{position:fixed;inset:0;z-index:200;background:var(--bg);
+    display:flex;align-items:center;justify-content:center;
+    transition:opacity .32s ease}
+  #splash.hide{opacity:0;pointer-events:none}
+  .sp-in{display:flex;flex-direction:column;align-items:center;gap:15px;
+    opacity:0;animation:spFade .45s ease .15s forwards}
+  @keyframes spFade{to{opacity:1}}
+  .sp-mark{width:60px;height:60px;border-radius:17px;background:var(--primary);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 8px 26px rgba(14,124,107,.28)}
+  .sp-mark svg{width:32px;height:32px;stroke:#fff;fill:none;stroke-width:2;
+    stroke-linecap:round;stroke-linejoin:round}
+  .sp-name{font-size:11px;font-weight:700;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--muted)}
+  .sp-bar{width:132px;height:3px;border-radius:99px;background:var(--line);overflow:hidden}
+  /* o indicador precisa ficar visível quase o tempo todo: com ease-in-out e um
+     alcance maior que a trilha, ele desacelerava justamente fora da vista e a
+     barra parecia parada */
+  .sp-bar i{display:block;height:100%;width:38%;border-radius:99px;
+    background:var(--primary);animation:spSlide 1.05s cubic-bezier(.45,.05,.55,.95) infinite}
+  @keyframes spSlide{0%{transform:translateX(-100%)}100%{transform:translateX(263%)}}
+  /* avisos que só aparecem se a espera se arrastar */
+  .sp-slow{font-size:12.5px;color:var(--muted);opacity:0;text-align:center;
+    max-width:260px;line-height:1.5;animation:spFade .4s ease 6s forwards}
+  .sp-retry{opacity:0;padding:9px 18px;border-radius:10px;background:var(--surface);
+    border:1px solid var(--line);color:var(--primary);font-weight:700;font-size:13px;
+    animation:spFade .4s ease 15s forwards}
+  @media (prefers-reduced-motion:reduce){
+    .sp-in,.sp-slow,.sp-retry{opacity:1;animation:none}
+    .sp-bar i{animation:none;width:100%}
+  }
   .view{display:none}
   .view.on{display:block}
   .in{width:100%;padding:12px 12px;border:1px solid var(--line);border-radius:11px;background:var(--surface);color:var(--ink);outline:none}
@@ -643,6 +682,18 @@ window.APP_RELEASE = "tresults-v6";
 </style>
 </head>
 <body>
+
+<!-- ==================== ABERTURA ====================
+     Sai de cena assim que a primeira tela aparece (hideSplash em showView). -->
+<div id="splash" aria-hidden="true">
+  <div class="sp-in">
+    <div class="sp-mark"><svg viewBox="0 0 24 24"><path d="M3 12h4l2-5 3 10 2-7 2 4h5"/></svg></div>
+    <div class="sp-name">True Results</div>
+    <div class="sp-bar"><i></i></div>
+    <div class="sp-slow">Conexão lenta — ainda tentando entrar…</div>
+    <button class="sp-retry" onclick="location.reload()">Tentar de novo</button>
+  </div>
+</div>
 
 <!-- ==================== LOGIN ==================== -->
 <div class="view" id="view-login">
@@ -1490,7 +1541,15 @@ function defaultMeal(){const h=new Date().getHours();if(h<10)return"cafe";if(h<1
 /* ============================================================
    NAVEGAÇÃO ENTRE TELAS
    ============================================================ */
+/* a abertura sai de cena assim que existe tela de verdade para mostrar */
+function hideSplash(){
+  const s=$("splash");
+  if(!s||s.classList.contains("hide"))return;
+  s.classList.add("hide");
+  setTimeout(()=>{if(s.parentNode)s.remove();},400);
+}
 function showView(name){
+  hideSplash();
   currentView=name;
   document.querySelectorAll(".view").forEach(v=>v.classList.remove("on"));
   $("view-"+name).classList.add("on");

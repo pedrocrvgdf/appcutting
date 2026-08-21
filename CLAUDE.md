@@ -103,6 +103,12 @@ O T-RESULTS é um **app**, não um site. Ele precisa se comportar como tal.
 - **Não adicione skeleton em elementos que renderizam do armazenamento local** —
   eles aparecem em milissegundos e o skeleton só faz piscar, deixando a sensação
   de lentidão. Skeleton só se justifica onde há espera de rede real.
+- **A única espera de rede real do app é a abertura**, enquanto o Firebase
+  confirma o login. É o que a tela `#splash` cobre: fundo igual ao do app, marca
+  entrando só depois de 150 ms (abertura rápida não pisca nada), aviso de
+  conexão lenta aos 6 s e botão de recomeçar aos 15 s. Ela sai em `showView()`,
+  via `hideSplash()` — se você criar outro caminho que abre uma tela, chame
+  `hideSplash()` nele também, senão o app fica preso na abertura.
 
 ---
 
