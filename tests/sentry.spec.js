@@ -6,7 +6,7 @@ const path = require('path');
 const { test, expect } = require('@playwright/test');
 const { abrirApp, estadoBase, isolarRede, coletarErros, urlApp, RAIZ } = require('./app');
 
-const DSN_ESPERADO = 'https://1fe6f015e432df16520779d238b3e4b0@o4511949986856960.ingest.us.sentry.io/4511949997867008';
+const DSN_ESPERADO = 'https://7aaeee92a2510ed6867849ed623aec88@o4511949986856960.ingest.us.sentry.io/4511950149779456';
 
 /* Substitui o carregador da Sentry por um espião: guarda a configuração que o
    app pediu, sem depender da rede. */
@@ -42,6 +42,27 @@ test.describe('Monitoramento de erros', () => {
     expect(noSw, 'CACHE não encontrado em sw.js').toBeTruthy();
     expect(noHtml, 'APP_RELEASE não encontrado em index.html').toBeTruthy();
     expect(noHtml[1], `sw.js está em ${noSw[1]} e o index.html em ${noHtml[1]}`).toBe(noSw[1]);
+  });
+
+  test('o carregador aponta para o mesmo projeto do DSN', () => {
+    /* O endereço do carregador embute a chave pública do projeto. Se o projeto
+       for recriado e só o DSN for trocado, o carregador continua apontando para
+       o projeto antigo e nenhum erro chega — falhando em silêncio. */
+    const html = fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8');
+    const noCarregador = html.match(/js\.sentry-cdn\.com\/([a-f0-9]+)\.min\.js/);
+    const noDsn = html.match(/dsn\s*:\s*"https:\/\/([a-f0-9]+)@/);
+
+    expect(noCarregador, 'tag do carregador não encontrada').toBeTruthy();
+    expect(noDsn, 'dsn não encontrado').toBeTruthy();
+    expect(noCarregador[1], `carregador usa ${noCarregador[1]} e o DSN usa ${noDsn[1]}`).toBe(noDsn[1]);
+  });
+
+  test('a tag do carregador é assíncrona', () => {
+    // sem async a tag trava a leitura da página e a abertura fica refém da rede
+    const html = fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8');
+    const tag = html.match(/<script[^>]*js\.sentry-cdn\.com[^>]*>/);
+    expect(tag, 'tag do carregador não encontrada').toBeTruthy();
+    expect(tag[0], `a tag precisa de async: ${tag[0]}`).toMatch(/\basync\b/);
   });
 
   test('configura com o projeto certo e sem rastreamento invasivo', async ({ page }) => {

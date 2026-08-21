@@ -26,7 +26,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v5";
+window.APP_RELEASE = "tresults-v6";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -40,7 +40,7 @@ window.APP_RELEASE = "tresults-v5";
   window.sentryOnLoad=function(){
     try{
       Sentry.init({
-        dsn:"https://1fe6f015e432df16520779d238b3e4b0@o4511949986856960.ingest.us.sentry.io/4511949997867008",
+        dsn:"https://7aaeee92a2510ed6867849ed623aec88@o4511949986856960.ingest.us.sentry.io/4511950149779456",
         release:window.APP_RELEASE,
         sendDefaultPii:false,        // sem IP, sem cookies, sem cabeçalhos
         tracesSampleRate:0,          // sem rastreamento de desempenho
@@ -88,7 +88,7 @@ window.APP_RELEASE = "tresults-v5";
 </script>
 <!-- async é obrigatório: sem ele a tag trava a leitura da página e a abertura do
      app fica refém da rede — o oposto do que queremos numa academia -->
-<script async src="https://js.sentry-cdn.com/1fe6f015e432df16520779d238b3e4b0.min.js" crossorigin="anonymous"></script>
+<script async src="https://js.sentry-cdn.com/7aaeee92a2510ed6867849ed623aec88.min.js" crossorigin="anonymous"></script>
 
 <style>
   :root{
