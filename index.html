@@ -353,9 +353,12 @@
   .tr-set:nth-child(2){animation-delay:.04s}.tr-set:nth-child(3){animation-delay:.08s}.tr-set:nth-child(4){animation-delay:.12s}.tr-set:nth-child(5){animation-delay:.16s}
   .tr-set .tsr1{display:flex;align-items:center;gap:10px}
   .tr-set .snum{flex:none;width:30px;height:30px;border-radius:9px;background:var(--primary-08);color:var(--primary);font-family:var(--mono);font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center}
-  .tr-set .sl{flex:1;font-size:13px;font-weight:700;color:var(--ink)}
+  .tr-set .sl{flex:1;min-width:0;font-size:13px;font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .tr-set .fld{position:relative;flex:none}
   .tr-set .fld input{width:82px;padding:10px 30px 10px 10px;border:1px solid var(--line);border-radius:10px;font-size:14.5px;font-family:var(--mono);font-weight:700;text-align:center;background:var(--surface);transition:border-color .15s,box-shadow .15s}
+  /* cargas com meio quilo (57,5 / 102,5) precisam caber inteiras, inclusive como sugestão */
+  .tr-set .fld input.ikg{width:92px;padding-left:8px;padding-right:24px}
+  .tr-set .fld input.irep{width:80px;padding-left:8px}
   .tr-set .fld input:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-08);outline:none}
   .tr-set .fld .un{position:absolute;right:9px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;pointer-events:none}
   .tr-set .tsr2{display:flex;align-items:center;gap:10px;margin-top:10px}
@@ -365,6 +368,20 @@
   .rirseg button:active{transform:scale(.94)}
   .rirseg button.on{background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:0 3px 10px rgba(14,124,107,.3)}
   .tr-hint{font-size:11.5px;color:var(--muted);line-height:1.55;margin:10px 2px 0}
+  /* referência da última sessão, série a série: quanto levantei da última vez */
+  .tsprev{display:flex;align-items:center;gap:8px;margin-top:8px;padding-left:40px;font-size:11.5px;color:var(--muted);font-family:var(--mono);line-height:1.5}
+  .tsprev .tp-t{flex:1;min-width:0}
+  .tsprev .tp-v{color:var(--ink);font-weight:700}
+  .tsprev .tp-d{flex:none;font-weight:800;font-size:11px;padding:2px 8px;border-radius:99px;white-space:nowrap}
+  .tsprev .tp-d.up{color:var(--ok);background:rgba(22,163,74,.13)}
+  .tsprev .tp-d.down{color:var(--warn);background:rgba(194,65,12,.11)}
+  .tsprev .tp-d.same{color:var(--muted);background:var(--surface);border:1px solid var(--line)}
+  /* telas estreitas: o número da série já identifica a linha, o rótulo sai para caber tudo */
+  @media (max-width:370px){
+    .tr-set .sl{display:none}
+    .tr-set .snum{margin-right:auto}
+    .tsprev{padding-left:0}
+  }
   .tvol-row{padding:9px 0;border-bottom:1px solid var(--line)}
   .tvol-row:last-of-type{border-bottom:none}
   .tvol-row .tvtop{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:6px}
@@ -1903,16 +1920,48 @@ function trSaveInputs(){
     l.rep=parseInt(row.querySelector(".irep").value)||0;
   });
 }
+/* ============================================================
+   REFERÊNCIA DA ÚLTIMA SESSÃO
+   Mostra carga e reps da vez anterior para saber quanto progredir.
+   ============================================================ */
+let trPrevRef=null;
+function lastExSession(nome){
+  const alvo=norm(nome||""),tds=store.tdays||{};
+  const dias=Object.keys(tds).sort().reverse(); // datas ISO: ordem alfabética = cronológica
+  for(const dk of dias){
+    const regs=tds[dk]||[];
+    for(let i=regs.length-1;i>=0;i--){ // dentro do dia, o último registrado é o mais recente
+      const ex=(regs[i].ex||[]).find(x=>norm(x.n)===alvo);
+      if(ex&&(ex.sets||[]).length)return {dk,sets:ex.sets,treino:regs[i].name};
+    }
+  }
+  return null;
+}
+const kgTxt=v=>(Math.round((v||0)*10)/10).toString().replace(".",",");
+/* diferença de carga em relação à mesma série da última vez */
+function trDelta(row){
+  const chip=row.querySelector(".tp-d");if(!chip)return;
+  const p=trPrevRef&&trPrevRef.sets[+row.dataset.i];
+  const kg=parseFloat(row.querySelector(".ikg").value);
+  if(!p||!kg||kg<=0){chip.textContent="";chip.className="tp-d";return;}
+  const d=Math.round((kg-p.kg)*10)/10;
+  chip.className="tp-d "+(d>0?"up":d<0?"down":"same");
+  chip.textContent=d>0?`+${kgTxt(d)} kg`:d<0?`${kgTxt(d)} kg`:"mesma carga";
+}
 function renderTr(){
   const w=trS.w,e=w.ex[trS.idx],logs=trS.logs[trS.idx];
   $("trTitle").textContent=w.nome;
   $("trProg").textContent=`Exercício ${trS.idx+1} de ${w.ex.length}`;
   $("trExName").textContent=e.n;
   $("trPlan").textContent=`${e.s} séries · descanso ${fmtSec(e.rest||90)} · busque a falha entre 6–12 reps`;
-  $("trSets").innerHTML=logs.map((l,i)=>`<div class="tr-set" data-i="${i}">
-    <div class="tsr1"><span class="snum">${i+1}</span><span class="sl">Série ${i+1}</span><span class="fld"><input class="ikg" type="number" inputmode="decimal" value="${l.kg||""}" placeholder="0"><span class="un">kg</span></span><span class="fld"><input class="irep" type="number" inputmode="numeric" value="${l.rep||""}" placeholder="0"><span class="un">reps</span></span></div>
+  trPrevRef=lastExSession(e.n);
+  $("trSets").innerHTML=logs.map((l,i)=>{
+    const p=trPrevRef&&trPrevRef.sets[i];
+    return `<div class="tr-set" data-i="${i}">
+    <div class="tsr1"><span class="snum">${i+1}</span><span class="sl">Série ${i+1}</span><span class="fld"><input class="ikg" type="number" inputmode="decimal" value="${l.kg||""}" placeholder="${p?kgTxt(p.kg):"0"}"><span class="un">kg</span></span><span class="fld"><input class="irep" type="number" inputmode="numeric" value="${l.rep||""}" placeholder="${p?p.rep:"0"}"><span class="un">reps</span></span></div>
+    ${p?`<div class="tsprev"><span class="tp-t">anterior <span class="tp-v">${kgTxt(p.kg)} kg × ${p.rep}</span>${(p.rir!==null&&p.rir!==undefined)?` · RIR ${p.rir}`:""}</span><span class="tp-d"></span></div>`:""}
     <div class="tsr2"><span class="rirl">RIR</span><div class="rirseg">${[0,1,2,3].map(v=>`<button data-rir="${v}" class="${l.rir===v?"on":""}">${v===3?"3+":v}</button>`).join("")}</div></div>
-  </div>`).join("");
+  </div>`;}).join("");
   $("trSets").querySelectorAll(".tr-set").forEach(row=>{
     const i=+row.dataset.i;
     row.querySelectorAll("[data-rir]").forEach(b=>b.onclick=()=>{
@@ -1922,7 +1971,8 @@ function renderTr(){
       trPersist();
     });
     // guarda carga e reps enquanto você digita: nada se perde ao trocar de app
-    row.querySelectorAll("input").forEach(inp=>inp.addEventListener("input",()=>{trSaveInputs();trPersistSoon();}));
+    row.querySelectorAll("input").forEach(inp=>inp.addEventListener("input",()=>{trSaveInputs();trDelta(row);trPersistSoon();}));
+    trDelta(row);
   });
   stopRest();restLabel();
   $("trNext").textContent=trS.idx===w.ex.length-1?"Finalizar treino ✓":"Próximo exercício ›";
