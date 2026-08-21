@@ -16,6 +16,80 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script>(function(){try{var t=localStorage.getItem("tresults.theme");var d=(t==="dark")||(t!=="light"&&window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches);if(d)document.documentElement.setAttribute("data-theme","dark");}catch(e){}})();</script>
+
+<!-- ==================== MONITORAMENTO DE ERROS (Sentry) ====================
+     Sem isto, um erro no celular de um usuário nunca chega ao nosso conhecimento.
+     Só erros: nada de gravação de tela nem rastreamento de navegação.
+     O app guarda peso, medidas, e-mail e alimentação — nada disso pode sair
+     daqui, então todo texto enviado passa por uma limpeza antes.
+     A versão (release) precisa acompanhar o CACHE do sw.js; existe teste que
+     falha se as duas se desencontrarem.
+========================================================================= -->
+<script>
+window.APP_RELEASE = "tresults-v5";
+(function(){
+  /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
+  var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
+  var ID_LONGO=/\b[A-Za-z0-9_-]{20,}\b/g;
+  function limpar(txt){
+    if(typeof txt!=="string")return txt;
+    return txt.replace(EMAIL,"[email]").replace(ID_LONGO,"[id]");
+  }
+  window.__sentryScrub=limpar; // exposto para os testes
+
+  window.sentryOnLoad=function(){
+    try{
+      Sentry.init({
+        dsn:"https://1fe6f015e432df16520779d238b3e4b0@o4511949986856960.ingest.us.sentry.io/4511949997867008",
+        release:window.APP_RELEASE,
+        sendDefaultPii:false,        // sem IP, sem cookies, sem cabeçalhos
+        tracesSampleRate:0,          // sem rastreamento de desempenho
+        replaysSessionSampleRate:0,  // sem gravação de tela: o app mostra dado de saúde
+        replaysOnErrorSampleRate:0,
+        /* ruído que não é defeito do app */
+        ignoreErrors:[
+          "ResizeObserver loop",
+          "Non-Error promise rejection captured",
+          "Failed to fetch","Load failed","NetworkError",
+          "The operation was aborted",
+          "AbortError"
+        ],
+        /* erros vindos de extensões do navegador não são nossos */
+        denyUrls:[/extensions\//i,/^chrome:\/\//i,/^chrome-extension:\/\//i,/^moz-extension:\/\//i,/^safari-web-extension:\/\//i],
+
+        beforeBreadcrumb:function(b){
+          if(!b)return null;
+          if(b.category==="console")return null;   // o console pode ter dado do usuário
+          if(b.message)b.message=limpar(b.message);
+          if(b.data&&b.data.url)b.data.url=limpar(b.data.url);
+          return b;
+        },
+
+        beforeSend:function(ev){
+          try{
+            delete ev.user;                        // nunca identifique quem é
+            if(ev.request){delete ev.request.cookies;delete ev.request.headers;
+              if(ev.request.url)ev.request.url=limpar(ev.request.url);}
+            if(ev.message)ev.message=limpar(ev.message);
+            if(ev.exception&&ev.exception.values)ev.exception.values.forEach(function(x){
+              if(x.value)x.value=limpar(x.value);
+            });
+            if(ev.breadcrumbs)ev.breadcrumbs.forEach(function(b){
+              if(b.message)b.message=limpar(b.message);
+              if(b.data&&b.data.url)b.data.url=limpar(b.data.url);
+            });
+          }catch(e){}
+          return ev;
+        }
+      });
+    }catch(e){}
+  };
+})();
+</script>
+<!-- async é obrigatório: sem ele a tag trava a leitura da página e a abertura do
+     app fica refém da rede — o oposto do que queremos numa academia -->
+<script async src="https://js.sentry-cdn.com/1fe6f015e432df16520779d238b3e4b0.min.js" crossorigin="anonymous"></script>
+
 <style>
   :root{
     --bg:#FAFAF6; --surface:#FFFFFF; --ink:#111815; --muted:#66756F;
