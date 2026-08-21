@@ -72,6 +72,15 @@ O service worker serve o app do cache. Sem incrementar, os usuários continuam
 recebendo a versão antiga e a correção simplesmente não chega. Esta regra não
 tem exceção.
 
+**A mesma versão precisa ser espelhada no `index.html`:**
+
+```js
+window.APP_RELEASE = "tresults-vN";   // igual ao CACHE
+```
+
+É ela que marca de qual versão veio cada erro no Sentry. Existe teste que falha
+se as duas se desencontrarem (`tests/sentry.spec.js`).
+
 Ao entregar, envie **os dois arquivos juntos** (`index.html` e `sw.js`).
 
 ---
@@ -126,6 +135,7 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 | `tests/historico.spec.js` | Referência da última sessão, sugestões, indicador de progressão de carga |
 | `tests/interface.spec.js` | Zoom bloqueado, diálogos internos, layout em 390/320px, tema claro e escuro |
 | `tests/alarme.spec.js` | Volume e ausência de distorção do alarme de descanso |
+| `tests/sentry.spec.js` | Configuração do monitoramento, limpeza de dados pessoais, app abrindo sem a Sentry |
 | `tests/app.js` | Utilitários: Firebase falso, estado inicial, atalhos de navegação |
 
 Os testes carregam uma **cópia instrumentada** do `index.html` (gerada em
@@ -167,7 +177,23 @@ Chaves usadas no armazenamento local, úteis para montar cenários:
 
 ---
 
-## 7. Issues e Pull Requests
+## 7. Monitoramento de erros
+
+O app envia erros para o Sentry, e **só erros**: sem gravação de tela e sem
+rastreamento de navegação. Ele guarda peso, medidas, e-mail e alimentação —
+nada disso pode sair do aparelho.
+
+- Todo texto enviado passa por `window.__sentryScrub`, que mascara e-mails e
+  identificadores longos
+- O rastro do console é descartado inteiro: ele costuma conter dados do usuário
+- `sendDefaultPii` fica em `false`; `user` é removido em `beforeSend`
+- A tag do carregador **precisa continuar com `async`** — sem isso ela trava a
+  leitura da página e a abertura do app fica refém da rede
+
+Se um dia ligar gravação de tela ou rastreamento, revise essa decisão com o
+dono do app: é dado de saúde saindo para servidor de terceiro.
+
+## 8. Issues e Pull Requests
 
 - Abra uma **issue** para cada tarefa (correção, melhoria ou nova função) antes
   de começar, e **mencione o número dela na descrição do PR**
@@ -182,7 +208,7 @@ Chaves usadas no armazenamento local, úteis para montar cenários:
 
 ---
 
-## 8. Ao entregar
+## 9. Ao entregar
 
 - Diga o que foi verificado e **como**, com os números reais
   ("14 de 14 verificações passaram"), sem arredondar para melhor.
