@@ -1,0 +1,14 @@
+{
+  "name": "t-results",
+  "version": "1.0.0",
+  "private": true,
+  "description": "T-RESULTS — PWA de dieta e treino. Este package.json existe SOMENTE para os testes: o app continua sendo um arquivo unico (index.html) sem build e sem empacotador.",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:relatorio": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1"
+  }
+}

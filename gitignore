@@ -1,0 +1,10 @@
+# Dependências dos testes (o app em si não tem dependência nenhuma)
+node_modules/
+
+# Cópia instrumentada do app, gerada a cada rodada de testes
+.test-app.html
+
+# Saída do Playwright
+playwright-report/
+test-results/
+blob-report/

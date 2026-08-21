@@ -13,14 +13,18 @@ usado no celular, principalmente dentro da academia.
 
 | | |
 |---|---|
-| Arquivos | `index.html` (app inteiro), `sw.js`, `manifest.json`, ícones PNG |
-| Build | **Não existe.** Sem npm, sem `package.json`, sem empacotador |
+| Arquivos do app | `index.html` (app inteiro), `sw.js`, `manifest.json`, ícones PNG |
+| Build | **Não existe.** O app não é empacotado nem transpilado |
 | Publicação | GitHub Pages, a partir da branch `main` |
 | Backend | Firebase (Auth + Firestore) para login e sincronização |
 | Idioma | Todo texto visível em **pt-BR** |
 
 Todo o CSS e o JavaScript ficam **embutidos** no `index.html`. Não crie arquivos
 `.js` ou `.css` separados sem combinar antes: isso quebraria o modelo de publicação.
+
+O `package.json` e a pasta `tests/` existem **somente para os testes** — o app
+continua sendo um arquivo único servido direto. Publicar continua sendo copiar
+`index.html` e `sw.js` para a `main`; nada é gerado por build.
 
 ---
 
@@ -93,33 +97,49 @@ O T-RESULTS é um **app**, não um site. Ele precisa se comportar como tal.
 
 ---
 
-## 5. Testes — verifique antes de entregar
+## 5. Testes — rode antes de entregar
 
-Este projeto **não tem CI ainda**. A verificação é feita rodando o app de verdade
-num navegador, com Playwright (Chromium já vem instalado no ambiente).
+Existe uma suíte de Playwright versionada, que roda sozinha no GitHub Actions
+a cada push na `main` e em todo pull request (`.github/workflows/testes.yml`).
 
 ```bash
-export PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers
-# navegador: /opt/pw-browsers/chromium-*/chrome-linux/chrome
+npm install
+npx playwright install --with-deps chromium   # só na primeira vez
+
+npm test                                       # roda tudo
+npx playwright test tests/treino.spec.js       # só um arquivo
 ```
 
-**O que sempre verificar:**
+Se o ambiente já tiver um Chromium instalado (é o caso dos containers de
+sessão), aponte para ele em vez de baixar outro:
 
-1. Sintaxe do JavaScript embutido — extraia o bloco `<script type="module">`
-   e rode `node --check --input-type=module`
-2. O fluxo alterado, na tela, com dados realistas
-3. **Sem erros de JavaScript** no console (ignore `Failed to load resource`
-   de ícones quando servir por `file://`)
-4. Largura de **390px e 320px** — o layout já quebrou em 320px antes
-5. Temas **claro e escuro** — ambos são usados
+```bash
+CHROMIUM_PATH=/opt/pw-browsers/chromium npm test
+```
 
-Para testar o login, intercepte os módulos do Firebase com `page.route()`
-e devolva módulos falsos; sem isso a sessão trava esperando a rede.
+**Sempre rode a suíte antes de entregar.** Se você mexeu em algo que ela não
+cobre, **acrescente um teste** — foi assim que ela cresceu.
 
-**Tire captura de tela e olhe.** Dois defeitos reais desta base — placeholder de
+| Arquivo | Cobre |
+|---|---|
+| `tests/treino.spec.js` | Persistência da sessão, retomada após o app ser descartado, desconto do tempo fora do app |
+| `tests/historico.spec.js` | Referência da última sessão, sugestões, indicador de progressão de carga |
+| `tests/interface.spec.js` | Zoom bloqueado, diálogos internos, layout em 390/320px, tema claro e escuro |
+| `tests/alarme.spec.js` | Volume e ausência de distorção do alarme de descanso |
+| `tests/app.js` | Utilitários: Firebase falso, estado inicial, atalhos de navegação |
+
+Os testes carregam uma **cópia instrumentada** do `index.html` (gerada em
+`.test-app.html`, ignorada pelo git) com uma ponte `window.__t` para o escopo
+do módulo. Se a linha `$("mealSel").value=defaultMeal();` for renomeada, a
+injeção quebra e o próprio teste avisa — ajuste `ANCORA` em `tests/app.js`.
+
+O login é interceptado com `page.route()` devolvendo módulos falsos do Firebase;
+sem isso a sessão trava esperando a rede.
+
+**A suíte não substitui olhar.** Dois defeitos reais desta base — placeholder de
 carga cortado ("57," em vez de "57,5") e a linha de referência despedaçada em
-telas estreitas — só apareceram na imagem renderizada; nenhum teste automático
-os pegou.
+telas estreitas — só apareceram em captura de tela. Tire captura do que mudou e
+olhe, além de rodar os testes.
 
 Chaves usadas no armazenamento local, úteis para montar cenários:
 
@@ -152,9 +172,11 @@ Chaves usadas no armazenamento local, úteis para montar cenários:
 - Abra uma **issue** para cada tarefa (correção, melhoria ou nova função) antes
   de começar, e **mencione o número dela na descrição do PR**
   (ex.: `Closes #12`).
-- **PR só passa a valer a pena depois que houver teste automático rodando.**
-  Hoje ele não barra nada: não há CI e não há segundo revisor. Enquanto for
-  assim, prefira entregar os arquivos direto ao usuário.
+- **Trabalhe por PR.** Agora existe CI: o pull request roda a suíte de testes
+  antes de o código chegar na `main`, e é isso que ele barra. Não empurre
+  direto para a `main` sem os testes terem passado.
+- O fluxo do PR também avisa quando o `index.html` mudou sem que a versão do
+  cache no `sw.js` subisse.
 - Se um PR já foi mesclado, **não empilhe novos commits sobre ele** — comece
   do zero a partir da `main`.
 

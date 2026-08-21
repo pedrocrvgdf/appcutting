@@ -13,5 +13,5 @@ Resumo do que está lá, para decidir se precisa ler tudo (precisa):
   **nunca** oriente revogar a autorização do Claude no GitHub
 - Toda alteração no `index.html` **exige** incrementar `const CACHE` no `sw.js`
 - Proibido `alert()` / `confirm()` — use `appAlert()` e `appConfirm()`
-- Verificar no navegador com Playwright antes de entregar, em 390px e 320px,
-  nos temas claro e escuro
+- Rodar `npm test` (Playwright) antes de entregar; o CI roda a mesma suíte
+  em todo pull request
