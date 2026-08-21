@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Repasse Médico — Hospital Oftalmológico Ribeirão Preto</title>
+
+  <!-- Fontes: quando há internet melhoram a tipografia; sem internet o sistema
+       cai nas fontes locais definidas nas variáveis de --font-body. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap">
+
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+  <div id="app">
+    <div style="display:flex;align-items:center;justify-content:center;height:100vh;
+                flex-direction:column;gap:14px;font-family:system-ui;color:#3A5464">
+      <div style="width:34px;height:34px;border:3px solid rgba(0,0,0,.1);
+                  border-top-color:#005073;border-radius:50%;
+                  animation:sp .7s linear infinite"></div>
+      <div>Abrindo a ferramenta…</div>
+    </div>
+    <style>@keyframes sp{to{transform:rotate(360deg)}}</style>
+  </div>
+
+  <!-- Bibliotecas locais: a ferramenta funciona sem internet e sem instalação.
+       sql.js guarda o banco; xlsx lê as planilhas; pdf.js lê o demonstrativo. -->
+  <script src="libs/sql-wasm.js"></script>
+  <script src="libs/sql-wasm-b64.js"></script>
+  <script src="libs/xlsx.full.min.js"></script>
+  <script src="libs/pdf.min.js"></script>
+
+  <!-- Núcleo -->
+  <script src="js/utilidades.js"></script>
+  <script src="js/schema.js"></script>
+  <script src="js/banco.js"></script>
+
+  <!-- Leitura dos arquivos -->
+  <script src="js/parser_demonstrativo.js"></script>
+  <script src="js/importador_demonstrativo.js"></script>
+  <script src="js/importador_producao.js"></script>
+  <script src="js/importador_regras.js"></script>
+
+  <!-- Regras e cruzamento -->
+  <script src="js/regras_repasse.js"></script>
+  <script src="js/conciliacao.js"></script>
+
+  <!-- Aplicação -->
+  <script src="js/app.js"></script>
+  <script src="js/telas/painel.js"></script>
+  <script src="js/telas/importar_demonstrativo.js"></script>
+  <script src="js/telas/importar_producao.js"></script>
+  <script src="js/telas/conciliacao.js"></script>
+  <script src="js/telas/guias.js"></script>
+  <script src="js/telas/repasse.js"></script>
+  <script src="js/telas/regras.js"></script>
+  <script src="js/telas/backup.js"></script>
+
+</body>
+</html>

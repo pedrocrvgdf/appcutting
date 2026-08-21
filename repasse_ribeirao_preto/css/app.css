@@ -1,0 +1,218 @@
+/* ==========================================================================
+   Layout próprio da ferramenta (menu lateral, painéis, tabelas de conferência).
+   As cores, fontes e espaçamentos vêm do sistema definido em style.css.
+   ========================================================================== */
+
+/* ── Estrutura ───────────────────────────────────────────────────────────── */
+
+.rp-shell {
+  display: grid;
+  grid-template-columns: 248px 1fr;
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+.rp-menu {
+  background: var(--primary);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 0 12px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.rp-marca { padding: 0 20px 20px; }
+.rp-marca-nome {
+  font-family: var(--font-display);
+  font-size: 17px; font-weight: 700; letter-spacing: -.01em;
+}
+.rp-marca-unid {
+  font-size: 12px; opacity: .72; margin-top: 2px; letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.rp-menu-grupo { margin-bottom: 18px; }
+.rp-menu-titulo {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  opacity: .55; padding: 0 20px 7px;
+}
+
+.rp-menu-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 20px; color: #fff; text-decoration: none;
+  font-size: 13.5px; border-left: 3px solid transparent;
+  transition: background .12s ease, border-color .12s ease;
+}
+.rp-menu-item:hover { background: rgba(255,255,255,.09); }
+.rp-menu-item.ativo {
+  background: rgba(255,255,255,.14);
+  border-left-color: var(--accent-vivid);
+  font-weight: 600;
+}
+.rp-menu-ico { width: 18px; text-align: center; opacity: .85; font-size: 14px; }
+
+.rp-badge {
+  margin-left: auto; background: var(--accent-vivid); color: #04212e;
+  font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 7px;
+}
+
+.rp-rodape { margin-top: auto; padding: 14px 20px 0; }
+.rp-rodape-txt { font-size: 11px; opacity: .5; line-height: 1.5; }
+
+.rp-conteudo { overflow-y: auto; height: 100vh; }
+.page-content { padding: 28px 32px 60px; max-width: 1380px; }
+.page-acoes { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+/* ── Indicadores ─────────────────────────────────────────────────────────── */
+
+.rp-kpis {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px; margin-bottom: 22px;
+}
+.rp-kpi {
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: 16px 18px;
+}
+.rp-kpi-lbl {
+  font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.rp-kpi-val {
+  font-family: var(--font-mono); font-size: 25px; font-weight: 600;
+  color: var(--ink); margin-top: 6px; letter-spacing: -.02em;
+}
+.rp-kpi-det { font-size: 12px; color: var(--ink-soft); margin-top: 4px; }
+.rp-kpi.ok      { border-color: var(--success); background: var(--success-soft); }
+.rp-kpi.alerta  { border-color: var(--warning); background: var(--warning-soft); }
+.rp-kpi.perigo  { border-color: var(--danger);  background: var(--danger-soft); }
+.rp-kpi.destaque{ border-color: var(--primary); background: var(--primary-soft); }
+
+/* ── Tabelas ─────────────────────────────────────────────────────────────── */
+
+.rp-tabela-wrap {
+  overflow-x: auto; border: 1px solid var(--border);
+  border-radius: var(--radius-md); background: var(--bg-elevated);
+}
+.rp-tabela { width: 100%; border-collapse: collapse; font-size: 13px; }
+.rp-tabela th {
+  background: var(--bg-sunken); color: var(--ink-soft);
+  font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 1; white-space: nowrap;
+}
+.rp-tabela td { padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.rp-tabela tbody tr:hover { background: var(--primary-soft); }
+.rp-tabela tbody tr:last-child td { border-bottom: none; }
+.rp-num { font-family: var(--font-mono); text-align: right; white-space: nowrap; }
+.rp-forte { font-weight: 600; }
+.rp-tabela tfoot td {
+  background: var(--bg-sunken); font-weight: 700; border-top: 2px solid var(--border-strong);
+}
+
+/* ── Etiquetas ───────────────────────────────────────────────────────────── */
+
+.rp-tag {
+  display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .04em;
+  padding: 2px 8px; border-radius: 999px; text-transform: uppercase; white-space: nowrap;
+}
+.rp-tag.ok      { background: var(--success-soft); color: var(--success); }
+.rp-tag.alerta  { background: var(--warning-soft); color: var(--warning); }
+.rp-tag.perigo  { background: var(--danger-soft);  color: var(--danger); }
+.rp-tag.neutro  { background: var(--bg-sunken);    color: var(--ink-soft); }
+.rp-tag.info    { background: var(--accent-soft);  color: var(--primary); }
+
+/* ── Revisão de casamentos ───────────────────────────────────────────────── */
+
+.rp-caso {
+  border: 1px solid var(--border); border-radius: var(--radius-md);
+  background: var(--bg-elevated); margin-bottom: 14px; overflow: hidden;
+}
+.rp-caso-topo {
+  display: flex; gap: 16px; align-items: flex-start; justify-content: space-between;
+  padding: 14px 16px; background: var(--bg-sunken); border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.rp-caso-pac { font-size: 15px; font-weight: 700; color: var(--ink); }
+.rp-caso-meta { font-size: 12px; color: var(--ink-soft); margin-top: 3px; }
+.rp-caso-corpo { padding: 14px 16px; }
+.rp-caso-motivo {
+  font-size: 12.5px; color: var(--ink-soft); background: var(--warning-soft);
+  border-left: 3px solid var(--warning); padding: 8px 12px;
+  border-radius: var(--radius-sm); margin-bottom: 12px;
+}
+
+.rp-cand {
+  display: flex; gap: 14px; align-items: center; justify-content: space-between;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 10px 12px; margin-bottom: 8px; flex-wrap: wrap;
+}
+.rp-cand:hover { border-color: var(--accent); background: var(--accent-soft); }
+.rp-cand-info { flex: 1; min-width: 260px; }
+.rp-cand-nome { font-weight: 600; font-size: 13.5px; }
+.rp-cand-det { font-size: 12px; color: var(--ink-soft); margin-top: 2px; line-height: 1.5; }
+.rp-cand-score {
+  font-family: var(--font-mono); font-size: 15px; font-weight: 600; color: var(--primary);
+}
+
+/* ── Diversos ────────────────────────────────────────────────────────────── */
+
+.rp-vazio { text-align: center; padding: 56px 24px; color: var(--ink-faint); }
+.rp-vazio-tit { font-size: 16px; font-weight: 600; color: var(--ink-soft); margin-bottom: 6px; }
+.rp-vazio-txt { font-size: 13.5px; max-width: 520px; margin: 0 auto; line-height: 1.6; }
+
+.rp-filtros {
+  display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+  margin-bottom: 18px; padding: 12px 14px;
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.rp-filtros label { font-size: 12px; font-weight: 600; color: var(--ink-soft); }
+.rp-filtros select, .rp-filtros input {
+  font-family: var(--font-body); font-size: 13px; padding: 6px 10px;
+  border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+  background: var(--bg-elevated); color: var(--ink);
+}
+
+.rp-passos { display: grid; gap: 12px; margin-bottom: 22px; }
+.rp-passo {
+  display: flex; gap: 14px; align-items: flex-start;
+  border: 1px solid var(--border); border-radius: var(--radius-md);
+  padding: 14px 16px; background: var(--bg-elevated);
+}
+.rp-passo.feito { border-color: var(--success); background: var(--success-soft); }
+.rp-passo.pendente { border-color: var(--warning); background: var(--warning-soft); }
+.rp-passo-num {
+  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12.5px; font-weight: 700; background: var(--primary); color: #fff;
+}
+.rp-passo.feito .rp-passo-num { background: var(--success); }
+.rp-passo.pendente .rp-passo-num { background: var(--warning); }
+.rp-passo-tit { font-weight: 600; font-size: 14px; }
+.rp-passo-txt { font-size: 12.5px; color: var(--ink-soft); margin-top: 3px; line-height: 1.55; }
+
+.rp-aviso {
+  border-left: 3px solid var(--warning); background: var(--warning-soft);
+  padding: 10px 14px; border-radius: var(--radius-sm); font-size: 12.5px;
+  color: var(--ink-soft); margin-bottom: 8px; line-height: 1.5;
+}
+.rp-aviso.erro { border-left-color: var(--danger); background: var(--danger-soft); }
+.rp-aviso.ok   { border-left-color: var(--success); background: var(--success-soft); }
+
+.rp-arquivo {
+  border: 2px dashed var(--border-strong); border-radius: var(--radius-md);
+  padding: 28px; text-align: center; background: var(--bg-elevated);
+  transition: border-color .15s ease, background .15s ease;
+}
+.rp-arquivo.sobre { border-color: var(--accent); background: var(--accent-soft); }
+.rp-arquivo-tit { font-size: 14.5px; font-weight: 600; margin-bottom: 4px; }
+.rp-arquivo-txt { font-size: 12.5px; color: var(--ink-soft); margin-bottom: 14px; }
+
+@media (max-width: 900px) {
+  .rp-shell { grid-template-columns: 1fr; }
+  .rp-menu { position: static; height: auto; }
+  .page-content { padding: 20px 16px 48px; }
+}
