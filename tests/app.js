@@ -19,6 +19,10 @@ const PONTE = `
 window.__t={
   get store(){return store}, get trS(){return trS}, get trRestEnd(){return trRestEnd},
   trElapsedMs:()=>trS?trElapsedMs():null, lastExSession, alarmWav, ALARM_VOL, todayKey,
+  ALARM_DUR, ALARM_CICLO, restTick,
+  alarmNodesLen:()=>alarmNodes.length,
+  setRestEnd:v=>{trRestEnd=v;},
+  forcarFimDoDescanso:()=>{trRestEnd=Date.now();restTick();},
   renderAlarm:async()=>{
     const oc=new OfflineAudioContext(1,44100*5,44100);
     const ctxAnterior=beepCtx, busAnterior=alarmBus;
