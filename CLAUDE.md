@@ -229,7 +229,7 @@ O que a casca acrescenta, e a web não alcança:
 | | Como |
 |---|---|
 | Contagem regressiva andando na barra | `setChronometerCountDown` — quem desenha é o sistema, não o nosso código |
-| Alarme que sobrepõe a música | canal de notificação com `AudioAttributes.USAGE_ALARM` |
+| Alarme que sobrepõe a música | `AlarmeService` toca com `MediaPlayer` em `USAGE_ALARM` e pede foco `TRANSIENT_EXCLUSIVE` |
 | Disparo no segundo certo com o app fechado | `AlarmManager.setAlarmClock`, o único agendamento que o Android não adia |
 | Tela cheia por cima do TikTok | `setFullScreenIntent` com `CATEGORY_ALARM` |
 
@@ -249,6 +249,24 @@ O APK é montado pelo GitHub Actions (`.github/workflows/apk.yml`) e baixado pel
 aba **Actions** — não é preciso instalar o Android Studio. É um APK de
 depuração, assinado com a chave de teste: instala por "fontes desconhecidas" e
 serve para uso pessoal, não para a Play Store.
+
+#### Duas armadilhas que já custaram um teste em celular real
+
+**Som de canal de notificação não serve para alarme.** Ele toca uma vez, não
+repete, e é cortado quando o telefone está no modo vibrar. Na primeira versão o
+celular vibrou e não saiu som nenhum. Quem toca é o `AlarmeService`, com
+`MediaPlayer` no stream de alarme — que o modo silencioso não silencia. **Não
+devolva o som para o canal.**
+
+**`USE_FULL_SCREEN_INTENT` não vem concedida do Android 14 em diante**, e não
+existe diálogo de sistema para pedi-la: o único caminho é
+`Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT`. Sem ela o alarme não abre
+sozinho por cima do TikTok — fica esperando um toque na notificação.
+`MainActivity.conferirTelaCheia()` avisa quando falta.
+
+Por isso o alarme tem **três caminhos** até a pessoa: tela cheia automática,
+toque na notificação, e o botão "Parar". Se você mexer aqui, mantenha os três —
+o automático é o único que depende de permissão, e foi o que falhou.
 
 ### O que não dá para fazer, e por quê
 
