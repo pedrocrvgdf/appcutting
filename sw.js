@@ -1,5 +1,5 @@
 /* T - Results — service worker */
-const CACHE = "tresults-v9";
+const CACHE = "tresults-v10";
 const CORE = [
   "./",
   "./index.html",
@@ -26,9 +26,17 @@ self.addEventListener("fetch", e => {
 
   // Navegação (abrir o app): rede primeiro, cache se offline
   if (e.request.mode === "navigate") {
+    /* Só a página do app é guardada como reserva offline. Sem esta conferência,
+       navegar para qualquer outro endereço do site (uma página de diagnóstico,
+       um 404) gravaria aquele conteúdo sob "./index.html", e o app offline
+       passaria a abrir a página errada. */
+    const ehOApp = url.pathname.endsWith("/") || url.pathname.endsWith("/index.html");
     e.respondWith(
       fetch(e.request)
-        .then(res => { const cp = res.clone(); caches.open(CACHE).then(c => c.put("./index.html", cp)); return res; })
+        .then(res => {
+          if (ehOApp) { const cp = res.clone(); caches.open(CACHE).then(c => c.put("./index.html", cp)); }
+          return res;
+        })
         .catch(() => caches.match("./index.html"))
     );
     return;

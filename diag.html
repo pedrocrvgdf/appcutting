@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>T-RESULTS — Diagnóstico</title>
+<style>
+  :root{
+    --bg:#F7F7F3; --card:#fff; --tx:#1a1a1a; --mut:#666; --li:#e3e3dd;
+    --ok:#0E7C6B; --ruim:#c0392b; --alerta:#b8860b;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --bg:#141416; --card:#1e1e21; --tx:#f0f0ee; --mut:#9a9a95; --li:#2e2e33;
+           --ok:#3fbfa5; --ruim:#e56b5c; --alerta:#d9a441; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:16px;background:var(--bg);color:var(--tx);
+       font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  h1{font-size:19px;margin:0 0 4px}
+  .sub{color:var(--mut);font-size:13px;margin:0 0 18px}
+  .card{background:var(--card);border:1px solid var(--li);border-radius:12px;
+        padding:14px;margin-bottom:12px}
+  .card h2{font-size:14px;margin:0 0 10px;color:var(--mut);
+           text-transform:uppercase;letter-spacing:.04em}
+  .li{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--li);
+      align-items:flex-start}
+  .li:last-child{border-bottom:0}
+  .rot{flex:0 0 45%;color:var(--mut);font-size:13px}
+  .val{flex:1;font-weight:600;word-break:break-word;font-size:13px}
+  .ok{color:var(--ok)} .ruim{color:var(--ruim)} .alerta{color:var(--alerta)}
+  button{width:100%;padding:13px;margin-top:8px;border:0;border-radius:10px;
+         background:var(--ok);color:#fff;font-size:15px;font-weight:600;
+         font-family:inherit;cursor:pointer}
+  button.sec{background:transparent;border:1px solid var(--li);color:var(--tx)}
+  button.perigo{background:var(--alerta)}
+  .nota{font-size:12px;color:var(--mut);margin-top:8px;line-height:1.45}
+  pre{background:var(--bg);border:1px solid var(--li);border-radius:8px;padding:10px;
+      font-size:11px;overflow-x:auto;white-space:pre-wrap;word-break:break-all;margin:10px 0 0}
+</style>
+</head>
+<body>
+
+<h1>T-RESULTS — Diagnóstico</h1>
+<p class="sub">Esta página não altera nada do seu app. Ela só olha e conta o que encontrou.</p>
+
+<div class="card">
+  <h2>Versão</h2>
+  <div id="versao"></div>
+</div>
+
+<div class="card">
+  <h2>Service worker</h2>
+  <div id="sw"></div>
+</div>
+
+<div class="card">
+  <h2>Notificação e push</h2>
+  <div id="push"></div>
+</div>
+
+<div class="card">
+  <h2>Testar</h2>
+  <button id="bNotif">Mostrar uma notificação agora</button>
+  <p class="nota">Faz exatamente o que o app faz ao começar o descanso. Se não
+  aparecer nada na barra, o problema é aqui — e não no servidor.</p>
+  <button id="bCopiar" class="sec">Copiar relatório</button>
+</div>
+
+<div class="card">
+  <h2>Consertar</h2>
+  <button id="bLimpar" class="perigo">Forçar atualização do app</button>
+  <p class="nota"><strong>É seguro.</strong> Apaga só os arquivos que o app guardou
+  para funcionar sem internet e descadastra o service worker, obrigando o celular a
+  baixar tudo de novo.<br>
+  <strong>Seus treinos, pesos e medidas não são tocados</strong> — eles ficam em outro
+  lugar do armazenamento, que esta página nem encosta.</p>
+</div>
+
+<pre id="relatorio"></pre>
+
+<script>
+const linhas = [];
+
+function li(alvo, rotulo, valor, estado){
+  const c = estado ? ' ' + estado : '';
+  document.getElementById(alvo).insertAdjacentHTML('beforeend',
+    `<div class="li"><div class="rot">${rotulo}</div><div class="val${c}">${valor}</div></div>`);
+  linhas.push(rotulo + ': ' + String(valor).replace(/<[^>]+>/g,''));
+}
+
+/* Promessa com prazo: navigator.serviceWorker.ready trava para sempre quando
+   não há registro, e um travamento silencioso é justamente o que precisamos ver. */
+const comPrazo = (p, ms, seNao) =>
+  Promise.race([p, new Promise(r => setTimeout(() => r(seNao), ms))]);
+
+const versaoDe = txt => (txt.match(/APP_RELEASE\s*=\s*"([^"]+)"/) || [,'não encontrada'])[1];
+
+(async () => {
+
+  /* ---------- Versão ----------
+     O nome do cache é o sinal confiável: ele acompanha a versão do app e não
+     depende do conteúdo guardado, que pode ter sido sobrescrito. */
+  let publicada = null;
+  try {
+    const daRede = await fetch('./index.html?semcache=' + Date.now(),
+                               {cache:'no-store'}).then(r => r.text());
+    publicada = versaoDe(daRede);
+    li('versao', 'Publicada no site', publicada, 'ok');
+  } catch (e) {
+    li('versao', 'Publicada no site', 'não deu para buscar: ' + e.message, 'ruim');
+  }
+
+  try {
+    const chaves = await caches.keys();
+    const noAparelho = chaves.length ? chaves.join(', ') : 'nenhum';
+    const bate = publicada && chaves.length === 1 && chaves[0] === publicada;
+    li('versao', 'No seu aparelho', noAparelho, bate ? 'ok' : 'ruim');
+    li('versao', 'Está atualizado?',
+       bate ? 'sim' : chaves.length ? 'NÃO — versão antiga guardada' : 'nada guardado ainda',
+       bate ? 'ok' : 'ruim');
+  } catch (e) {
+    li('versao', 'No seu aparelho', 'não deu para ler: ' + e.message, 'ruim');
+  }
+
+  li('versao', 'Aberto como app', matchMedia('(display-mode: standalone)').matches
+     ? 'sim (tela de início)' : 'não (aba do navegador)');
+
+  /* ---------- Service worker ---------- */
+  if (!('serviceWorker' in navigator)) {
+    li('sw', 'Suportado', 'NÃO', 'ruim');
+  } else {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    li('sw', 'Registros', regs.length, regs.length ? 'ok' : 'ruim');
+    regs.forEach((r, i) => {
+      const est = r.active ? 'ativo' : r.waiting ? 'esperando' : r.installing ? 'instalando' : 'sem worker';
+      li('sw', 'Registro ' + (i+1), (r.active?.scriptURL || r.scope) + ' — ' + est,
+         r.active ? 'ok' : 'alerta');
+    });
+
+    /* o teste que importa: o app espera por isto antes de notificar */
+    const pronto = await comPrazo(
+      navigator.serviceWorker.ready.then(() => 'respondeu'), 5000, 'TRAVOU (mais de 5s)');
+    li('sw', 'Ficou pronto?', pronto, pronto === 'respondeu' ? 'ok' : 'ruim');
+  }
+
+  /* ---------- Notificação e push ---------- */
+  li('push', 'Notification existe', ('Notification' in window) ? 'sim' : 'NÃO',
+     ('Notification' in window) ? 'ok' : 'ruim');
+
+  if ('Notification' in window) {
+    const p = Notification.permission;
+    li('push', 'Permissão', p,
+       p === 'granted' ? 'ok' : p === 'denied' ? 'ruim' : 'alerta');
+  }
+
+  li('push', 'PushManager existe', ('PushManager' in window) ? 'sim' : 'NÃO',
+     ('PushManager' in window) ? 'ok' : 'ruim');
+
+  try {
+    const reg = await comPrazo(navigator.serviceWorker.ready, 5000, null);
+    if (!reg) {
+      li('push', 'Inscrição no push', 'não deu para ver: service worker travado', 'ruim');
+    } else {
+      const sub = await reg.pushManager.getSubscription();
+      li('push', 'Inscrição no push', sub ? 'existe' : 'nenhuma ainda',
+         sub ? 'ok' : 'alerta');
+      if (sub) li('push', 'Servidor de push', new URL(sub.endpoint).hostname);
+    }
+  } catch (e) {
+    li('push', 'Inscrição no push', 'erro: ' + e.message, 'ruim');
+  }
+
+  document.getElementById('relatorio').textContent = linhas.join('\n');
+
+  /* Devolve o app ao cache antes de sair.
+     Service workers antigos (até a versão 9) gravavam QUALQUER navegação sob a
+     chave "./index.html" — inclusive esta página. Sem consertar, o app aberto
+     sem internet abriria o diagnóstico. Uma ferramenta de diagnóstico não pode
+     deixar o paciente pior do que encontrou. */
+  try {
+    const chaves = await caches.keys();
+    if (chaves.length) {
+      const res = await fetch('./index.html?reparo=' + Date.now(), {cache:'no-store'});
+      if (res.ok && versaoDe(await res.clone().text()) !== 'não encontrada') {
+        await (await caches.open(chaves[0])).put('./index.html', res);
+      }
+    }
+  } catch (e) { /* sem rede: o cache fica como estava */ }
+})();
+
+/* ---------- Botões ---------- */
+document.getElementById('bNotif').onclick = async () => {
+  const b = document.getElementById('bNotif');
+  try {
+    if (!('Notification' in window)) throw new Error('este navegador não tem Notification');
+    if (Notification.permission !== 'granted') {
+      const r = await Notification.requestPermission();
+      if (r !== 'granted') throw new Error('permissão respondida: ' + r);
+    }
+    const reg = await comPrazo(navigator.serviceWorker.ready, 5000, null);
+    if (!reg) throw new Error('o service worker não respondeu em 5s');
+    await reg.showNotification('Teste do T-RESULTS', {
+      body: 'Se você está lendo isto na barra, a notificação funciona.',
+      icon: './icon-192.png', badge: './icon-192.png',
+      vibrate: [300, 120, 300], requireInteraction: true, lang: 'pt-BR'
+    });
+    b.textContent = 'Enviada — puxe a barra de notificação';
+  } catch (e) {
+    b.textContent = 'Falhou: ' + e.message;
+    b.style.background = 'var(--ruim)';
+  }
+};
+
+document.getElementById('bCopiar').onclick = async () => {
+  const b = document.getElementById('bCopiar');
+  try {
+    await navigator.clipboard.writeText(linhas.join('\n'));
+    b.textContent = 'Copiado';
+  } catch (e) {
+    b.textContent = 'Não deu — selecione o texto cinza no fim da página';
+  }
+};
+
+document.getElementById('bLimpar').onclick = async () => {
+  const b = document.getElementById('bLimpar');
+  b.textContent = 'Limpando...';
+  try {
+    /* de propósito: só caches e service worker.
+       localStorage — onde vivem cutting.v1, tresults.run e o tema — não é tocado. */
+    for (const k of await caches.keys()) await caches.delete(k);
+    for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister();
+    b.textContent = 'Pronto. Abra o app de novo.';
+    b.style.background = 'var(--ok)';
+  } catch (e) {
+    b.textContent = 'Falhou: ' + e.message;
+    b.style.background = 'var(--ruim)';
+  }
+};
+</script>
+</body>
+</html>
