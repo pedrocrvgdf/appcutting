@@ -6,8 +6,6 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.media.AudioAttributes
-import android.media.RingtoneManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 
@@ -35,24 +33,17 @@ object Notificacoes {
             setShowBadge(false)
         }
 
-        /* USAGE_ALARM é o ponto inteiro deste projeto: som de notificação
-           disputa espaço com a música, som de alarme interrompe. É a diferença
-           entre ouvir e não ouvir no meio da academia. */
-        val atributos = AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_ALARM)
-            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-            .build()
-
-        val som = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-
+        /* O som e a vibração NÃO ficam no canal — ficam no AlarmeService.
+           Som de canal toca uma vez, não repete, e é cortado quando o telefone
+           está no modo vibrar. Foi o que aconteceu no primeiro teste em celular
+           de verdade: vibrou e não saiu som. Quem toca agora é o serviço, no
+           stream de alarme, que o modo silencioso não silencia. */
         val alarme = NotificationChannel(
             CANAL_ALARME, "Fim do descanso", NotificationManager.IMPORTANCE_HIGH
         ).apply {
             description = "Toca quando o descanso termina, mesmo com outro app aberto."
-            setSound(som, atributos)
-            enableVibration(true)
-            vibrationPattern = longArrayOf(0, 400, 150, 400, 150, 600)
+            setSound(null, null)
+            enableVibration(false)
             setBypassDnd(false)
             lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
         }
@@ -86,9 +77,21 @@ object Notificacoes {
         NotificationManagerCompat.from(ctx).notify(Descanso.ID_CONTAGEM, aviso)
     }
 
-    /** O alarme: tela cheia por cima do que estiver aberto, som e vibração. */
-    @SuppressLint("MissingPermission")
-    fun alarme(ctx: Context, exercicio: String) {
+    /**
+     * A notificação do alarme, devolvida para o AlarmeService usar como aviso do
+     * serviço em primeiro plano.
+     *
+     * Ela tem três caminhos para chegar até a pessoa, de propósito:
+     *
+     * - `setFullScreenIntent` abre a tela por cima do TikTok — mas no Android 14+
+     *   isso depende de uma permissão que não vem concedida (ver MainActivity)
+     * - tocar na notificação abre a mesma tela, e esse caminho nunca é bloqueado
+     * - o botão "Parar" silencia sem abrir nada
+     *
+     * O primeiro teste em celular real falhou justamente porque só o primeiro
+     * caminho existia, e ele estava bloqueado.
+     */
+    fun alarme(ctx: Context, exercicio: String): android.app.Notification {
         val tela = PendingIntent.getActivity(
             ctx, 30,
             Intent(ctx, AlarmeActivity::class.java)
@@ -97,21 +100,24 @@ object Notificacoes {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val aviso = NotificationCompat.Builder(ctx, CANAL_ALARME)
+        val parar = PendingIntent.getService(
+            ctx, 32,
+            Intent(ctx, AlarmeService::class.java).setAction(AlarmeService.PARAR),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        return NotificationCompat.Builder(ctx, CANAL_ALARME)
             .setSmallIcon(R.drawable.ic_stat_tresults)
             .setContentTitle("Descanso concluído")
             .setContentText(if (exercicio.isBlank()) "Hora da próxima série." else "Hora da próxima série · $exercicio")
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setAutoCancel(true)
+            .setOngoing(true)
             .setContentIntent(tela)
-            // `true` = pode interromper o que o usuário estiver fazendo. É o que
-            // faz o alarme aparecer por cima do TikTok em vez de esperar na barra.
             .setFullScreenIntent(tela, true)
+            .addAction(0, "Parar", parar)
             .build()
-
-        NotificationManagerCompat.from(ctx).notify(Descanso.ID_ALARME, aviso)
     }
 
     private fun abrirOApp(ctx: Context): PendingIntent =

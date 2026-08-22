@@ -6,9 +6,6 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.os.VibratorManager
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.ViewGroup
@@ -16,20 +13,20 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.NotificationManagerCompat
 
 /**
  * A tela que toma o celular quando o descanso acaba.
  *
- * Aparece por cima do que estiver aberto e sobre a tela de bloqueio. O som vem
- * do canal de alarme (ver Notificacoes); aqui cuidamos da vibração em ciclo e
- * da tela, que é o que faz o aviso ser reconhecido de relance — na academia, com
- * o celular no silencioso, ver é mais confiável do que ouvir.
+ * Aparece por cima do que estiver aberto e sobre a tela de bloqueio — quando o
+ * sistema deixa. Som e vibração são do AlarmeService, justamente para que o
+ * alarme não dependa desta tela conseguir abrir.
+ *
+ * O que ela acrescenta é o reconhecimento de relance: na academia, com o celular
+ * no silencioso, ver é mais confiável do que ouvir.
  */
 class AlarmeActivity : AppCompatActivity() {
 
     private val relogio = Handler(Looper.getMainLooper())
-    private var vibrador: Vibrator? = null
 
     /** Insiste por um tempo e desiste sozinha: alarme preso é pior que alarme perdido. */
     private val desistir = Runnable { encerrar() }
@@ -41,7 +38,9 @@ class AlarmeActivity : AppCompatActivity() {
         val exercicio = intent.getStringExtra(FimDoDescanso.EXERCICIO).orEmpty()
         setContentView(montarTela(exercicio))
 
-        vibrarEmCiclo()
+        /* Som e vibração são do AlarmeService, não desta tela. Ela pode nem
+           chegar a abrir — no Android 14+ a abertura automática depende de uma
+           permissão que não vem concedida — e o alarme não pode depender disso. */
         relogio.postDelayed(desistir, 60_000)
     }
 
@@ -53,7 +52,6 @@ class AlarmeActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         relogio.removeCallbacks(desistir)
-        vibrador?.cancel()
     }
 
     private fun montarTela(exercicio: String): ViewGroup {
@@ -106,20 +104,10 @@ class AlarmeActivity : AppCompatActivity() {
         }
     }
 
-    private fun vibrarEmCiclo() {
-        vibrador = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            getSystemService(VibratorManager::class.java)?.defaultVibrator
-        } else {
-            @Suppress("DEPRECATION")
-            getSystemService(Vibrator::class.java)
-        }
-        val ciclo = longArrayOf(0, 500, 300, 500, 300, 700, 900)
-        vibrador?.vibrate(VibrationEffect.createWaveform(ciclo, 0))  // 0 = repete do início
-    }
-
     private fun encerrar(abrirOApp: Boolean = false) {
-        vibrador?.cancel()
-        NotificationManagerCompat.from(this).cancel(Descanso.ID_ALARME)
+        // quem está tocando é o serviço; fechar esta tela sem avisá-lo deixaria
+        // o som preso no celular da pessoa
+        startService(Intent(this, AlarmeService::class.java).setAction(AlarmeService.PARAR))
         if (abrirOApp) {
             startActivity(
                 Intent(this, MainActivity::class.java)

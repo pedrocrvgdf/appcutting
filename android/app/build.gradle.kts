@@ -11,8 +11,8 @@ android {
         applicationId = "com.pedrocrvgdf.tresults"
         minSdk = 26          // Android 8: primeira versão com canais de notificação
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
 
         // O app é uma casca: a interface continua vindo do GitHub Pages, então
         // publicar o T-RESULTS segue sendo copiar o index.html para a main.

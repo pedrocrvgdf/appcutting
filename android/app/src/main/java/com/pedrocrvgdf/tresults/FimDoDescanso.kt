@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 
 /**
  * Chega aqui quando o tempo acaba — mesmo com o app fechado, mesmo com o
@@ -18,6 +19,15 @@ class FimDoDescanso : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
         // a contagem cumpriu seu papel; deixá-la na barra viraria lixo parado em 00:00
         NotificationManagerCompat.from(ctx).cancel(Descanso.ID_CONTAGEM)
-        Notificacoes.alarme(ctx, intent.getStringExtra(EXERCICIO) ?: "")
+
+        /* Serviço em vez de notificação solta: é ele que toca o som em ciclo no
+           stream de alarme. Iniciar serviço em primeiro plano a partir daqui é
+           permitido — receptor de alarme exato é uma das exceções da regra que
+           barra serviços iniciados em segundo plano. */
+        ContextCompat.startForegroundService(
+            ctx,
+            Intent(ctx, AlarmeService::class.java)
+                .putExtra(EXERCICIO, intent.getStringExtra(EXERCICIO).orEmpty())
+        )
     }
 }

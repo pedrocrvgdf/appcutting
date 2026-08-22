@@ -2,18 +2,21 @@ package com.pedrocrvgdf.tresults
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.NotificationManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 
@@ -40,6 +43,7 @@ class MainActivity : AppCompatActivity() {
 
         Notificacoes.criarCanais(this)
         pedirPermissaoDeNotificacao()
+        conferirTelaCheia()
 
         web = WebView(this).apply {
             // mesmo fundo do app: evita o branco piscando antes da página pintar
@@ -100,5 +104,39 @@ class MainActivity : AppCompatActivity() {
             this, Manifest.permission.POST_NOTIFICATIONS
         ) == PackageManager.PERMISSION_GRANTED
         if (!concedida) pedirNotificacao.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+
+    /**
+     * Sem esta permissão o alarme não abre sozinho por cima do TikTok — ele
+     * chega como notificação e espera um toque.
+     *
+     * Até o Android 13 ela vinha concedida. No 14 deixou de vir, e não existe
+     * diálogo de sistema para pedi-la: o único caminho é mandar a pessoa para a
+     * tela de ajuste. Foi exatamente o que derrubou o primeiro teste em celular
+     * de verdade, e sem este aviso não haveria como descobrir.
+     */
+    private fun conferirTelaCheia() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return
+        val gerente = getSystemService(NotificationManager::class.java) ?: return
+        if (gerente.canUseFullScreenIntent()) return
+
+        AlertDialog.Builder(this)
+            .setTitle("Falta uma autorização")
+            .setMessage(
+                "Para o alarme do descanso aparecer por cima do Instagram ou do " +
+                    "TikTok, o Android precisa da sua autorização.\n\n" +
+                    "Sem ela o alarme ainda toca e vibra, mas fica esperando na " +
+                    "barra de notificação até você tocar nele."
+            )
+            .setPositiveButton("Autorizar") { _, _ ->
+                try {
+                    startActivity(
+                        Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT)
+                            .setData(Uri.parse("package:$packageName"))
+                    )
+                } catch (e: Exception) { /* fabricante sem essa tela */ }
+            }
+            .setNegativeButton("Agora não", null)
+            .show()
     }
 }
