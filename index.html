@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v10";
+window.APP_RELEASE = "tresults-v11";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -2068,6 +2068,45 @@ async function pushCancelar(){
   }catch(e){}
 }
 
+/* ============================================================
+   TEMPORIZADOR NATIVO (app Android)
+
+   Dentro do app Android existe a ponte `window.TResults`, e o descanso passa a
+   ser contado pelo próprio sistema: contagem regressiva andando na barra de
+   notificação e alarme no canal de alarme — que interrompe a música em vez de
+   disputar com ela. As duas coisas que a web não alcança e que este projeto
+   passou a tarde inteira comprovando que não alcança.
+
+   No navegador a ponte não existe, `appNativo` fica falso e tudo segue como
+   antes: alarme no relógio do áudio mais Web Push. Nenhum caminho é removido.
+   ============================================================ */
+const appNativo=(()=>{
+  try{ return !!(window.TResults&&window.TResults.disponivel()); }catch(e){ return false; }
+})();
+
+/** Começa o descanso pelo caminho disponível. */
+function descansoIniciar(secs,exercicio){
+  if(appNativo){
+    try{ window.TResults.iniciarDescanso(secs,exercicio||""); return; }catch(e){}
+  }
+  keepAudioAlive(true);
+  scheduleAlarm(secs); // agendado no áudio: soa na hora mesmo em segundo plano
+  clearTimeout(trDuckT);
+  trDuckT=setTimeout(tomarOAudio,Math.max(0,secs*1000-400)); // toma o áudio um instante antes
+  // fica na barra de notificação com o horário de término (ver limite no CLAUDE.md)
+  notifMostrar("Descanso em andamento",`Termina às ${hhmm(new Date(trRestEnd))} · ${fmtSec(secs)} de descanso`,
+    {silent:true,requireInteraction:true});
+  pushAgendar(secs,"Hora da próxima série."); // chega mesmo com o app fechado
+}
+
+/** Descanso pulado, alarme já tocado ou treino encerrado. */
+function descansoCancelar(){
+  if(appNativo){
+    try{ window.TResults.cancelarDescanso(); return; }catch(e){}
+  }
+  pushCancelar();
+}
+
 const fmtSec=s=>String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");
 const hhmm=d=>String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
 
@@ -2156,7 +2195,9 @@ function restFinish(soar){
   stopRest();
   b.classList.remove("resting");b.classList.add("done");
   b.innerHTML=`<span class="rtxt">✅ Descanso concluído — próxima série!</span>`;
-  if(soar!==false){
+  /* Dentro do app Android quem alarma é o sistema, com tela cheia por cima de
+     tudo. Repetir aqui daria som dobrado e duas telas de aviso disputando. */
+  if(soar!==false&&!appNativo){
     tomarOAudio();          // interrompe a música, como faz o temporizador do celular
     vibrarAlarme(true);
     // o alarme agendado já soou sozinho; sem agendamento válido, toca agora
@@ -2202,19 +2243,11 @@ $("rdGo").onclick=e=>{e.stopPropagation();fecharRestDone();};
 $("trRest").onclick=()=>{
   if(!trS)return;
   const b=$("trRest");
-  if(trRestInt){stopRest();pushCancelar();restLabel();trPersist();return;} // toque durante o descanso = pular
+  if(trRestInt){stopRest();descansoCancelar();restLabel();trPersist();return;} // toque durante o descanso = pular
   beepInit(); // gesto do usuário libera o áudio do alarme
   const secs=(trS.w.ex[trS.idx].rest||90);
   trRestEnd=Date.now()+secs*1000; // relógio real: não para em segundo plano
-  keepAudioAlive(true);
-  scheduleAlarm(secs); // agendado no áudio: soa na hora mesmo se o app estiver em segundo plano
-  clearTimeout(trDuckT);
-  trDuckT=setTimeout(tomarOAudio,Math.max(0,secs*1000-400)); // toma o áudio um instante antes
-  // fica na barra de notificação com o horário de término (ver limite no CLAUDE.md)
-  notifMostrar("Descanso em andamento",`Termina às ${hhmm(new Date(trRestEnd))} · ${fmtSec(secs)} de descanso`,
-    {silent:true,requireInteraction:true});
-  // e pede o aviso do servidor, que chega mesmo se você sair do app
-  pushAgendar(secs,"Hora da próxima série.");
+  descansoIniciar(secs,trS.w.ex[trS.idx].n);
   b.classList.add("resting");b.classList.remove("done");
   restTick();
   trRestInt=setInterval(restTick,500);

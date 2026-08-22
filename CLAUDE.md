@@ -215,11 +215,49 @@ Diferenças entre os sistemas, ambas tratadas no `sw.js`:
 | Botões na notificação | aparecem | ignorados, sem quebrar |
 | `requireInteraction` | fica até dispensar | ignorado |
 
+### O app Android (`android/`) — temporizador nativo
+
+O que está logo abaixo, em "o que não dá para fazer", vale **para a web**. Dentro
+do app Android, dá — e é por isso que ele existe.
+
+O app é uma **casca**: um `WebView` que carrega o mesmo `index.html` do GitHub
+Pages. Publicar o T-RESULTS continua sendo copiar `index.html` e `sw.js` para a
+`main`; o APK quase nunca muda.
+
+O que a casca acrescenta, e a web não alcança:
+
+| | Como |
+|---|---|
+| Contagem regressiva andando na barra | `setChronometerCountDown` — quem desenha é o sistema, não o nosso código |
+| Alarme que sobrepõe a música | canal de notificação com `AudioAttributes.USAGE_ALARM` |
+| Disparo no segundo certo com o app fechado | `AlarmManager.setAlarmClock`, o único agendamento que o Android não adia |
+| Tela cheia por cima do TikTok | `setFullScreenIntent` com `CATEGORY_ALARM` |
+
+A página conversa com o Android por `window.TResults` (ver `PonteWeb.kt`):
+
+```js
+const appNativo = !!(window.TResults && window.TResults.disponivel());
+```
+
+**Regra:** quando `appNativo` é verdadeiro, o caminho web precisa ficar
+**desligado** — nada de `scheduleAlarm`, `notifMostrar`, `pushAgendar` nem
+`abrirRestDone`. Os dois juntos dão alarme dobrado e duas telas de aviso
+disputando. Existe teste para cada um desses (`tests/app-nativo.spec.js`), e o
+último deles garante que no navegador comum tudo continua como era.
+
+O APK é montado pelo GitHub Actions (`.github/workflows/apk.yml`) e baixado pela
+aba **Actions** — não é preciso instalar o Android Studio. É um APK de
+depuração, assinado com a chave de teste: instala por "fontes desconhecidas" e
+serve para uso pessoal, não para a Play Store.
+
 ### O que não dá para fazer, e por quê
 
 **Contagem regressiva andando na barra de notificação** — não existe API web.
-Exige serviço em primeiro plano (Android) ou Live Activity (iOS), ambos
-exclusivos de app nativo. O que dá é a notificação com o **horário de término**.
+Verificado no Chrome 141: as opções da notificação são `actions, badge, body,
+data, dir, icon, image, lang, renotify, requireInteraction, silent, tag,
+timestamp, title, vibrate` — não há cronômetro, não há som, não há prioridade.
+O que dá **na web** é a notificação com o **horário de término**. A contagem
+andando existe só no app Android, acima.
 
 **Agendar notificação local** — o `TimestampTrigger` foi removido do Chrome.
 Verificado no Chrome 141: `showTrigger` é `false` e `TimestampTrigger` é
