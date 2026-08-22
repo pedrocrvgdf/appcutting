@@ -72,6 +72,21 @@ export function sendPasswordResetEmail(){return Promise.resolve();}
 export const EmailAuthProvider={credential:()=>({})};
 export function reauthenticateWithCredential(){return Promise.resolve();}
 export function deleteUser(){return Promise.resolve();}`;
+/* Chamadas às Cloud Functions ficam registradas em window.__fnCalls, e a
+   resposta de cada uma vem de window.__fnRespostas. Sem resposta definida, a
+   chamada falha — que é como o app se comporta antes de as funções serem
+   publicadas. */
+const FB_FN = `
+export function getFunctions(){return {__falso:true};}
+export function httpsCallable(fns,nome){
+  return async dados=>{
+    window.__fnCalls=window.__fnCalls||[];
+    window.__fnCalls.push({nome,dados});
+    const r=(window.__fnRespostas||{})[nome];
+    if(r===undefined)throw new Error("função não publicada");
+    return {data:r};
+  };
+}`;
 const FB_FS = `
 export function getFirestore(){return {};}
 export function doc(){return {};}
@@ -88,6 +103,7 @@ async function isolarRede(context) {
   await context.route('**/firebasejs/**/firebase-app.js', r => r.fulfill(js(FB_APP)));
   await context.route('**/firebasejs/**/firebase-auth.js', r => r.fulfill(js(FB_AUTH)));
   await context.route('**/firebasejs/**/firebase-firestore.js', r => r.fulfill(js(FB_FS)));
+  await context.route('**/firebasejs/**/firebase-functions.js', r => r.fulfill(js(FB_FN)));
   await context.route('**/fonts.googleapis.com/**', r => r.fulfill({ status: 200, contentType: 'text/css', body: '' }));
 }
 

@@ -14,6 +14,7 @@ usado no celular, principalmente dentro da academia.
 | | |
 |---|---|
 | Arquivos do app | `index.html` (app inteiro), `sw.js`, `manifest.json`, ícones PNG |
+| Servidor | `functions/` — só o aviso de descanso por push; o app funciona sem |
 | Build | **Não existe.** O app não é empacotado nem transpilado |
 | Publicação | GitHub Pages, a partir da branch `main` |
 | Backend | Firebase (Auth + Firestore) para login e sincronização |
@@ -142,6 +143,9 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 | `tests/interface.spec.js` | Zoom bloqueado, diálogos internos, layout em 390/320px, tema claro e escuro |
 | `tests/alarme.spec.js` | Volume e ausência de distorção do alarme de descanso |
 | `tests/sentry.spec.js` | Configuração do monitoramento, limpeza de dados pessoais, app abrindo sem a Sentry |
+| `tests/alarme-descanso.spec.js` | Tela do alarme, interrupção da música, insistência, permissão |
+| `tests/abertura.spec.js` | Splash, avisos de espera, instalação como app |
+| `tests/push.spec.js` | Aviso com o app fechado, e o app funcionando sem ele |
 | `tests/app.js` | Utilitários: Firebase falso, estado inicial, atalhos de navegação |
 
 Os testes carregam uma **cópia instrumentada** do `index.html` (gerada em
@@ -188,16 +192,44 @@ Chaves usadas no armazenamento local, úteis para montar cenários:
 - **Descanso vencido há mais de 3 minutos não alarma** (a pessoa voltou ao app
   muito depois). Mostra o estado, sem tocar nem interromper a música.
 
+### Aviso com o app fechado (Web Push)
+
+Quando o usuário sai para outro app, o navegador **congela** o nosso código: o
+alarme sonoro não toca e nenhuma notificação local é disparada. Por isso existe
+a pasta `functions/`: o app pede ao servidor um aviso para o horário do
+término, e ele chega mesmo com o app fechado.
+
+- `pushAgendar(segundos)` ao iniciar o descanso; `pushCancelar()` ao pular ou
+  quando o alarme já tocou na tela (senão vira aviso repetido)
+- **Tudo é opcional.** Sem permissão, sem as funções publicadas ou sem rede, o
+  app funciona igual. Existe teste que garante isso (`tests/push.spec.js`) —
+  não o remova ao mexer aqui.
+- A chave VAPID pública vem da função `chavePush`; a privada é segredo do
+  Firebase e nunca aparece no `index.html`
+
+Diferenças entre os sistemas, ambas tratadas no `sw.js`:
+
+| | Android | iOS |
+|---|---|---|
+| Push | funciona bem | exige iOS 16.4+ **e** app instalado na tela de início |
+| Botões na notificação | aparecem | ignorados, sem quebrar |
+| `requireInteraction` | fica até dispensar | ignorado |
+
 ### O que não dá para fazer, e por quê
 
-O usuário pediu contagem regressiva ao vivo na barra de notificação, como no
-temporizador da Samsung. **Não existe API web para isso** — nem no Android nem
-no iOS. Notificação com contador que anda exige serviço em primeiro plano
-(Android) ou Live Activity (iOS), ambos exclusivos de app nativo.
+**Contagem regressiva andando na barra de notificação** — não existe API web.
+Exige serviço em primeiro plano (Android) ou Live Activity (iOS), ambos
+exclusivos de app nativo. O que dá é a notificação com o **horário de término**.
 
-O que dá, e é o que está feito: uma notificação no início do descanso com o
-**horário de término**. Ela não anda, mas permite descer a barra e saber quando
-acaba. Não tente resolver isso com `<audio>` silencioso para segurar a sessão
+**Agendar notificação local** — o `TimestampTrigger` foi removido do Chrome.
+Verificado no Chrome 141: `showTrigger` é `false` e `TimestampTrigger` é
+`undefined`. Por isso o aviso vem do servidor, e não do aparelho.
+
+**Alarme insistente com o app fechado** — o push entrega **uma** notificação
+com o som do sistema, não um alarme tocando até ser dispensado. Isso é
+privilégio de app nativo.
+
+Não tente resolver nada disso com `<audio>` silencioso para segurar a sessão
 de mídia: funciona, mas rouba os controles de mídia do celular e a música do
 usuário perde o comando na tela de bloqueio — pior que o problema.
 

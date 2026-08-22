@@ -1,5 +1,5 @@
 /* T - Results — service worker */
-const CACHE = "tresults-v8";
+const CACHE = "tresults-v9";
 const CORE = [
   "./",
   "./index.html",
@@ -54,9 +54,37 @@ self.addEventListener("fetch", e => {
   }
 });
 
+/* Aviso de fim de descanso vindo do servidor.
+   É o unico caminho que alcanca o usuario dentro de outro app: aqui o codigo
+   roda mesmo com a pagina fechada, porque quem acorda o service worker e o
+   proprio sistema. */
+self.addEventListener("push", e => {
+  let d = { titulo: "Descanso concluído", corpo: "Hora da próxima série.", tag: "tresults-descanso" };
+  try { if (e.data) d = Object.assign(d, e.data.json()); } catch (err) { /* payload vazio: usa o padrão */ }
+  e.waitUntil(
+    self.registration.showNotification(d.titulo, {
+      body: d.corpo,
+      tag: d.tag,
+      renotify: true,
+      requireInteraction: true,
+      icon: "./icon-192.png",
+      badge: "./icon-192.png",
+      vibrate: [400, 150, 400, 150, 600],
+      lang: "pt-BR",
+      // botoes so aparecem no Android; o iOS ignora sem quebrar nada
+      actions: [
+        { action: "abrir", title: "Abrir treino" },
+        { action: "dispensar", title: "Dispensar" }
+      ],
+      data: { url: "./" }
+    })
+  );
+});
+
 // Toque na notificação do descanso: traz o app de volta em vez de abrir outra aba
 self.addEventListener("notificationclick", e => {
   e.notification.close();
+  if (e.action === "dispensar") return;   // silenciar sem abrir o app
   e.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(lista => {
       for (const c of lista) if ("focus" in c) return c.focus();
