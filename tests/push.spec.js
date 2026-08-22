@@ -187,3 +187,40 @@ test.describe('Notificação enviada pelo servidor', () => {
       .toMatch(/e\.action === "dispensar"[\s\S]{0,40}return/);
   });
 });
+
+test.describe('Configuração do deploy', () => {
+
+  /* O `firebase deploy` recusa o firebase.json antes de olhar o código, e a
+     mensagem de erro não diz qual chave está errada. Já aconteceu com
+     `"hosting": null`: chave sem uso, valor que o esquema não aceita. */
+  test('o firebase.json não tem chave com valor nulo', () => {
+    const cfg = JSON.parse(fs.readFileSync(path.join(RAIZ, 'firebase.json'), 'utf8'));
+    const nulas = Object.keys(cfg).filter(k => cfg[k] === null);
+    expect(nulas, 'chave sem uso deve ser removida, não zerada').toEqual([]);
+  });
+
+  test('o firebase.json aponta para a pasta das funções', () => {
+    const cfg = JSON.parse(fs.readFileSync(path.join(RAIZ, 'firebase.json'), 'utf8'));
+    expect(cfg.functions, 'sem isto o deploy não acha o código').toBeTruthy();
+    expect(cfg.functions.source).toBe('functions');
+    expect(fs.existsSync(path.join(RAIZ, cfg.functions.source, 'index.js'))).toBe(true);
+  });
+
+  test('a versão do Node bate entre o firebase.json e o package.json', () => {
+    /* Se desencontrarem, o deploy usa uma e o `npm install` do build usa outra,
+       e a falha aparece só lá no Cloud Build. */
+    const cfg = JSON.parse(fs.readFileSync(path.join(RAIZ, 'firebase.json'), 'utf8'));
+    const pkg = JSON.parse(fs.readFileSync(path.join(RAIZ, 'functions', 'package.json'), 'utf8'));
+    expect(cfg.functions.runtime).toBe('nodejs' + pkg.engines.node);
+  });
+
+  test('a chave privada do VAPID não está em lugar nenhum do que é publicado', () => {
+    /* Ela é segredo do Firebase. Se vazar para o index.html, qualquer pessoa
+       manda notificação em nome do app. */
+    for (const arquivo of ['index.html', 'sw.js', 'firebase.json', 'functions/index.js']) {
+      const txt = fs.readFileSync(path.join(RAIZ, arquivo), 'utf8');
+      expect(txt, `${arquivo} não pode conter a chave privada`)
+        .not.toMatch(/VAPID_PRIVADA\s*[:=]\s*["'][A-Za-z0-9_-]{20,}/);
+    }
+  });
+});
