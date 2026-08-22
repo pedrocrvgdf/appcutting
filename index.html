@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v8";
+window.APP_RELEASE = "tresults-v9";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -2010,6 +2010,64 @@ function notifFechar(){
   }catch(e){}
 }
 
+/* ============================================================
+   AVISO QUE CHEGA COM O APP FECHADO (Web Push)
+   O navegador congela o app quando o usuário vai para outro aplicativo, e não
+   existe API para agendar notificação local — o TimestampTrigger foi removido
+   do Chrome. Então quem avisa é o servidor: ao iniciar o descanso pedimos o
+   disparo para o horário do término, e ele chega mesmo com o app fechado.
+
+   Tudo aqui é opcional: sem permissão, sem as funções publicadas ou sem rede,
+   o app se comporta exatamente como antes. O alarme sonoro continua sendo o
+   aviso principal quando o app está aberto.
+   ============================================================ */
+let pushAlarmeId=null;
+const b64ParaBytes=b64=>{
+  const p="=".repeat((4-b64.length%4)%4);
+  const bin=atob((b64+p).replace(/-/g,"+").replace(/_/g,"/"));
+  return Uint8Array.from(bin,c=>c.charCodeAt(0));
+};
+async function fnChamar(nome,dados){
+  if(!fns||!window.__fnCall)return null;
+  const r=await window.__fnCall(fns,nome)(dados||{});
+  return r&&r.data;
+}
+/** Inscreve o aparelho no push. Devolve null se não der — e tudo bem. */
+async function pushInscrever(){
+  try{
+    if(!("PushManager" in window)||!("Notification" in window))return null;
+    if(Notification.permission!=="granted")return null;
+    const reg=await notifReady();if(!reg||!reg.pushManager)return null;
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub){
+      const r=await fnChamar("chavePush");
+      if(!r||!r.chave)return null;   // funções ainda não publicadas
+      sub=await reg.pushManager.subscribe({
+        userVisibleOnly:true,
+        applicationServerKey:b64ParaBytes(r.chave)
+      });
+    }
+    return sub.toJSON();
+  }catch(e){return null;}
+}
+/** Pede o aviso para daqui a `segundos`. Falha em silêncio. */
+async function pushAgendar(segundos,corpo){
+  try{
+    if(!user||!fns)return;
+    const sub=await pushInscrever();if(!sub)return;
+    pushAlarmeId=uid();
+    await fnChamar("agendarAlarme",{sub,emSegundos:Math.round(segundos),id:pushAlarmeId,corpo});
+  }catch(e){pushAlarmeId=null;}
+}
+/** Descanso pulado ou treino encerrado: o aviso perde a validade. */
+async function pushCancelar(){
+  try{
+    if(!pushAlarmeId||!user||!fns)return;
+    pushAlarmeId=null;
+    await fnChamar("cancelarAlarme",{});
+  }catch(e){}
+}
+
 const fmtSec=s=>String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");
 const hhmm=d=>String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
 
@@ -2105,8 +2163,9 @@ function restFinish(soar){
     const ctxOk=beepCtx&&beepCtx.state==="running";
     if(!agendado||!ctxOk)alarmNow();
     abrirRestDone();        // toma a tela: som sozinho se perde no barulho
-    if(document.hidden)notifMostrar("Descanso concluído","Hora da próxima série.",
-      {requireInteraction:true,vibrate:[400,150,400,150,600],renotify:true});
+    /* Nada de notificar daqui: se o app está em segundo plano este código não
+       roda. Quem avisa nesse caso é o push do servidor. */
+    pushCancelar();          // já avisamos na tela; o push viraria aviso repetido
   }
   trPersist();
   setTimeout(()=>{if(!trRestInt&&trS)restLabel();},2800);
@@ -2143,7 +2202,7 @@ $("rdGo").onclick=e=>{e.stopPropagation();fecharRestDone();};
 $("trRest").onclick=()=>{
   if(!trS)return;
   const b=$("trRest");
-  if(trRestInt){stopRest();restLabel();trPersist();return;} // toque durante o descanso = pular
+  if(trRestInt){stopRest();pushCancelar();restLabel();trPersist();return;} // toque durante o descanso = pular
   beepInit(); // gesto do usuário libera o áudio do alarme
   const secs=(trS.w.ex[trS.idx].rest||90);
   trRestEnd=Date.now()+secs*1000; // relógio real: não para em segundo plano
@@ -2154,6 +2213,8 @@ $("trRest").onclick=()=>{
   // fica na barra de notificação com o horário de término (ver limite no CLAUDE.md)
   notifMostrar("Descanso em andamento",`Termina às ${hhmm(new Date(trRestEnd))} · ${fmtSec(secs)} de descanso`,
     {silent:true,requireInteraction:true});
+  // e pede o aviso do servidor, que chega mesmo se você sair do app
+  pushAgendar(secs,"Hora da próxima série.");
   b.classList.add("resting");b.classList.remove("done");
   restTick();
   trRestInt=setInterval(restTick,500);
@@ -2655,17 +2716,20 @@ async function resetData(){
    FIREBASE (auth + sync)
    ============================================================ */
 const cloudEnabled=!firebaseConfig.apiKey.includes("COLE");
-let auth=null,db=null,user=null,unsub=null,pushTimer=null;
+let auth=null,db=null,user=null,unsub=null,pushTimer=null,fns=null;
 
 if(cloudEnabled){
   const [{initializeApp},
     {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,sendPasswordResetEmail,EmailAuthProvider,reauthenticateWithCredential,deleteUser},
-    {getFirestore,doc,getDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp}]=await Promise.all([
+    {getFirestore,doc,getDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp},
+    {getFunctions,httpsCallable}]=await Promise.all([
     import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"),
     import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"),
-    import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js")]);
+    import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"),
+    import("https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js")]);
   const app=initializeApp(firebaseConfig);
   auth=getAuth(app); db=getFirestore(app);
+  try{ fns=getFunctions(app,"southamerica-east1"); window.__fnCall=httpsCallable; }catch(e){}
   window.__fb={signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,sendPasswordResetEmail,EmailAuthProvider,reauthenticateWithCredential,deleteUser,doc,getDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp};
   onAuthStateChanged(auth,u=>{
     user=u;
