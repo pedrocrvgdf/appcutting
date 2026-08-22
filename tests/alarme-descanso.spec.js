@@ -131,13 +131,25 @@ test.describe('Alarme do descanso', () => {
     expect(estado.pediuSolo, 'nem interromper a música do nada').toBe(false);
   });
 
-  test('não pede permissão de notificação antes da hora', async ({ page }) => {
-    /* pedir na abertura do app é intrusivo; o momento certo é ao iniciar o
-       treino, que já é um toque do usuário */
-    await page.addInitScript(() => {
-      window.__pediu = 0;
-      if (window.Notification) Notification.requestPermission = () => { window.__pediu++; return Promise.resolve('default'); };
+  /* Instala um Notification totalmente controlado: o estado real da permissão
+     muda conforme o navegador (headless costuma vir "denied"), e o teste não
+     pode depender disso.
+     O estado vai como argumento, não por closure — addInitScript serializa a
+     função para o navegador e closures não sobrevivem à viagem. */
+  const FAKE_NOTIF = estado => {
+    window.__pediu = 0;
+    Object.defineProperty(window, 'Notification', {
+      configurable: true,
+      value: {
+        permission: estado,
+        requestPermission() { window.__pediu++; return Promise.resolve(estado); },
+      },
     });
+  };
+
+  test('pede permissão ao iniciar o treino, nunca ao abrir o app', async ({ page }) => {
+    /* pedir na abertura é intrusivo; o momento certo é um toque do usuário */
+    await page.addInitScript(FAKE_NOTIF, 'default');
     await abrirApp(page, estadoBase());
     await page.waitForTimeout(400);
     expect(await page.evaluate(() => window.__pediu), 'nada de pedir ao abrir').toBe(0);
@@ -145,6 +157,15 @@ test.describe('Alarme do descanso', () => {
     await iniciarTreino(page);
     await page.waitForTimeout(200);
     expect(await page.evaluate(() => window.__pediu), 'pede ao iniciar o treino').toBe(1);
+  });
+
+  test('não insiste com quem já recusou a notificação', async ({ page }) => {
+    await page.addInitScript(FAKE_NOTIF, 'denied');
+    await abrirApp(page, estadoBase());
+    await iniciarTreino(page);
+    await page.waitForTimeout(300);
+
+    expect(await page.evaluate(() => window.__pediu), 'quem recusou não pode ser perguntado de novo').toBe(0);
   });
 
   test('o app funciona igual sem permissão de notificação', async ({ page }) => {
