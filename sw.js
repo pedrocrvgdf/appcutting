@@ -1,5 +1,5 @@
 /* T - Results — service worker */
-const CACHE = "tresults-v6";
+const CACHE = "tresults-v8";
 const CORE = [
   "./",
   "./index.html",
@@ -52,4 +52,15 @@ self.addEventListener("fetch", e => {
       }).catch(() => hit))
     );
   }
+});
+
+// Toque na notificação do descanso: traz o app de volta em vez de abrir outra aba
+self.addEventListener("notificationclick", e => {
+  e.notification.close();
+  e.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(lista => {
+      for (const c of lista) if ("focus" in c) return c.focus();
+      if (self.clients.openWindow) return self.clients.openWindow("./");
+    })
+  );
 });

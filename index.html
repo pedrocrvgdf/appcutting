@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#0E7C6B">
 <meta name="color-scheme" content="light dark">
+<!-- a variante da Apple foi descontinuada; a padronizada é que faz o Android
+     abrir o app em tela cheia. As duas juntas cobrem os dois sistemas. -->
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="T - Results">
@@ -26,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v6";
+window.APP_RELEASE = "tresults-v8";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -125,6 +128,69 @@ window.APP_RELEASE = "tresults-v6";
   .num{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
   button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
   input,select{font-family:inherit;font-size:16px}
+  /* ============ ABERTURA ============
+     Enquanto o Firebase confirma o login, todas as telas ficam escondidas e o
+     usuário olhava para o nada. Na academia, com sinal ruim, isso parecia app
+     travado. O fundo já é o do app, então uma abertura rápida não pisca nada:
+     a marca só aparece se a espera passar de 150ms. */
+  #splash{position:fixed;inset:0;z-index:200;background:var(--bg);
+    display:flex;align-items:center;justify-content:center;
+    transition:opacity .32s ease}
+  #splash.hide{opacity:0;pointer-events:none}
+  .sp-in{display:flex;flex-direction:column;align-items:center;gap:15px;
+    opacity:0;animation:spFade .45s ease .15s forwards}
+  @keyframes spFade{to{opacity:1}}
+  .sp-mark{width:60px;height:60px;border-radius:17px;background:var(--primary);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 8px 26px rgba(14,124,107,.28)}
+  .sp-mark svg{width:32px;height:32px;stroke:#fff;fill:none;stroke-width:2;
+    stroke-linecap:round;stroke-linejoin:round}
+  .sp-name{font-size:11px;font-weight:700;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--muted)}
+  .sp-bar{width:132px;height:3px;border-radius:99px;background:var(--line);overflow:hidden}
+  /* o indicador precisa ficar visível quase o tempo todo: com ease-in-out e um
+     alcance maior que a trilha, ele desacelerava justamente fora da vista e a
+     barra parecia parada */
+  .sp-bar i{display:block;height:100%;width:38%;border-radius:99px;
+    background:var(--primary);animation:spSlide 1.05s cubic-bezier(.45,.05,.55,.95) infinite}
+  @keyframes spSlide{0%{transform:translateX(-100%)}100%{transform:translateX(263%)}}
+  /* avisos que só aparecem se a espera se arrastar */
+  .sp-slow{font-size:12.5px;color:var(--muted);opacity:0;text-align:center;
+    max-width:260px;line-height:1.5;animation:spFade .4s ease 6s forwards}
+  .sp-retry{opacity:0;padding:9px 18px;border-radius:10px;background:var(--surface);
+    border:1px solid var(--line);color:var(--primary);font-weight:700;font-size:13px;
+    animation:spFade .4s ease 15s forwards}
+  @media (prefers-reduced-motion:reduce){
+    .sp-in,.sp-slow,.sp-retry{opacity:1;animation:none}
+    .sp-bar i{animation:none;width:100%}
+  }
+  /* ============ ALARME DO DESCANSO ============
+     Toma a tela inteira quando o tempo bate, como o temporizador do celular.
+     Cor cheia porque precisa ser reconhecida de relance, com o celular na
+     bancada e a pessoa no meio do exercício. */
+  #restDone{position:fixed;inset:0;z-index:300;display:none;
+    background:var(--primary);color:#fff;
+    align-items:center;justify-content:center;text-align:center;
+    padding:24px calc(24px + env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) calc(24px + env(safe-area-inset-left))}
+  #restDone.open{display:flex;animation:rdIn .22s ease}
+  @keyframes rdIn{from{opacity:0}to{opacity:1}}
+  .rd-in{display:flex;flex-direction:column;align-items:center;gap:8px;max-width:340px}
+  .rd-ring{width:96px;height:96px;border-radius:50%;border:3px solid rgba(255,255,255,.45);
+    display:flex;align-items:center;justify-content:center;margin-bottom:10px;
+    animation:rdPulse 1.15s ease-in-out infinite}
+  @keyframes rdPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,.35)}50%{box-shadow:0 0 0 18px rgba(255,255,255,0)}}
+  .rd-ring svg{width:46px;height:46px;stroke:#fff;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+  .rd-t{font-size:27px;font-weight:800;letter-spacing:-.01em;line-height:1.15}
+  .rd-ex{font-size:16px;font-weight:700;opacity:.95;margin-top:2px}
+  .rd-set{font-size:13px;opacity:.8;font-family:var(--mono)}
+  .rd-go{margin-top:22px;padding:15px 34px;border-radius:14px;background:#fff;
+    color:var(--primary);font-weight:800;font-size:16px;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+  .rd-go:active{transform:scale(.97)}
+  .rd-hint{font-size:12px;opacity:.72;margin-top:12px}
+  @media (prefers-reduced-motion:reduce){
+    #restDone.open{animation:none}
+    .rd-ring{animation:none}
+  }
   .view{display:none}
   .view.on{display:block}
   .in{width:100%;padding:12px 12px;border:1px solid var(--line);border-radius:11px;background:var(--surface);color:var(--ink);outline:none}
@@ -643,6 +709,31 @@ window.APP_RELEASE = "tresults-v6";
 </style>
 </head>
 <body>
+
+<!-- ==================== ABERTURA ====================
+     Sai de cena assim que a primeira tela aparece (hideSplash em showView). -->
+<div id="splash" aria-hidden="true">
+  <div class="sp-in">
+    <div class="sp-mark"><svg viewBox="0 0 24 24"><path d="M3 12h4l2-5 3 10 2-7 2 4h5"/></svg></div>
+    <div class="sp-name">True Results</div>
+    <div class="sp-bar"><i></i></div>
+    <div class="sp-slow">Conexão lenta — ainda tentando entrar…</div>
+    <button class="sp-retry" onclick="location.reload()">Tentar de novo</button>
+  </div>
+</div>
+
+<!-- ==================== ALARME DO DESCANSO ====================
+     Aparece quando o tempo bate; qualquer toque silencia. -->
+<div id="restDone" aria-hidden="true">
+  <div class="rd-in">
+    <div class="rd-ring"><svg viewBox="0 0 24 24"><path d="M12 7v5l3 2"/><circle cx="12" cy="12" r="9"/></svg></div>
+    <div class="rd-t">Descanso concluído</div>
+    <div class="rd-ex" id="rdEx"></div>
+    <div class="rd-set" id="rdSet"></div>
+    <button class="rd-go" id="rdGo">Voltar ao treino</button>
+    <div class="rd-hint">Toque em qualquer lugar para silenciar</div>
+  </div>
+</div>
 
 <!-- ==================== LOGIN ==================== -->
 <div class="view" id="view-login">
@@ -1490,7 +1581,15 @@ function defaultMeal(){const h=new Date().getHours();if(h<10)return"cafe";if(h<1
 /* ============================================================
    NAVEGAÇÃO ENTRE TELAS
    ============================================================ */
+/* a abertura sai de cena assim que existe tela de verdade para mostrar */
+function hideSplash(){
+  const s=$("splash");
+  if(!s||s.classList.contains("hide"))return;
+  s.classList.add("hide");
+  setTimeout(()=>{if(s.parentNode)s.remove();},400);
+}
 function showView(name){
+  hideSplash();
   currentView=name;
   document.querySelectorAll(".view").forEach(v=>v.classList.remove("on"));
   $("view-"+name).classList.add("on");
@@ -1734,8 +1833,10 @@ let trS=null,trInt=null,trRestInt=null,trRestEnd=0;
    do áudio (toca na hora certa mesmo com o app em segundo plano),
    volume alto, e abaixa a música do celular durante o toque.
    ============================================================ */
-let beepCtx=null,alarmKeep=null,alarmNodes=[],alarmEl=null,alarmDuckT=null,trDuckT=null,alarmBus=null;
+let beepCtx=null,alarmKeep=null,alarmNodes=[],alarmEl=null,alarmDuckT=null,trDuckT=null,alarmBus=null,alarmVibInt=null;
 const ALARM_VOL=0.85;
+const ALARM_DUR=20;      // toca até ser dispensado, como um temporizador de celular
+const ALARM_CICLO=2.4;   // intervalo entre um toque e o seguinte
 /* saída do alarme com limitador: alto o bastante para vencer a música, sem estourar/distorcer */
 function alarmOut(){
   if(!beepCtx)return null;
@@ -1750,13 +1851,15 @@ function alarmOut(){
   return alarmBus;
 }
 
-/* iOS 16.4+: "transient" abaixa (não corta) o que estiver tocando */
+/* iOS 16.4+: "transient-solo" interrompe o que estiver tocando, como faz o
+   temporizador do celular. "transient" só abaixava, e o toque se perdia. */
 function audioSession(type){try{if(navigator.audioSession)navigator.audioSession.type=type;}catch(e){}}
-function duckOthers(){
-  audioSession("transient");
+function tomarOAudio(){
+  audioSession("transient-solo");
   clearTimeout(alarmDuckT);
-  alarmDuckT=setTimeout(()=>audioSession("ambient"),4200);
+  alarmDuckT=setTimeout(()=>audioSession("ambient"),ALARM_DUR*1000+1500);
 }
+function devolverOAudio(){clearTimeout(alarmDuckT);audioSession("ambient");}
 
 /* WAV do toque, gerado uma vez — reserva caso o WebAudio esteja suspenso */
 function alarmWav(){
@@ -1818,7 +1921,11 @@ function scheduleAlarm(inSec){
     if(beepCtx.state==="suspended"){const rp=beepCtx.resume();if(rp&&rp.catch)rp.catch(()=>{});}
     const out=alarmOut();if(!out)return;
     const t0=beepCtx.currentTime+Math.max(0,inSec);
-    [0,1.9].forEach(cycle=>{ // duas vezes: presente sem ser alarme de desastre
+    /* repete até ALARM_DUR: um toque só se perde no barulho da academia.
+       Para quando o usuário dispensa (alarmStop cancela o que estiver agendado). */
+    const ciclos=[];
+    for(let c=0;c*ALARM_CICLO<ALARM_DUR;c++)ciclos.push(c*ALARM_CICLO);
+    ciclos.forEach(cycle=>{
       [[880,0],[1108.73,.16],[1318.51,.32]].forEach(([f,dt],k)=>{
         [[f,1],[f*2,.34],[f*3,.11]].forEach(([freq,amp])=>{
           const o=beepCtx.createOscillator(),g=beepCtx.createGain();
@@ -1838,13 +1945,73 @@ function scheduleAlarm(inSec){
 function cancelAlarm(){alarmNodes.forEach(o=>{try{o.stop();o.disconnect();}catch(e){}});alarmNodes=[];}
 /* toca agora (usado quando o alarme agendado não pôde soar) */
 function alarmNow(){
-  duckOthers();
+  tomarOAudio();
   let played=false;
-  try{ if(alarmEl){alarmEl.currentTime=0;const p=alarmEl.play();if(p&&p.catch)p.catch(()=>{});played=true;} }catch(e){}
+  try{ if(alarmEl){alarmEl.loop=true;alarmEl.currentTime=0;const p=alarmEl.play();if(p&&p.catch)p.catch(()=>{});played=true;} }catch(e){}
   if(!played)scheduleAlarm(0);
+}
+/* vibração que insiste, em vez de um tremor único que passa despercebido */
+function vibrarAlarme(on){
+  try{
+    if(!navigator.vibrate)return;
+    clearInterval(alarmVibInt);
+    if(!on){navigator.vibrate(0);return;}
+    const padrao=[400,150,400,150,600];
+    navigator.vibrate(padrao);
+    alarmVibInt=setInterval(()=>navigator.vibrate(padrao),2100);
+    setTimeout(()=>{clearInterval(alarmVibInt);},ALARM_DUR*1000);
+  }catch(e){}
+}
+/* Silencia tudo e devolve o áudio para a música. É o "dispensar" do alarme. */
+function alarmStop(){
+  cancelAlarm();
+  clearInterval(alarmVibInt);
+  try{if(navigator.vibrate)navigator.vibrate(0);}catch(e){}
+  try{if(alarmEl){alarmEl.loop=false;alarmEl.pause();alarmEl.currentTime=0;}}catch(e){}
+  devolverOAudio();
+  notifFechar();
+}
+
+/* ============================================================
+   NOTIFICAÇÃO DO SISTEMA — melhor esforço
+   Serve para quando o app está em segundo plano. No iOS só funciona com o app
+   instalado na tela de início (exigência do próprio sistema) e com permissão.
+   Se nada disso valer, o alarme sonoro continua sendo o aviso principal.
+   ============================================================ */
+let notifReg=null;
+function notifPedir(){
+  try{
+    if(!("Notification" in window)||Notification.permission!=="default")return;
+    const p=Notification.requestPermission();
+    if(p&&p.catch)p.catch(()=>{});
+  }catch(e){}
+}
+async function notifReady(){
+  if(notifReg)return notifReg;
+  if(!navigator.serviceWorker)return null;
+  notifReg=await navigator.serviceWorker.ready;
+  return notifReg;
+}
+async function notifMostrar(titulo,corpo,opt){
+  try{
+    if(!("Notification" in window)||Notification.permission!=="granted")return;
+    const reg=await notifReady();if(!reg)return;
+    reg.showNotification(titulo,Object.assign({
+      body:corpo,tag:"tresults-descanso",icon:"./icon-192.png",badge:"./icon-192.png",
+      lang:"pt-BR"
+    },opt||{}));
+  }catch(e){}
+}
+function notifFechar(){
+  try{
+    if(!notifReg||!notifReg.getNotifications)return;
+    notifReg.getNotifications({tag:"tresults-descanso"})
+      .then(ns=>ns.forEach(n=>n.close())).catch(()=>{});
+  }catch(e){}
 }
 
 const fmtSec=s=>String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");
+const hhmm=d=>String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
 
 /* ============================================================
    SESSÃO DE TREINO PERSISTENTE
@@ -1906,6 +2073,7 @@ function startTRun(wid){
   const w=(store.tprotocol||[]).find(x=>x.id===wid);if(!w)return;
   if(!(w.ex||[]).length){appAlert("Adicione exercícios a este treino primeiro (Montar / editar protocolo).");return;}
   beepInit(); // o toque que inicia o treino já libera o áudio do alarme
+  notifPedir(); // e é o momento certo de pedir permissão de notificação
   trS={w:JSON.parse(JSON.stringify(w)),start:Date.now(),idx:0,away:0,hiddenAt:0,
        logs:w.ex.map(e=>Array.from({length:e.s},()=>({kg:"",rep:"",rir:null})))};
   tRunOverlay.classList.add("open");
@@ -1918,6 +2086,7 @@ function trTick(){
   $("trTimer").textContent=fmtSec(Math.floor(trElapsedMs()/1000));
 }
 function stopRest(){clearInterval(trRestInt);trRestInt=null;trRestEnd=0;clearTimeout(trDuckT);cancelAlarm();keepAudioAlive(false);}
+let restDoneT=null;
 function restLabel(){
   const e=trS.w.ex[trS.idx],b=$("trRest");
   b.classList.remove("resting","done");
@@ -1929,24 +2098,48 @@ function restFinish(soar){
   stopRest();
   b.classList.remove("resting");b.classList.add("done");
   b.innerHTML=`<span class="rtxt">✅ Descanso concluído — próxima série!</span>`;
-  if(navigator.vibrate)navigator.vibrate([320,130,320,130,480]);
   if(soar!==false){
-    duckOthers();
+    tomarOAudio();          // interrompe a música, como faz o temporizador do celular
+    vibrarAlarme(true);
     // o alarme agendado já soou sozinho; sem agendamento válido, toca agora
     const ctxOk=beepCtx&&beepCtx.state==="running";
     if(!agendado||!ctxOk)alarmNow();
+    abrirRestDone();        // toma a tela: som sozinho se perde no barulho
+    if(document.hidden)notifMostrar("Descanso concluído","Hora da próxima série.",
+      {requireInteraction:true,vibrate:[400,150,400,150,600],renotify:true});
   }
   trPersist();
   setTimeout(()=>{if(!trRestInt&&trS)restLabel();},2800);
+}
+
+/* Tela que toma conta quando o tempo bate. Som sozinho se perde no barulho da
+   academia; aqui a pessoa vê, mesmo com o celular no silencioso. */
+function abrirRestDone(){
+  const ov=$("restDone");if(!ov||!trS)return;
+  const e=trS.w.ex[trS.idx];
+  const feitas=(trS.logs[trS.idx]||[]).filter(l=>(l.kg||0)>0||(l.rep||0)>0).length;
+  $("rdEx").textContent=e.n;
+  $("rdSet").textContent=`Série ${Math.min(feitas+1,e.s)} de ${e.s}`;
+  ov.classList.add("open");
+  clearTimeout(restDoneT);
+  restDoneT=setTimeout(fecharRestDone,ALARM_DUR*1000); // não fica preso para sempre
+}
+function fecharRestDone(){
+  const ov=$("restDone");
+  clearTimeout(restDoneT);
+  alarmStop();
+  if(ov)ov.classList.remove("open");
 }
 function restTick(){
   if(!trRestEnd)return;
   const b=$("trRest"),e=trS&&trS.w.ex[trS.idx],total=(e&&e.rest)||90;
   const left=Math.ceil((trRestEnd-Date.now())/1000);
-  if(left<=0){restFinish();return;}
+  if(left<=0){restFinish(Date.now()-trRestEnd<180000);return;}  // atrasado demais: mostra, mas não toca
   const pct=Math.min(100,((total-left)/total)*100);
   b.innerHTML=`<span class="rfill" style="width:${pct}%"></span><span class="rtxt">Descanso: ${fmtSec(left)} · toque para pular</span>`;
 }
+$("restDone").onclick=fecharRestDone;
+$("rdGo").onclick=e=>{e.stopPropagation();fecharRestDone();};
 $("trRest").onclick=()=>{
   if(!trS)return;
   const b=$("trRest");
@@ -1957,7 +2150,10 @@ $("trRest").onclick=()=>{
   keepAudioAlive(true);
   scheduleAlarm(secs); // agendado no áudio: soa na hora mesmo se o app estiver em segundo plano
   clearTimeout(trDuckT);
-  trDuckT=setTimeout(duckOthers,Math.max(0,secs*1000-300)); // abaixa a música um instante antes
+  trDuckT=setTimeout(tomarOAudio,Math.max(0,secs*1000-400)); // toma o áudio um instante antes
+  // fica na barra de notificação com o horário de término (ver limite no CLAUDE.md)
+  notifMostrar("Descanso em andamento",`Termina às ${hhmm(new Date(trRestEnd))} · ${fmtSec(secs)} de descanso`,
+    {silent:true,requireInteraction:true});
   b.classList.add("resting");b.classList.remove("done");
   restTick();
   trRestInt=setInterval(restTick,500);

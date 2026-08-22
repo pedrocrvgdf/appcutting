@@ -103,6 +103,12 @@ O T-RESULTS é um **app**, não um site. Ele precisa se comportar como tal.
 - **Não adicione skeleton em elementos que renderizam do armazenamento local** —
   eles aparecem em milissegundos e o skeleton só faz piscar, deixando a sensação
   de lentidão. Skeleton só se justifica onde há espera de rede real.
+- **A única espera de rede real do app é a abertura**, enquanto o Firebase
+  confirma o login. É o que a tela `#splash` cobre: fundo igual ao do app, marca
+  entrando só depois de 150 ms (abertura rápida não pisca nada), aviso de
+  conexão lenta aos 6 s e botão de recomeçar aos 15 s. Ela sai em `showView()`,
+  via `hideSplash()` — se você criar outro caminho que abre uma tela, chame
+  `hideSplash()` nele também, senão o app fica preso na abertura.
 
 ---
 
@@ -172,8 +178,28 @@ Chaves usadas no armazenamento local, úteis para montar cenários:
   calorias saem infladas.
 - **O alarme do descanso é agendado no relógio do áudio** (`scheduleAlarm`), não
   por `setTimeout` — timers de JavaScript congelam em segundo plano. Ele passa
-  por um limitador para ficar alto sem distorcer, e abaixa a música do celular
-  um instante antes de tocar.
+  por um limitador para ficar alto sem distorcer.
+- **O alarme se comporta como o temporizador do celular:** toma o áudio com
+  `transient-solo` (interrompe a música, não só abaixa), repete por
+  `ALARM_DUR` segundos, vibra em ciclo e abre `#restDone`, que toma a tela
+  inteira. Qualquer toque chama `alarmStop()`, que silencia tudo e devolve o
+  áudio. Se você mexer aqui, garanta que **todo caminho de saída passa por
+  `alarmStop()`** — senão o som fica preso e a música do usuário não volta.
+- **Descanso vencido há mais de 3 minutos não alarma** (a pessoa voltou ao app
+  muito depois). Mostra o estado, sem tocar nem interromper a música.
+
+### O que não dá para fazer, e por quê
+
+O usuário pediu contagem regressiva ao vivo na barra de notificação, como no
+temporizador da Samsung. **Não existe API web para isso** — nem no Android nem
+no iOS. Notificação com contador que anda exige serviço em primeiro plano
+(Android) ou Live Activity (iOS), ambos exclusivos de app nativo.
+
+O que dá, e é o que está feito: uma notificação no início do descanso com o
+**horário de término**. Ela não anda, mas permite descer a barra e saber quando
+acaba. Não tente resolver isso com `<audio>` silencioso para segurar a sessão
+de mídia: funciona, mas rouba os controles de mídia do celular e a música do
+usuário perde o comando na tela de bloqueio — pior que o problema.
 
 ---
 
