@@ -126,3 +126,65 @@ for (const tema of ['light', 'dark']) {
     expect(cores.fundo, 'o fundo precisa ser pintado explicitamente').not.toBe('rgba(0, 0, 0, 0)');
   });
 }
+
+/* O ambiente de teste não carrega as fontes do Google — a rede bloqueia
+   fonts.googleapis.com —, então tudo aqui renderiza com a fonte de reserva, que
+   é mais estreita que a Nunito de verdade. Foi exatamente por isso que os
+   macros apareceram cortados no celular do dono e passaram batido na captura.
+
+   Estes testes não olham: medem. E medem com o texto propositalmente mais largo
+   do que qualquer fonte real deixaria, para o layout ter folga em vez de
+   depender de qual fonte o aparelho conseguiu baixar. */
+
+/** Elementos cujo conteúdo não cabe na própria caixa. */
+const cortados = (page, seletor) => page.evaluate(s =>
+  [...document.querySelectorAll(s)]
+    .filter(e => e.scrollWidth > e.clientWidth + 1)
+    .map(e => (e.textContent || '').trim().slice(0, 30)), seletor);
+
+/** Pior caso: números grandes e uma fonte mais larga que a real. */
+async function apertarOTexto(page) {
+  await page.addStyleTag({ content: '*{letter-spacing:.06em !important}' });
+  await page.evaluate(() => {
+    const põe = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+    /* Pior caso realista: alguém que estourou a meta do dia. Números
+       impossíveis (1250 g de carboidrato) exigiriam encolher a fonte a ponto
+       de prejudicar quem usa o app de verdade. */
+    põe('mProt', '188'); põe('mProtT', '/144g');
+    põe('mCarb', '425'); põe('mCarbT', '/356g');
+    põe('mGord', '112'); põe('mGordT', '/64g');
+    põe('consumed', '12345');
+    põe('metaShow', '12345');
+  });
+  await page.waitForTimeout(120);
+}
+
+for (const largura of [390, 320]) {
+  test.describe(`Nada cortado em ${largura}px`, () => {
+
+    test.use({ viewport: { width: largura, height: 860 } });
+
+    test('os macros cabem na própria ilha', async ({ page }) => {
+      await abrirApp(page, estadoBase());
+      await apertarOTexto(page);
+      expect(await cortados(page, '.macros2 .m2, .macros2 .m2 .r > *'),
+        'contorno grosso come largura: o texto tem que ceder antes da caixa').toEqual([]);
+    });
+
+    test('a barra de data e o resumo do anel cabem', async ({ page }) => {
+      await abrirApp(page, estadoBase());
+      await apertarOTexto(page);
+      expect(await cortados(page, '.datenav .chip, .ringstats > div > *')).toEqual([]);
+    });
+
+    test('nenhuma tela rola para o lado', async ({ page }) => {
+      /* Rolagem horizontal é o sintoma de que alguma caixa passou da largura —
+         e num app de celular ela nunca é intencional. */
+      await abrirApp(page, estadoBase());
+      await apertarOTexto(page);
+      const sobra = await page.evaluate(() =>
+        document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(sobra, 'algo está mais largo que a tela').toBeLessThanOrEqual(0);
+    });
+  });
+}
