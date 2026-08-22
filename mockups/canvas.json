@@ -1,0 +1,48 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html",    "title": "A · Hoje",   "x": 0,   "y": 0,    "w": 390, "h": 844 },
+    { "file": "ATreino.dc.html", "title": "A · Treino", "x": 470, "y": 0,    "w": 390, "h": 844 },
+    { "file": "BHoje.dc.html",   "title": "B · Hoje",   "x": 0,   "y": 1000, "w": 390, "h": 844 },
+    { "file": "BTreino.dc.html", "title": "B · Treino", "x": 470, "y": 1000, "w": 390, "h": 844 },
+    { "file": "CHoje.dc.html",   "title": "C · Hoje",   "x": 0,   "y": 2000, "w": 390, "h": 844 },
+    { "file": "CTreino.dc.html", "title": "C · Treino", "x": 470, "y": 2000, "w": 390, "h": 844 }
+  ],
+  "annotations": [
+    {
+      "id": "sobre",
+      "x": 0,
+      "y": -200,
+      "w": 860,
+      "text": "T-RESULTS — três direções de layout\n\nAs mesmas duas telas em cada linha: o Controle do Dia e a tela de treino em andamento, que é a mais usada dentro da academia.\n\nOs números são exemplos plausíveis (1420 kcal comidas, 1250 ml de água, supino 60 kg), não dados reais — um mockup com tudo zerado não mostra o design funcionando.\n\nEm todas: teal #0E7C6B da marca, texto em pt-BR, botões de no mínimo 44 px."
+    },
+    {
+      "id": "dir-a",
+      "x": 960,
+      "y": 40,
+      "w": 300,
+      "text": "A · CARTOON MARCADO\n\nContorno preto de 3 px, sombra dura deslocada, cores saturadas, tipografia arredondada e pesada (Baloo 2 + Nunito).\n\nPor quê: é o que mais grita \"app\", não \"site\". Cada elemento tem peso físico — dá para acertar o botão certo de relance, suado, sem olhar direito.\n\nCusto: é a direção mais opinativa das três. Se cansar, cansa rápido, e envelhece junto com a moda que a criou. Também é a que mais briga com dado denso — muita tabela dentro de caixas com contorno vira ruído."
+    },
+    {
+      "id": "dir-b",
+      "x": 960,
+      "y": 1040,
+      "w": 300,
+      "text": "B · SOFT E ARREDONDADO\n\nCantos de 26–30 px, tons pastel, sombras difusas, zero contorno (Quicksand).\n\nPor quê: é a mais calma e a que melhor acomoda informação. Repare que a tela de treino aqui mostra só a série atual grande, com as anteriores resumidas — menos coisa na tela, decisão mais rápida entre séries.\n\nCusto: é a direção mais próxima do que o app já é hoje. Renova, mas talvez não seja o salto que você pediu. Pastel também perde contraste sob o sol da janela da academia."
+    },
+    {
+      "id": "dir-c",
+      "x": 960,
+      "y": 2040,
+      "w": 300,
+      "text": "C · ENERGÉTICO E ESPORTIVO\n\nFundo escuro, verde neon, gradientes, números enormes, formas diagonais (Archivo 900).\n\nPor quê: é a que mais parece app de treino e a que melhor se lê no escuro — que é metade das academias. Os números grandes ganham a disputa com o barulho visual do ambiente.\n\nCusto: fundo escuro combina com treino e menos com dieta — a aba de comida fica mais dura de deixar leve. E exige disciplina: neon usado demais vira videogame."
+    },
+    {
+      "id": "nota-fundo",
+      "x": 960,
+      "y": 2560,
+      "w": 300,
+      "text": "Dá para misturar: escolher a estrutura de uma e a paleta de outra. Se for esse o caso, me diga o que quer de cada."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}

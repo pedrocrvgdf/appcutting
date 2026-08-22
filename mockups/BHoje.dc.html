@@ -1,0 +1,135 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Quicksand', system-ui, sans-serif; }
+    a { color: #0E7C6B; } a:hover { color: #0A5D50; }
+  </style>
+</helmet>
+
+<div style="width: 390px; height: 844px; background: #F4F9F6; overflow: hidden; display: flex; flex-direction: column; color: #2C3A34">
+
+  <div style="flex-grow: 1; overflow: hidden; padding: 22px 20px 0; display: flex; flex-direction: column; gap: 18px">
+
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <div>
+        <div style="font-size: 13px; font-weight: 600; color: #7C8C85">Sábado, 22 de agosto</div>
+        <div style="font-size: 27px; font-weight: 700; line-height: 1.15; margin-top: 1px">Seu dia</div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 7px; background: #FFFFFF; border-radius: 999px; padding: 9px 15px; box-shadow: 0 4px 16px rgba(14,124,107,.10)">
+        <div style="width: 9px; height: 9px; border-radius: 50%; background: #FFB870"></div>
+        <span style="font-size: 13px; font-weight: 700">12 dias</span>
+      </div>
+    </div>
+
+    <div style="background: #FFFFFF; border-radius: 30px; box-shadow: 0 10px 30px rgba(14,124,107,.10); padding: 24px 22px">
+      <div style="display: flex; flex-direction: column; align-items: center">
+        <div style="position: relative; width: 176px; height: 176px">
+          <svg viewBox="0 0 120 120" style="width: 176px; height: 176px; transform: rotate(-90deg)">
+            <circle cx="60" cy="60" r="52" fill="none" stroke="#EAF4EF" stroke-width="15" />
+            <circle cx="60" cy="60" r="52" fill="none" stroke="#8FD9C2" stroke-width="15" stroke-linecap="round" stroke-dasharray="140 327" />
+          </svg>
+          <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center">
+            <div style="font-size: 44px; font-weight: 700; line-height: 1; letter-spacing: -.02em">1477</div>
+            <div style="font-size: 13px; font-weight: 600; color: #7C8C85; margin-top: 3px">kcal restantes</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 20px">
+        <div style="text-align: center">
+          <div style="font-size: 12px; font-weight: 600; color: #7C8C85">Meta</div>
+          <div style="font-size: 18px; font-weight: 700; margin-top: 2px">2577</div>
+        </div>
+        <div style="text-align: center; border-left: 1px solid #EAF4EF; border-right: 1px solid #EAF4EF">
+          <div style="font-size: 12px; font-weight: 600; color: #7C8C85">Comido</div>
+          <div style="font-size: 18px; font-weight: 700; margin-top: 2px">1420</div>
+        </div>
+        <div style="text-align: center">
+          <div style="font-size: 12px; font-weight: 600; color: #7C8C85">Treino</div>
+          <div style="font-size: 18px; font-weight: 700; margin-top: 2px; color: #0E7C6B">+320</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 11px">
+      <div style="background: #FFE4D6; border-radius: 22px; padding: 14px 10px">
+        <div style="font-size: 11px; font-weight: 700; color: #B4623C">Proteína</div>
+        <div style="font-size: 22px; font-weight: 700; color: #8A4426; line-height: 1.25">96</div>
+        <div style="height: 6px; border-radius: 3px; background: #FFFFFF; margin: 6px 0 5px; overflow: hidden">
+          <div style="width: 67%; height: 6px; border-radius: 3px; background: #F5915F"></div>
+        </div>
+        <div style="font-size: 11px; font-weight: 600; color: #B4623C">de 144 g</div>
+      </div>
+      <div style="background: #FFF3D1; border-radius: 22px; padding: 14px 10px">
+        <div style="font-size: 11px; font-weight: 700; color: #9B7A28">Carbo</div>
+        <div style="font-size: 22px; font-weight: 700; color: #715714; line-height: 1.25">152</div>
+        <div style="height: 6px; border-radius: 3px; background: #FFFFFF; margin: 6px 0 5px; overflow: hidden">
+          <div style="width: 43%; height: 6px; border-radius: 3px; background: #E8B646"></div>
+        </div>
+        <div style="font-size: 11px; font-weight: 600; color: #9B7A28">de 356 g</div>
+      </div>
+      <div style="background: #DDF3E7; border-radius: 22px; padding: 14px 10px">
+        <div style="font-size: 11px; font-weight: 700; color: #3F8A6B">Gordura</div>
+        <div style="font-size: 22px; font-weight: 700; color: #256A4E; line-height: 1.25">41</div>
+        <div style="height: 6px; border-radius: 3px; background: #FFFFFF; margin: 6px 0 5px; overflow: hidden">
+          <div style="width: 64%; height: 6px; border-radius: 3px; background: #6FC49C"></div>
+        </div>
+        <div style="font-size: 11px; font-weight: 600; color: #3F8A6B">de 64 g</div>
+      </div>
+    </div>
+
+    <div style="background: #E4F0FB; border-radius: 30px; padding: 20px">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px">
+        <div>
+          <div style="font-size: 13px; font-weight: 600; color: #5A7791">Água</div>
+          <div style="font-size: 24px; font-weight: 700; color: #274C6B; line-height: 1.2">1250 ml</div>
+        </div>
+        <div style="font-size: 13px; font-weight: 700; color: #5A7791">42%</div>
+      </div>
+      <div style="height: 12px; border-radius: 6px; background: #FFFFFF; overflow: hidden; margin-bottom: 14px">
+        <div style="width: 42%; height: 12px; border-radius: 6px; background: #7FB4E3"></div>
+      </div>
+      <div style="display: flex; gap: 10px">
+        <div style="flex-grow: 1; height: 48px; display: flex; align-items: center; justify-content: center; background: #FFFFFF; border-radius: 16px; font-size: 14px; font-weight: 700; color: #274C6B">+250 ml</div>
+        <div style="flex-grow: 1; height: 48px; display: flex; align-items: center; justify-content: center; background: #FFFFFF; border-radius: 16px; font-size: 14px; font-weight: 700; color: #274C6B">+500 ml</div>
+        <div style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; background: #7FB4E3; border-radius: 16px">
+          <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="position: relative; height: 88px; flex-shrink: 0; background: #FFFFFF; border-radius: 30px 30px 0 0; box-shadow: 0 -6px 24px rgba(14,124,107,.08); display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; padding-bottom: 8px">
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 5px; color: #0E7C6B">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      <span style="font-size: 11px; font-weight: 700">Hoje</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 5px; color: #A6B3AD">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>
+      <span style="font-size: 11px; font-weight: 600">Progresso</span>
+    </div>
+    <div></div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 5px; color: #A6B3AD">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7v10M18 7v10M3 12h18M3 9v6M21 9v6"/></svg>
+      <span style="font-size: 11px; font-weight: 600">Treino</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 5px; color: #A6B3AD">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
+      <span style="font-size: 11px; font-weight: 600">Perfil</span>
+    </div>
+    <div style="position: absolute; left: 50%; top: -24px; transform: translateX(-50%); width: 62px; height: 62px; border-radius: 24px; background: #0E7C6B; box-shadow: 0 8px 20px rgba(14,124,107,.36); display: flex; align-items: center; justify-content: center">
+      <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#FFFFFF" stroke-width="2.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

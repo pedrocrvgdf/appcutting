@@ -17,3 +17,6 @@ android/.gradle/
 android/build/
 android/app/build/
 android/local.properties
+
+# Canvas montado dos mockups (2 MB, regerado a partir dos .dc.html)
+mockups/*-layout.html
