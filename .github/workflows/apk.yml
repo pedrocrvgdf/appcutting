@@ -1,0 +1,55 @@
+name: APK do Android
+
+# Monta o app Android e deixa o arquivo pronto para baixar.
+# Existe porque o T-RESULTS é mantido pelo navegador: sem isto seria preciso
+# instalar o Android Studio só para gerar o APK.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'android/**'
+      - '.github/workflows/apk.yml'
+  pull_request:
+    paths:
+      - 'android/**'
+      - '.github/workflows/apk.yml'
+  workflow_dispatch:        # botão "Run workflow" na aba Actions
+
+jobs:
+  apk:
+    name: Montar o APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Preparar o Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Preparar o Android SDK
+        uses: android-actions/setup-android@v3
+
+      # A versão é fixada de propósito: o projeto não tem gradle wrapper, então
+      # sem isto a compilação usaria o Gradle que estiver no runner — que muda
+      # sem aviso e pode não ser compatível com o plugin do Android.
+      - name: Preparar o Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Montar
+        working-directory: android
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Guardar o APK para download
+        uses: actions/upload-artifact@v7
+        with:
+          name: T-RESULTS-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 90

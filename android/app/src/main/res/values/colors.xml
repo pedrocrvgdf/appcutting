@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- os mesmos do index.html: o app nativo não pode parecer outro app -->
+    <color name="marca">#0E7C6B</color>
+    <color name="fundo">#F7F7F3</color>
+</resources>

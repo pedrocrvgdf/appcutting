@@ -11,3 +11,9 @@ blob-report/
 
 # Dependências das Cloud Functions
 functions/node_modules/
+
+# Saída da compilação do app Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
