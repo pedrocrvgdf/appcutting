@@ -16,6 +16,10 @@ object Ajustes {
     private const val ARQUIVO = "tresults"
     private const val SOM = "som_alarme"
     private const val BIOMETRIA = "biometria"
+    private const val VOLUME = "volume_alarme"
+
+    /** Alarme mudo não é alarme; por isso o mínimo não é zero. */
+    const val VOLUME_MINIMO = 10
 
     private fun prefs(ctx: Context) = ctx.getSharedPreferences(ARQUIVO, Context.MODE_PRIVATE)
 
@@ -45,6 +49,21 @@ object Ajustes {
         } catch (e: Exception) {
             "Padrão do celular"
         }
+    }
+
+    /**
+     * De 10 a 100. É um multiplicador do volume de alarme do sistema, não uma
+     * troca dele: mexer no volume do aparelho mudaria também o despertador da
+     * pessoa, que não é da nossa conta.
+     */
+    fun volume(ctx: Context): Int =
+        prefs(ctx).getInt(VOLUME, 100).coerceIn(VOLUME_MINIMO, 100)
+
+    /** Fator para o MediaPlayer, de 0,1 a 1,0. */
+    fun fatorDeVolume(ctx: Context): Float = volume(ctx) / 100f
+
+    fun definirVolume(ctx: Context, v: Int) {
+        prefs(ctx).edit().putInt(VOLUME, v.coerceIn(VOLUME_MINIMO, 100)).apply()
     }
 
     fun biometriaAtiva(ctx: Context): Boolean = prefs(ctx).getBoolean(BIOMETRIA, false)

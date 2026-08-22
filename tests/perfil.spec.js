@@ -18,11 +18,14 @@ const PONTE = op => {
     somDoAlarme: () => op.som,
     escolherSom: () => window.__nativo.push({ chamada: 'escolherSom' }),
     testarSom: () => window.__nativo.push({ chamada: 'testarSom' }),
+    volumeDoAlarme: () => window.__vol,
+    definirVolume: v => { window.__vol = v; window.__nativo.push({ chamada: 'definirVolume', v }); },
     biometriaDisponivel: () => op.biometria,
     biometriaAtiva: () => window.__bioAtiva,
     definirBiometria: a => { window.__bioAtiva = a; window.__nativo.push({ chamada: 'definirBiometria', a }); },
   };
   window.__bioAtiva = op.ativa;
+  window.__vol = op.vol === undefined ? 100 : op.vol;
 };
 
 const irAoPerfil = async page => {
@@ -96,6 +99,71 @@ test.describe('Som do alarme — no navegador', () => {
       .toBeGreaterThan(grave * 1.3);
   });
 
+  test('o volume começa no máximo, como era antes de existir o controle', async ({ page }) => {
+    await abrirApp(page, estadoBase());
+    await irAoPerfil(page);
+
+    expect(await page.evaluate(() => document.getElementById('pfVol').value)).toBe('100');
+    expect(await page.evaluate(() => document.getElementById('pfVolVal').textContent)).toBe('100%');
+  });
+
+  test('baixar o volume deixa o alarme mais baixo de verdade', async ({ page }) => {
+    /* Guardar o número e continuar tocando no mesmo volume seria exatamente o
+       defeito que a pessoa reclamaria depois, na academia. Medimos o pico do
+       áudio renderizado. */
+    await abrirApp(page, estadoBase());
+
+    const picoCom = async v => {
+      await page.evaluate(x => localStorage.setItem('tresults.volume', x), v);
+      await page.reload();
+      await page.waitForFunction(() => !!window.__t, null, { timeout: 15000 });
+      return (await page.evaluate(() => __t.renderAlarm())).pico;
+    };
+
+    const alto = await picoCom('100');
+    const baixo = await picoCom('30');
+
+    expect(alto, 'no máximo o alarme precisa continuar alto').toBeGreaterThan(0.5);
+    expect(baixo, 'a 30% tem que sobrar bem menos som').toBeLessThan(alto * 0.6);
+    expect(baixo, 'mas ainda tem que dar para ouvir').toBeGreaterThan(0.05);
+  });
+
+  test('o volume não desce a zero', async ({ page }) => {
+    /* Alarme mudo não é alarme: é um botão de desligar disfarçado, e a pessoa
+       perderia o descanso sem entender por quê. */
+    await abrirApp(page, estadoBase());
+    await irAoPerfil(page);
+
+    expect(await page.evaluate(() => document.getElementById('pfVol').min)).toBe('10');
+
+    await page.evaluate(() => {
+      localStorage.setItem('tresults.volume', '0');
+    });
+    await page.reload();
+    await page.waitForFunction(() => !!window.__t, null, { timeout: 15000 });
+    await irAoPerfil(page);
+
+    expect(await page.evaluate(() => document.getElementById('pfVolVal').textContent)).toBe('10%');
+  });
+
+  test('a escolha de volume sobrevive ao app ser reaberto', async ({ page }) => {
+    await abrirApp(page, estadoBase());
+    await irAoPerfil(page);
+
+    await page.evaluate(() => {
+      const s = document.getElementById('pfVol');
+      s.value = '45';
+      s.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await page.waitForTimeout(200);
+
+    await page.reload();
+    await page.waitForFunction(() => !!window.__t, null, { timeout: 15000 });
+    await irAoPerfil(page);
+
+    expect(await page.evaluate(() => document.getElementById('pfVolVal').textContent)).toBe('45%');
+  });
+
   test('a trava por digital não aparece no navegador', async ({ page }) => {
     /* Ela é do aparelho. Mostrar um botão que não faz nada é pior que não ter. */
     await abrirApp(page, estadoBase());
@@ -140,6 +208,34 @@ test.describe('Som do alarme — dentro do app Android', () => {
     await page.waitForTimeout(200);
 
     expect(await page.evaluate(() => window.__nativo.map(c => c.chamada))).toContain('testarSom');
+  });
+
+  test('o volume mostrado é o que o Android guardou', async ({ page }) => {
+    /* No app quem toca é o serviço nativo, então quem manda no volume é ele.
+       Ler do localStorage aqui mostraria um número que não vale. */
+    await page.addInitScript(PONTE, { som: 'Cesium', biometria: false, ativa: false, vol: 40 });
+    await abrirApp(page, estadoBase());
+    await irAoPerfil(page);
+
+    expect(await page.evaluate(() => document.getElementById('pfVolVal').textContent)).toBe('40%');
+    expect(await page.evaluate(() => document.getElementById('pfVol').value)).toBe('40');
+  });
+
+  test('mudar o volume chega ao Android', async ({ page }) => {
+    await page.addInitScript(PONTE, { som: 'Cesium', biometria: false, ativa: false, vol: 100 });
+    await abrirApp(page, estadoBase());
+    await irAoPerfil(page);
+
+    await page.evaluate(() => {
+      const s = document.getElementById('pfVol');
+      s.value = '25';
+      s.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await page.waitForTimeout(200);
+
+    expect(await page.evaluate(() =>
+      window.__nativo.filter(c => c.chamada === 'definirVolume').map(c => c.v))).toEqual([25]);
+    expect(await page.evaluate(() => document.getElementById('pfVolVal').textContent)).toBe('25%');
   });
 
   test('o perfil se atualiza quando o seletor do sistema volta', async ({ page }) => {

@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v12";
+window.APP_RELEASE = "tresults-v13";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -665,6 +665,16 @@ window.APP_RELEASE = "tresults-v12";
   .pf-row svg.chev{width:15px;height:15px;opacity:.45;margin-left:2px;
                    transition:transform .18s ease}
   .pf-row.aberto svg.chev{transform:rotate(90deg)}
+  .rng{-webkit-appearance:none;appearance:none;width:100%;height:5px;border-radius:3px;
+       background:var(--line);outline:none;margin:10px 0 2px}
+  /* 24px: dedo em celular, não ponteiro de mouse */
+  .rng::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:24px;height:24px;
+       border-radius:50%;background:var(--primary);border:3px solid var(--card);
+       box-shadow:0 1px 4px rgba(0,0,0,.28)}
+  .rng::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:var(--primary);
+       border:3px solid var(--card);box-shadow:0 1px 4px rgba(0,0,0,.28)}
+  .rng-legenda{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);
+       font-weight:600;padding:0 1px}
 
   /* ============ v2.1: login, perfil, progresso ============ */
   .login-fields .in{padding:14px;border-radius:14px;border:1.5px solid var(--line)}
@@ -1041,6 +1051,15 @@ window.APP_RELEASE = "tresults-v12";
       <svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
     </button>
     <div class="pf-sub" id="pfSomLista" style="display:none"></div>
+    <div class="pf-row" style="cursor:default">
+      <svg viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7"/></svg>
+      <span>Volume</span><span class="pf-val" id="pfVolVal">100%</span>
+    </div>
+    <div class="pf-sub">
+      <input type="range" class="rng" id="pfVol" min="10" max="100" step="5" value="100"
+             aria-label="Volume do alarme">
+      <div class="rng-legenda"><span>Discreto</span><span>Academia cheia</span></div>
+    </div>
     <button class="pf-row" id="pfSomTeste">
       <svg viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14"/></svg>
       <span id="pfSomTesteLbl">Testar som</span>
@@ -1891,6 +1910,21 @@ const somDoAlarme=()=>{
   return ALARM_SONS[s]?s:"claro";
 };
 
+/* Volume do alarme, de 10 a 100.
+   O alarme toca no canal de alarme do celular, que costuma estar no máximo —
+   ótimo para acordar, demais para uma academia. Isto é um multiplicador do
+   volume do sistema, não uma troca dele: mexer no volume do aparelho afetaria
+   o despertador da pessoa.
+
+   O mínimo não é zero de propósito: alarme mudo não é alarme, é um botão de
+   desligar disfarçado. */
+const VOLKEY="tresults.volume";
+const VOL_MIN=10;
+const volumeDoAlarme=()=>{
+  const v=parseInt(localStorage.getItem(VOLKEY),10);
+  return Number.isFinite(v)?Math.min(100,Math.max(VOL_MIN,v)):100;
+};
+
 const ALARM_VOL=0.85;
 const ALARM_DUR=20;      // toca até ser dispensado, como um temporizador de celular
 const ALARM_CICLO=2.4;   // intervalo entre um toque e o seguinte
@@ -1983,6 +2017,7 @@ function scheduleAlarm(inSec){
     const ciclos=[];
     for(let c=0;c*ALARM_CICLO<ALARM_DUR;c++)ciclos.push(c*ALARM_CICLO);
     const notas=ALARM_SONS[somDoAlarme()].notas.map((f,i)=>[f,i*0.16]);
+    const vol=ALARM_VOL*(volumeDoAlarme()/100);
     ciclos.forEach(cycle=>{
       notas.forEach(([f,dt],k)=>{
         [[f,1],[f*2,.34],[f*3,.11]].forEach(([freq,amp])=>{
@@ -1990,7 +2025,7 @@ function scheduleAlarm(inSec){
           o.type="sine";o.frequency.value=freq;
           const t=t0+cycle+dt,dur=k===2?1.5:0.75;
           g.gain.setValueAtTime(0.0001,t);
-          g.gain.exponentialRampToValueAtTime(ALARM_VOL*amp,t+0.012);
+          g.gain.exponentialRampToValueAtTime(vol*amp,t+0.012);
           g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
           o.connect(g).connect(out);
           o.start(t);o.stop(t+dur+0.05);
@@ -2193,6 +2228,18 @@ function testarSom(){
   beepInit();
   scheduleAlarm(0);          // sem tomar o áudio: prévia não precisa parar a música
   setTimeout(alarmStop,3200);
+}
+
+/** Volume que vale agora: no app quem guarda é o Android. */
+const volumeAtual=()=>appNativo
+  ? Math.min(100,Math.max(VOL_MIN,parseInt(naPonte("volumeDoAlarme",100),10)||100))
+  : volumeDoAlarme();
+
+/** Guarda nos dois lados: o app toca pelo Android, o navegador pelo localStorage. */
+function definirVolume(v){
+  v=Math.min(100,Math.max(VOL_MIN,parseInt(v,10)||100));
+  localStorage.setItem(VOLKEY,String(v));
+  if(appNativo){try{window.TResults.definirVolume(v);}catch(e){}}
 }
 
 const biometriaDisponivel=()=>!!naPonte("biometriaDisponivel",false);
@@ -2780,7 +2827,16 @@ function renderPerfil(){
   const moon=$("themeMoon2");if(moon)moon.style.fill=themeIsDark()?"currentColor":"none";
   const lbl=$("themeLbl2");if(lbl)lbl.textContent=themeIsDark()?"Modo claro":"Modo escuro";
   renderSomDoAlarme();
+  renderVolume();
   renderBiometria();
+}
+
+function renderVolume(){
+  const s=$("pfVol"),v=$("pfVolVal");
+  if(!s||!v)return;
+  const atual=volumeAtual();
+  s.value=String(atual);
+  v.textContent=atual+"%";
 }
 
 /* Som do alarme. No app mostra o nome do som do sistema e abre o seletor dele;
@@ -2823,6 +2879,10 @@ $("pfSom").onclick=()=>{
   $("pfSom").classList.toggle("aberto",!aberta);
 };
 $("pfSomTeste").onclick=()=>testarSom();
+/* Arrastar só atualiza o número; soltar é que grava e toca a prévia — tocar a
+   cada passo do arraste viraria uma metralhadora de alarmes. */
+$("pfVol").oninput=e=>{$("pfVolVal").textContent=e.target.value+"%";};
+$("pfVol").onchange=e=>{definirVolume(e.target.value);renderVolume();testarSom();};
 $("pfBio").onclick=()=>{definirBiometria(!biometriaAtiva());renderBiometria();};
 
 $("pfEdit").onclick=()=>{showView("food");setTimeout(openGoals,120);};
