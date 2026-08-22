@@ -6,14 +6,19 @@ import android.app.NotificationManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.view.Gravity
+import android.view.ViewGroup
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.FrameLayout
+import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -25,17 +30,34 @@ import androidx.core.content.ContextCompat
  *
  * A interface continua sendo o `index.html` publicado no GitHub Pages — este app
  * não duplica nada dela. O que ele acrescenta é o que a web não alcança: um
- * temporizador de verdade, com contagem regressiva desenhada pelo sistema na
- * barra de notificação e alarme no canal de alarme, que sobrepõe a música.
+ * temporizador de verdade, o som do alarme escolhido no sistema e a trava por
+ * digital.
  *
  * A página conversa com o lado nativo por `window.TResults` (ver PonteWeb).
  */
 class MainActivity : AppCompatActivity() {
 
     private lateinit var web: WebView
+    private lateinit var cortina: TextView
+
+    /** Quando saímos de vista. Serve para decidir se a trava volta a pedir. */
+    private var saiuEm = 0L
+    /** Ligado enquanto outra tela nossa está aberta (o seletor de som). */
+    private var emOutraTela = false
+    private var liberado = false
 
     private val pedirNotificacao =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* opcional */ }
+
+    private val seletorDeSom =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
+            emOutraTela = false
+            if (r.resultCode != RESULT_OK) return@registerForActivityResult
+            val escolhido: Uri? = r.data?.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+            Ajustes.definirSom(this, escolhido)
+            // o perfil precisa parar de mostrar o som antigo
+            web.evaluateJavascript("window.__somMudou&&window.__somMudou()", null)
+        }
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(estado: Bundle?) {
@@ -76,7 +98,23 @@ class MainActivity : AppCompatActivity() {
             addJavascriptInterface(PonteWeb(this@MainActivity), "TResults")
         }
 
-        setContentView(web)
+        /* A cortina cobre a página enquanto a digital não é confirmada. Cobrir é
+           melhor do que esperar para carregar: o app já vai abrindo por trás, e
+           quando a pessoa confirma a tela está pronta. */
+        cortina = TextView(this).apply {
+            text = "T-RESULTS"
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+            textSize = 22f
+            setBackgroundColor(Color.parseColor("#0E7C6B"))
+            isClickable = true      // engole toques que passariam para a página
+            visibility = ViewGroup.INVISIBLE
+        }
+
+        setContentView(FrameLayout(this).apply {
+            addView(web, FrameLayout.LayoutParams(-1, -1))
+            addView(cortina, FrameLayout.LayoutParams(-1, -1))
+        })
 
         if (estado != null) web.restoreState(estado) else web.loadUrl(BuildConfig.ENDERECO)
 
@@ -86,12 +124,71 @@ class MainActivity : AppCompatActivity() {
                 if (web.canGoBack()) web.goBack() else finish()
             }
         })
+
+        if (Ajustes.biometriaAtiva(this)) travar()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (!Ajustes.biometriaAtiva(this) || emOutraTela) return
+        // volta a pedir depois de um tempo fora; entre uma série e outra, não
+        if (!liberado || System.currentTimeMillis() - saiuEm > 2 * 60_000) travar()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        saiuEm = System.currentTimeMillis()
     }
 
     override fun onSaveInstanceState(estado: Bundle) {
         super.onSaveInstanceState(estado)
         web.saveState(estado)
     }
+
+    /** Chamado pela página, por `window.TResults.escolherSom()`. */
+    fun abrirSeletorDeSom() {
+        emOutraTela = true
+        val pedido = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+            putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
+            putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Som do alarme de descanso")
+            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
+            putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, Ajustes.somDoAlarme(this@MainActivity))
+        }
+        try {
+            seletorDeSom.launch(pedido)
+        } catch (e: Exception) {
+            emOutraTela = false
+        }
+    }
+
+    /* ---------------- Trava por digital ---------------- */
+
+    private fun travar() {
+        liberado = false
+        cortina.visibility = ViewGroup.VISIBLE
+        Biometria.pedir(this, aoLiberar = {
+            liberado = true
+            cortina.visibility = ViewGroup.INVISIBLE
+        }, aoFalhar = {
+            naoConfirmou()
+        })
+    }
+
+    /**
+     * Não confirmou. A saída é fechar o app, e não destravar — senão a trava
+     * não trava nada. Tentar de novo fica a um toque de distância.
+     */
+    private fun naoConfirmou() {
+        AlertDialog.Builder(this)
+            .setTitle("Não foi possível confirmar")
+            .setMessage("Confirme sua identidade para abrir o T-RESULTS.")
+            .setCancelable(false)
+            .setPositiveButton("Tentar de novo") { _, _ -> travar() }
+            .setNegativeButton("Fechar") { _, _ -> finish() }
+            .show()
+    }
+
+    /* ---------------- Permissões ---------------- */
 
     /**
      * Sem esta permissão não existe contagem na barra nem alarme.

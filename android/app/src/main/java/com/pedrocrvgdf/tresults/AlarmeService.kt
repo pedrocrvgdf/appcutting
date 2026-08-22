@@ -6,7 +6,6 @@ import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.MediaPlayer
-import android.media.RingtoneManager
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -72,10 +71,7 @@ class AlarmeService : Service() {
     }
 
     private fun tocar() {
-        val som = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
-            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-            ?: return
+        val som = Ajustes.somDoAlarme(this) ?: return
 
         val atributos = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_ALARM)
