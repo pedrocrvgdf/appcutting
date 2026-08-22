@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v11";
+window.APP_RELEASE = "tresults-v12";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -651,6 +651,20 @@ window.APP_RELEASE = "tresults-v11";
   .pf-row svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
   .pf-row.danger{color:var(--warn)}
   .pf-row:active{background:var(--primary-08)}
+  .pf-val{margin-left:auto;font-weight:600;color:var(--muted);font-size:13px;
+          max-width:46%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pf-sub{padding:2px 6px 8px}
+  .pf-opt{display:flex;align-items:center;gap:11px;width:100%;text-align:left;
+          padding:11px 12px;border-radius:10px;font-size:14px;font-weight:600}
+  .pf-opt:active{background:var(--primary-08)}
+  .pf-opt .mark{width:17px;height:17px;border-radius:50%;border:2px solid var(--line);flex:none}
+  .pf-opt.on .mark{border-color:var(--primary);background:var(--primary);
+                   box-shadow:inset 0 0 0 3px var(--card)}
+  .pf-opt.on{color:var(--primary)}
+  /* sem esta seta a linha parece um rótulo, e ninguém descobre que ela abre */
+  .pf-row svg.chev{width:15px;height:15px;opacity:.45;margin-left:2px;
+                   transition:transform .18s ease}
+  .pf-row.aberto svg.chev{transform:rotate(90deg)}
 
   /* ============ v2.1: login, perfil, progresso ============ */
   .login-fields .in{padding:14px;border-radius:14px;border:1.5px solid var(--line)}
@@ -1019,6 +1033,30 @@ window.APP_RELEASE = "tresults-v11";
       <div><span class="k">Prazo</span><span class="v" id="pfPrazo">—</span></div>
     </div>
   </div>
+  <div class="sec-title">Alarme do descanso</div>
+  <div class="card" style="padding:4px;margin-bottom:14px">
+    <button class="pf-row" id="pfSom">
+      <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+      <span>Som</span><span class="pf-val" id="pfSomVal">—</span>
+      <svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
+    </button>
+    <div class="pf-sub" id="pfSomLista" style="display:none"></div>
+    <button class="pf-row" id="pfSomTeste">
+      <svg viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14"/></svg>
+      <span id="pfSomTesteLbl">Testar som</span>
+    </button>
+  </div>
+
+  <div id="pfSegWrap" style="display:none">
+    <div class="sec-title">Segurança</div>
+    <div class="card" style="padding:4px;margin-bottom:14px">
+      <button class="pf-row" id="pfBio">
+        <svg viewBox="0 0 24 24"><path d="M3.5 8.5a10 10 0 0 1 17 0M6 11.5a6 6 0 0 1 12 0v2.5M9 12a3 3 0 0 1 6 0v4M12 12.5V18"/></svg>
+        <span>Desbloquear com biometria</span><span class="pf-val" id="pfBioVal">Desligado</span>
+      </button>
+    </div>
+  </div>
+
   <div class="card" style="padding:4px">
     <button class="pf-row" id="pfTheme"><svg id="themeMoon2" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg><span id="themeLbl2">Modo escuro</span></button>
     <button class="pf-row danger" id="pfReset"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/></svg>Excluir dados</button>
@@ -1834,6 +1872,25 @@ let trS=null,trInt=null,trRestInt=null,trRestEnd=0;
    volume alto, e abaixa a música do celular durante o toque.
    ============================================================ */
 let beepCtx=null,alarmKeep=null,alarmNodes=[],alarmEl=null,alarmDuckT=null,trDuckT=null,alarmBus=null,alarmVibInt=null;
+/* Sons do alarme, no navegador.
+   Aqui o alarme é gerado na hora, nota por nota: a web não tem acesso aos sons
+   do celular. São acordes maiores, para soar como aviso de coisa concluída e
+   não como alerta de desastre.
+
+   Dentro do app Android o som é do sistema, escolhido no seletor nativo — esta
+   lista nem aparece lá, porque não teria como tocar. */
+const ALARM_SONS={
+  claro:{nome:"Claro",  notas:[880,1108.73,1318.51]},      // lá maior
+  grave:{nome:"Grave",  notas:[523.25,659.25,783.99]},     // dó maior, mais encorpado
+  agudo:{nome:"Agudo",  notas:[1174.66,1479.98,1760]},     // ré maior, corta mais o barulho
+  sino: {nome:"Sino",   notas:[1318.51,1567.98,2093]}      // mi maior, timbre de campainha
+};
+const SOMKEY="tresults.som";
+const somDoAlarme=()=>{
+  const s=localStorage.getItem(SOMKEY);
+  return ALARM_SONS[s]?s:"claro";
+};
+
 const ALARM_VOL=0.85;
 const ALARM_DUR=20;      // toca até ser dispensado, como um temporizador de celular
 const ALARM_CICLO=2.4;   // intervalo entre um toque e o seguinte
@@ -1925,8 +1982,9 @@ function scheduleAlarm(inSec){
        Para quando o usuário dispensa (alarmStop cancela o que estiver agendado). */
     const ciclos=[];
     for(let c=0;c*ALARM_CICLO<ALARM_DUR;c++)ciclos.push(c*ALARM_CICLO);
+    const notas=ALARM_SONS[somDoAlarme()].notas.map((f,i)=>[f,i*0.16]);
     ciclos.forEach(cycle=>{
-      [[880,0],[1108.73,.16],[1318.51,.32]].forEach(([f,dt],k)=>{
+      notas.forEach(([f,dt],k)=>{
         [[f,1],[f*2,.34],[f*3,.11]].forEach(([freq,amp])=>{
           const o=beepCtx.createOscillator(),g=beepCtx.createGain();
           o.type="sine";o.frequency.value=freq;
@@ -2105,6 +2163,43 @@ function descansoCancelar(){
     try{ window.TResults.cancelarDescanso(); return; }catch(e){}
   }
   pushCancelar();
+}
+
+/* --- Som do alarme e biometria ---
+   No app, quem manda é o Android: o som vem do seletor do sistema (onde já
+   estão os sons do celular e os que a pessoa tiver posto lá) e a biometria é
+   do próprio aparelho. No navegador não existe acesso a nenhum dos dois, e o
+   que sobra são os acordes gerados aqui. */
+const naPonte=(nome,padrao)=>{
+  if(!appNativo)return padrao;
+  try{ const v=window.TResults[nome](); return v===undefined?padrao:v; }catch(e){ return padrao; }
+};
+
+/** Nome do som atual, como aparece no perfil. */
+const somAtualNome=()=>appNativo
+  ? (naPonte("somDoAlarme","")||"Padrão do celular")
+  : ALARM_SONS[somDoAlarme()].nome;
+
+/** Abre o seletor do sistema. Só existe no app. */
+function escolherSom(){
+  if(!appNativo)return false;
+  try{ window.TResults.escolherSom(); }catch(e){}
+  return true;
+}
+
+/** Prévia curta, para a pessoa ouvir antes de decidir. */
+function testarSom(){
+  if(appNativo){ try{ window.TResults.testarSom(); }catch(e){} return; }
+  beepInit();
+  scheduleAlarm(0);          // sem tomar o áudio: prévia não precisa parar a música
+  setTimeout(alarmStop,3200);
+}
+
+const biometriaDisponivel=()=>!!naPonte("biometriaDisponivel",false);
+const biometriaAtiva=()=>!!naPonte("biometriaAtiva",false);
+function definirBiometria(ativa){
+  if(!appNativo)return;
+  try{ window.TResults.definirBiometria(!!ativa); }catch(e){}
 }
 
 const fmtSec=s=>String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");
@@ -2684,7 +2779,52 @@ function renderPerfil(){
   }
   const moon=$("themeMoon2");if(moon)moon.style.fill=themeIsDark()?"currentColor":"none";
   const lbl=$("themeLbl2");if(lbl)lbl.textContent=themeIsDark()?"Modo claro":"Modo escuro";
+  renderSomDoAlarme();
+  renderBiometria();
 }
+
+/* Som do alarme. No app mostra o nome do som do sistema e abre o seletor dele;
+   no navegador lista os acordes disponíveis. */
+function renderSomDoAlarme(){
+  const val=$("pfSomVal"),lista=$("pfSomLista");
+  if(!val||!lista)return;
+  val.textContent=somAtualNome();
+
+  if(appNativo){lista.style.display="none";lista.innerHTML="";return;}
+
+  const atual=somDoAlarme();
+  lista.innerHTML=Object.keys(ALARM_SONS).map(k=>
+    `<button class="pf-opt${k===atual?" on":""}" data-som="${k}">`+
+    `<span class="mark"></span><span>${ALARM_SONS[k].nome}</span></button>`).join("");
+  lista.querySelectorAll("[data-som]").forEach(b=>{
+    b.onclick=()=>{
+      localStorage.setItem(SOMKEY,b.dataset.som);
+      renderSomDoAlarme();
+      testarSom();   // escolher sem ouvir não ajuda ninguém
+    };
+  });
+}
+
+function renderBiometria(){
+  const wrap=$("pfSegWrap");if(!wrap)return;
+  if(!biometriaDisponivel()){wrap.style.display="none";return;}
+  wrap.style.display="";
+  $("pfBioVal").textContent=biometriaAtiva()?"Ligado":"Desligado";
+}
+
+/* O seletor de som do Android é outra tela: quando ela volta, o app avisa aqui
+   para o perfil não continuar mostrando o som antigo. */
+window.__somMudou=()=>{try{renderSomDoAlarme();}catch(e){}};
+
+$("pfSom").onclick=()=>{
+  if(escolherSom())return;                       // no app, quem escolhe é o sistema
+  const l=$("pfSomLista"),aberta=l.style.display!=="none";
+  l.style.display=aberta?"none":"";
+  $("pfSom").classList.toggle("aberto",!aberta);
+};
+$("pfSomTeste").onclick=()=>testarSom();
+$("pfBio").onclick=()=>{definirBiometria(!biometriaAtiva());renderBiometria();};
+
 $("pfEdit").onclick=()=>{showView("food");setTimeout(openGoals,120);};
 $("pfTheme").onclick=()=>{localStorage.setItem("tresults.theme",themeIsDark()?"light":"dark");applyTheme();renderPerfil();};
 $("pfReset").onclick=()=>resetData();

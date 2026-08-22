@@ -233,6 +233,17 @@ O que a casca acrescenta, e a web não alcança:
 | Disparo no segundo certo com o app fechado | `AlarmManager.setAlarmClock`, o único agendamento que o Android não adia |
 | Tela cheia por cima do TikTok | `setFullScreenIntent` com `CATEGORY_ALARM` |
 
+Duas coisas do perfil também vivem aqui, e por isso mudam de cara conforme o
+lugar (`tests/perfil.spec.js` cobre os dois lados):
+
+| | No app Android | No navegador |
+|---|---|---|
+| **Som do alarme** | seletor do sistema, com os sons do celular | quatro acordes gerados na hora, guardados em `tresults.som` |
+| **Trava por digital** | `BiometricPrompt`, com PIN como alternativa | não aparece — a web não alcança |
+
+A trava protege a **abertura do app**, não a conta: quem guarda o acesso aos
+dados na nuvem continua sendo a sessão do Firebase.
+
 A página conversa com o Android por `window.TResults` (ver `PonteWeb.kt`):
 
 ```js

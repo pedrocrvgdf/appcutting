@@ -11,8 +11,8 @@ android {
         applicationId = "com.pedrocrvgdf.tresults"
         minSdk = 26          // Android 8: primeira versão com canais de notificação
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.1"
+        versionCode = 3
+        versionName = "1.2"
 
         // O app é uma casca: a interface continua vindo do GitHub Pages, então
         // publicar o T-RESULTS segue sendo copiar o index.html para a main.
@@ -42,4 +42,6 @@ android {
 dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.appcompat:appcompat:1.7.0")
+    // trava por digital, com PIN como alternativa (ver Biometria.kt)
+    implementation("androidx.biometric:biometric:1.1.0")
 }

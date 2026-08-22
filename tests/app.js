@@ -19,7 +19,9 @@ const PONTE = `
 window.__t={
   get store(){return store}, get trS(){return trS}, get trRestEnd(){return trRestEnd},
   trElapsedMs:()=>trS?trElapsedMs():null, lastExSession, alarmWav, ALARM_VOL, todayKey,
-  ALARM_DUR, ALARM_CICLO, restTick,
+  ALARM_DUR, ALARM_CICLO, restTick, ALARM_SONS,
+  somDoAlarme:()=>somDoAlarme(),
+  appNativo:()=>appNativo,
   alarmNodesLen:()=>alarmNodes.length,
   setRestEnd:v=>{trRestEnd=v;},
   forcarFimDoDescanso:()=>{trRestEnd=Date.now();restTick();},
@@ -31,14 +33,19 @@ window.__t={
     const buf=await oc.startRendering();
     beepCtx=ctxAnterior; alarmBus=busAnterior; alarmNodes=[];
     const d=buf.getChannelData(0);
-    let pico=0,soma=0,estouradas=0;
+    let pico=0,soma=0,estouradas=0,cruzamentos=0;
     for(let i=0;i<d.length;i++){
       const a=Math.abs(d[i]);
       if(a>pico)pico=a;
       if(a>=0.999)estouradas++;
       soma+=d[i]*d[i];
+      /* Cruzamentos por zero: sobe com a frequência. É como medir se o som
+         escolhido chegou mesmo ao alarme, sem precisar de análise espectral.
+         O limiar descarta o silêncio entre os toques, que cruzaria zero por
+         ruído numérico e afogaria a medida. */
+      if(i>0&&Math.abs(d[i])>0.01&&(d[i-1]<0)!==(d[i]<0))cruzamentos++;
     }
-    return {pico,rms:Math.sqrt(soma/d.length),estouradas};
+    return {pico,rms:Math.sqrt(soma/d.length),estouradas,cruzamentos};
   }};
 `;
 const ANCORA = '\n$("mealSel").value=defaultMeal();';
