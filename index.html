@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v14";
+window.APP_RELEASE = "tresults-v15";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -688,6 +688,120 @@ window.APP_RELEASE = "tresults-v14";
   /* Cada macro na sua cor: aqui é a cor que separa, não o rótulo.
      Texto sempre escuro por cima — branco sobre amarelo some sob o sol da
      janela da academia, que é onde este app é lido. */
+  /* ============ INÍCIO E FEED ============
+     O feed é o histórico do esforço: cada cartão é uma sessão já feita. Ele
+     abre em duas profundidades de propósito — expandir mostra os exercícios
+     sem tirar a pessoa da rolagem; tocar em "ver tudo" abre a sessão inteira
+     com a comparação contra a vez anterior. */
+  .volta{flex:none;width:38px;height:38px;margin-right:2px;border:2.5px solid var(--traco);
+    border-radius:12px;background:var(--surface);display:flex;align-items:center;justify-content:center;
+    box-shadow:var(--dura-sm)}
+  .volta svg{width:20px;height:20px;stroke:var(--ink);fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+  .volta:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--traco)}
+
+  .fd-resumo{display:flex;align-items:center;gap:14px;width:100%;text-align:left;
+    background:var(--surface);border:3px solid var(--traco);border-radius:22px;
+    padding:14px;box-shadow:var(--dura);margin-bottom:12px}
+  .fd-resumo:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--traco)}
+  .fd-anel{position:relative;width:76px;height:76px;flex:none}
+  .fd-anel svg{width:76px;height:76px}
+  .fd-anel-n{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:17px;font-weight:800;color:var(--ink)}
+  .fd-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+  .fd-tx .fd-k{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .fd-tx .fd-v{font-family:var(--display);font-size:20px;font-weight:800;line-height:1.2;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* Esta linha pode quebrar: em 320px ela virava "0 de 2887 kcal · toque pa…",
+     cortada no meio da palavra. Duas linhas cabem; palavra pela metade, não. */
+  .fd-tx .fd-m{font-size:12px;font-weight:700;color:var(--muted);line-height:1.35}
+  .fd-resumo .chev{width:17px;height:17px;flex:none;opacity:.45;stroke:var(--ink);fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+
+  .fd-atalhos{display:flex;gap:10px;margin-bottom:18px}
+  .fd-atalho{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;height:50px;
+    background:var(--surface);border:2.5px solid var(--traco);border-radius:15px;
+    font-weight:800;font-size:14px;color:var(--ink);box-shadow:var(--dura-sm)}
+  .fd-atalho svg{width:18px;height:18px;stroke:var(--primary);fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+  .fd-atalho:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--traco)}
+
+  .fd-dia{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--muted);margin:16px 2px 8px}
+  .fd-card{background:var(--surface);border:3px solid var(--traco);border-radius:20px;
+    padding:14px;margin-bottom:12px;box-shadow:var(--dura)}
+  .fd-top{display:flex;align-items:flex-start;gap:11px;width:100%;text-align:left}
+  .fd-ico{flex:none;width:40px;height:40px;border-radius:13px;border:2.5px solid var(--traco);
+    background:var(--primary);display:flex;align-items:center;justify-content:center}
+  .fd-ico svg{width:20px;height:20px;stroke:#fff;fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+  .fd-nome{flex:1;min-width:0}
+  .fd-nome .n{font-family:var(--display);font-size:18px;font-weight:800;line-height:1.2;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .fd-nome .h{font-size:11.5px;font-weight:700;color:var(--muted);margin-top:1px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .fd-top .chev{width:16px;height:16px;flex:none;margin-top:11px;opacity:.45;stroke:var(--ink);
+    fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;transition:transform .18s ease}
+  .fd-card.aberto .fd-top .chev{transform:rotate(90deg)}
+
+  .fd-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
+  /* Coluna, e não bloco solto: "Duração (min)" quebra em duas linhas enquanto
+     "Gasto (kcal)" cabe em uma, e aí o 52 descia abaixo do 310. Com o valor
+     empurrado para o fim (margin-top:auto) e as três caixas esticadas pela
+     grade, os números ficam alinhados por baixo com qualquer fonte. */
+  .fd-stat{border:2.5px solid var(--traco);border-radius:13px;padding:8px 9px;background:var(--bg);
+    min-width:0;display:flex;flex-direction:column}
+  .fd-stat .k{font-size:9.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+  .fd-stat .v{font-family:var(--mono);font-size:15px;font-weight:800;margin-top:auto;padding-top:2px;
+    font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  /* A progressão é o número que a pessoa vem buscar: comparação de volume com a
+     sessão anterior do mesmo treino. Sem sessão anterior ela não existe, e
+     inventar um valor seria pior que omitir. */
+  .fd-prog{display:inline-flex;align-items:center;gap:6px;margin-top:11px;
+    border:2.5px solid var(--traco);border-radius:999px;padding:5px 12px;
+    font-size:12.5px;font-weight:800;box-shadow:var(--dura-sm)}
+  .fd-prog svg{width:14px;height:14px;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+  .fd-prog.sobe{background:var(--mg);color:#0B3A31}
+  .fd-prog.sobe svg{stroke:#0B3A31}
+  .fd-prog.desce{background:var(--surface);color:var(--warn)}
+  .fd-prog.desce svg{stroke:var(--warn)}
+  .fd-prog.igual{background:var(--surface);color:var(--muted)}
+  .fd-prog.igual svg{stroke:var(--muted)}
+  .fd-prog.primeira{background:var(--surface);color:var(--muted);box-shadow:none;border-style:dashed}
+
+  .fd-mais{display:none;margin-top:13px;padding-top:12px;border-top:2px solid var(--line)}
+  .fd-card.aberto .fd-mais{display:block;animation:softIn .22s ease}
+  .fd-ex{display:flex;align-items:baseline;gap:8px;padding:7px 0}
+  .fd-ex+.fd-ex{border-top:1px solid var(--line)}
+  .fd-ex .en{flex:1;min-width:0;font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .fd-ex .es{flex:none;font-family:var(--mono);font-size:12px;font-weight:700;color:var(--muted)}
+  .fd-vertudo{width:100%;margin-top:12px;height:44px;border:2.5px solid var(--traco);border-radius:13px;
+    background:var(--bg);font-weight:800;font-size:13.5px;color:var(--primary);box-shadow:var(--dura-sm)}
+  .fd-vertudo:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--traco)}
+  .fd-vazio{background:var(--surface);border:3px dashed var(--traco);border-radius:20px;
+    padding:22px 18px;text-align:center;font-size:13.5px;font-weight:700;color:var(--muted);line-height:1.6}
+
+  /* Sessão inteira, em tela cheia */
+  .ss-ex{margin-bottom:14px}
+  .ss-ex .ssn{font-family:var(--display);font-size:16px;font-weight:800;margin-bottom:6px}
+  .ss-serie{display:flex;align-items:center;gap:9px;padding:7px 0;font-size:13px}
+  .ss-serie+.ss-serie{border-top:1px solid var(--line)}
+  .ss-serie .i{flex:none;width:24px;height:24px;border-radius:50%;border:2px solid var(--traco);
+    background:var(--bg);display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);font-size:11px;font-weight:800}
+  .ss-serie .c{flex:1;font-family:var(--mono);font-weight:700}
+  .ss-serie .r{flex:none;font-size:11px;font-weight:800;color:var(--muted)}
+  /* Precisa vir DEPOIS das regras do feed: como o bloco estreito do app fica
+     mais acima no arquivo, a regra base ganhava por ordem e a fonte continuava
+     em 20px — "kcal restantes" passava 150px numa coluna de 133px. */
+  @media (max-width:370px){
+    .fd-stats{gap:6px}
+    .fd-stat{padding:7px 8px}
+    .fd-stat .k{font-size:9px;letter-spacing:.03em}
+    .fd-stat .v{font-size:14px}
+    .fd-tx .fd-v{font-size:15px}
+    .fd-tx .fd-m{font-size:11px}
+    .fd-anel,.fd-anel svg{width:66px;height:66px}
+    .fd-atalho{font-size:13px}
+  }
+
   .macros2{display:flex;gap:9px;margin-top:16px}
   .macros2 .m2{flex:1;background:var(--surface);border:2.5px solid var(--traco);border-radius:15px;padding:10px 11px;min-width:0;box-shadow:var(--dura-sm)}
   .macros2 .m2 .r{display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-width:0}
@@ -890,9 +1004,53 @@ window.APP_RELEASE = "tresults-v14";
   </div>
 </div>
 
+<!-- ==================== INÍCIO ====================
+     A tela de abertura. Reúne o resumo do dia, os atalhos e o feed dos treinos
+     já feitos. Alimentação e Progresso viram telas alcançadas daqui. -->
+<div class="view" id="view-inicio"><div class="wrap">
+  <div class="topbar">
+    <div class="brand"><span class="eyebrow">True Results</span><h1>Início</h1></div>
+    <div class="rt"><div class="syncmini"><span class="dot ok" id="syncDot3"></span></div></div>
+  </div>
+
+  <button class="fd-resumo" id="fdDia">
+    <span class="fd-anel">
+      <svg viewBox="0 0 120 120" aria-hidden="true">
+        <circle cx="60" cy="60" r="50" fill="none" stroke="var(--traco)" stroke-width="18"/>
+        <circle cx="60" cy="60" r="50" fill="none" stroke="var(--line)" stroke-width="12"/>
+        <circle cx="60" cy="60" r="50" fill="none" stroke="var(--primary)" stroke-width="12"
+                stroke-linecap="round" stroke-dasharray="0 314" id="fdArco"
+                transform="rotate(-90 60 60)"/>
+      </svg>
+      <span class="fd-anel-n num" id="fdRestam">—</span>
+    </span>
+    <span class="fd-tx">
+      <span class="fd-k">Saldo de hoje</span>
+      <span class="fd-v" id="fdSaldo">—</span>
+      <span class="fd-m" id="fdSaldoSub">Toque para abrir a alimentação</span>
+    </span>
+    <svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
+  </button>
+
+  <div class="fd-atalhos">
+    <button class="fd-atalho" id="fdIrProgresso">
+      <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>
+      <span>Progresso</span>
+    </button>
+    <button class="fd-atalho" id="fdIrTreino">
+      <svg viewBox="0 0 24 24"><path d="M6 7v10M18 7v10M3 12h18M3 9v6M21 9v6"/></svg>
+      <span>Treinar</span>
+    </button>
+  </div>
+
+  <div class="sec-title"><span>Seus treinos</span><span class="num" id="fdCount"></span></div>
+  <div id="fdFeed"></div>
+</div></div>
+
 <!-- ==================== ALIMENTAÇÃO ==================== -->
 <div class="view" id="view-food"><div class="wrap">
   <div class="topbar">
+    <button class="volta" data-volta="inicio" aria-label="Voltar ao início"><svg viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg></button>
     <div class="brand"><span class="eyebrow">True Results</span><h1>Controle do Dia</h1></div>
     <div class="rt">
       <div class="syncmini"><span class="dot ok" id="syncDot"></span><span id="syncText">Sincronizado</span></div>
@@ -1027,6 +1185,7 @@ window.APP_RELEASE = "tresults-v14";
 <!-- ==================== PROGRESSO ==================== -->
 <div class="view" id="view-progresso"><div class="wrap">
   <div class="topbar">
+    <button class="volta" data-volta="inicio" aria-label="Voltar ao início"><svg viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg></button>
     <div class="brand"><span class="eyebrow">True Results</span><h1>Progresso</h1></div>
   </div>
   <section class="sec" id="goalsSec">
@@ -1200,6 +1359,17 @@ window.APP_RELEASE = "tresults-v14";
 </div></div>
 
 <!-- COMO FAZER (demonstração de exercício) -->
+<!-- Sessão inteira, aberta a partir do feed do Início -->
+<div class="overlay" id="sessaoOverlay" style="z-index:106">
+  <div class="modal" style="max-width:440px">
+    <h3 id="ssTitulo" style="margin-bottom:2px">Sessão</h3>
+    <div class="how-sub" id="ssSub"></div>
+    <div id="ssSelo" style="margin:10px 0 14px"></div>
+    <div id="ssCorpo"></div>
+    <button class="btn secondary" id="ssFechar">Fechar</button>
+  </div>
+</div>
+
 <div class="overlay" id="howOverlay" style="z-index:105">
   <div class="modal" style="max-width:400px">
     <h3 id="howTitle" style="margin-bottom:4px">Como fazer</h3>
@@ -1342,8 +1512,8 @@ window.APP_RELEASE = "tresults-v14";
 
 <!-- TAB BAR -->
 <nav id="tabbar">
-  <button data-tab="food" class="on"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10"/></svg>Hoje</button>
-  <button data-tab="progresso"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>Progresso</button>
+  <button data-tab="inicio" class="on"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10"/></svg>Início</button>
+  <button data-tab="food"><svg viewBox="0 0 24 24"><path d="M5 3v9a3 3 0 0 0 6 0V3M8 12v9M17 3c-1.5 2-2 4-2 6v3h4V9c0-2-.5-4-2-6zM17 12v9"/></svg>Comida</button>
   <button class="fab" id="tabAdd" aria-label="Adicionar refeição"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
   <button data-tab="treino"><svg viewBox="0 0 24 24"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/></svg>Treino</button>
   <button data-tab="perfil"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Perfil</button>
@@ -1697,6 +1867,193 @@ function hideSplash(){
   s.classList.add("hide");
   setTimeout(()=>{if(s.parentNode)s.remove();},400);
 }
+/* ============================================================
+   INÍCIO — o feed dos treinos já feitos
+
+   É a tela de abertura. Reúne o saldo do dia, os atalhos para Alimentação e
+   Progresso, e o histórico de esforço em ordem: sessão mais recente primeiro.
+
+   O feed abre em duas profundidades de propósito. Tocar no cartão expande os
+   exercícios ali mesmo, sem tirar a pessoa da rolagem — é o que serve para
+   comparar dois treinos seguidos. "Ver a sessão inteira" abre em tela cheia,
+   com todas as séries e a comparação contra a vez anterior.
+   ============================================================ */
+const FD_MAX=60;   // além disso vira rolagem infinita sem ninguém pedir
+
+/**
+ * TODAS as sessões, da mais recente para a mais antiga.
+ *
+ * A progressão precisa da lista inteira, não da fatia que o feed mostra: com
+ * a busca limitada aos 60 do feed, a sessão de número 61 anunciaria "primeira
+ * vez deste treino" mesmo havendo dezenas dela antes. Quem corta é quem
+ * desenha, não quem calcula.
+ */
+function fdTodas(){
+  const dias=Object.keys(store.tdays||{}).filter(d=>(store.tdays[d]||[]).length).sort().reverse();
+  const out=[];
+  for(const d of dias){
+    const lista=store.tdays[d]||[];
+    // dentro do mesmo dia, o registrado por último aparece primeiro
+    for(let i=lista.length-1;i>=0;i--){out.push({dia:d,w:lista[i]});}
+  }
+  return out;
+}
+/** O que o feed mostra. */
+function fdSessoes(){return fdTodas().slice(0,FD_MAX);}
+
+/**
+ * Progressão da sessão contra a anterior DO MESMO TREINO, por volume movimentado.
+ *
+ * Volume é a única medida comparável entre sessões: duração varia com conversa
+ * e fila de aparelho, e kcal deriva da duração. Sem sessão anterior a progressão
+ * não existe — e mostrar 0% seria inventar um dado.
+ */
+function fdProgressao(lista,i){
+  const at=lista[i].w;
+  if(!at.vol)return null;
+  for(let j=i+1;j<lista.length;j++){
+    const p=lista[j].w;
+    if(p.name===at.name&&p.vol)return {pct:(at.vol/p.vol-1)*100,de:p.vol,dia:lista[j].dia};
+  }
+  return null;
+}
+
+const FD_DIAS=["domingo","segunda","terça","quarta","quinta","sexta","sábado"];
+function fdRotuloDia(k){
+  const hoje=todayKey();
+  if(k===hoje)return "Hoje";
+  const d=new Date(k+"T12:00:00"),o=new Date(hoje+"T12:00:00");
+  const dif=Math.round((o-d)/86400000);
+  if(dif===1)return "Ontem";
+  const dd=String(d.getDate()).padStart(2,"0"),mm=String(d.getMonth()+1).padStart(2,"0");
+  return (dif<7?FD_DIAS[d.getDay()]+" · ":"")+dd+"/"+mm;
+}
+
+function fdSelo(pr){
+  if(!pr)return '<span class="fd-prog primeira"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>primeira vez deste treino</span>';
+  const pct=Math.round(pr.pct);
+  if(pct>0)return `<span class="fd-prog sobe"><svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>+${pct}% de carga</span>`;
+  if(pct<0)return `<span class="fd-prog desce"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12l7 7 7-7"/></svg>${pct}% de carga</span>`;
+  return '<span class="fd-prog igual"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg>mesma carga</span>';
+}
+
+const FD_ICO_FORCA='<svg viewBox="0 0 24 24"><path d="M6 7v10M18 7v10M3 12h18M3 9v6M21 9v6"/></svg>';
+const FD_ICO_CARDIO='<svg viewBox="0 0 24 24"><path d="M13 3 4 14h7l-1 7 9-11h-7z"/></svg>';
+
+function renderInicio(){
+  if(!$("fdFeed"))return;
+
+  /* --- saldo do dia, o mesmo número da tela de alimentação --- */
+  const t=goalTargets();
+  const cons=dayItems().filter(i=>i.status==="consumido");
+  const comido=cons.reduce((a,i)=>a+i.kcal,0);
+  const arco=$("fdArco");
+  if(t.configured){
+    const meta=goalMeta(t,todayKey()),saldo=meta-comido;
+    const usado=meta>0?Math.min(1,Math.max(0,comido/meta)):0;
+    $("fdRestam").textContent=(saldo<0?"−":"")+r0(Math.abs(saldo));
+    $("fdSaldo").textContent=saldo<0?"acima da meta":"kcal restantes";
+    $("fdSaldoSub").textContent=`${r0(comido)} de ${r0(meta)} kcal · toque para abrir`;
+    if(arco){arco.setAttribute("stroke-dasharray",`${(314*usado).toFixed(1)} 314`);
+      arco.setAttribute("stroke",saldo<0?"var(--warn)":"var(--primary)");}
+  }else{
+    $("fdRestam").textContent="—";
+    $("fdSaldo").textContent="Sem objetivo";
+    $("fdSaldoSub").textContent="Toque para configurar";
+    if(arco)arco.setAttribute("stroke-dasharray","0 314");
+  }
+
+  /* --- feed --- */
+  const todas=fdTodas();
+  const lista=todas.slice(0,FD_MAX);
+  $("fdCount").textContent=todas.length?todas.length+(todas.length===1?" sessão":" sessões"):"";
+
+  if(!lista.length){
+    $("fdFeed").innerHTML='<div class="fd-vazio">Nenhum treino registrado ainda.<br>Quando você terminar um treino, ele aparece aqui — com a duração, as calorias e o quanto a carga subiu desde a última vez.</div>';
+    return;
+  }
+
+  let html="",diaAtual="";
+  lista.forEach((it,i)=>{
+    const w=it.w;
+    if(it.dia!==diaAtual){diaAtual=it.dia;html+=`<div class="fd-dia">${esc(fdRotuloDia(it.dia))}</div>`;}
+    const forca=!!(w.ex&&w.ex.length);
+    const pr=fdProgressao(todas,i);
+    const series=forca?w.ex.reduce((a,e)=>a+(e.sets||[]).length,0):0;
+
+    html+=`<div class="fd-card" data-fd="${esc(w.id)}">
+      <button class="fd-top" data-fdtoggle="${esc(w.id)}">
+        <span class="fd-ico">${forca?FD_ICO_FORCA:FD_ICO_CARDIO}</span>
+        <span class="fd-nome"><span class="n">${esc(w.name)}</span>
+          <span class="h">${forca?`${w.ex.length} exercícios · ${series} séries`:(w.km?`${kgTxt(w.km)} km`:"registro manual")}</span></span>
+        <svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <div class="fd-stats">
+        <div class="fd-stat"><div class="k">Duração (min)</div><div class="v">${r0(w.min)}</div></div>
+        <div class="fd-stat"><div class="k">Gasto (kcal)</div><div class="v">${r0(w.kcal)}</div></div>
+        <div class="fd-stat"><div class="k">${forca?"Volume (kg)":(w.km?"Distância (km)":"Tipo")}</div><div class="v">${forca?r0(w.vol||0):(w.km?kgTxt(w.km):esc((w.intens||"—").split(" · ")[0]))}</div></div>
+      </div>
+      ${forca?fdSelo(pr):""}
+      <div class="fd-mais">
+        ${forca?w.ex.map(e=>{
+          const st=(e.sets||[]);
+          const melhor=st.reduce((a,x)=>Math.max(a,x.kg||0),0);
+          return `<div class="fd-ex"><span class="en">${esc(e.n)}</span><span class="es">${st.length}× · até ${kgTxt(melhor)} kg</span></div>`;
+        }).join(""):'<div class="fd-ex"><span class="en">Registro manual, sem detalhe de séries.</span></div>'}
+        ${forca?`<button class="fd-vertudo" data-fdver="${esc(w.id)}">Ver a sessão inteira</button>`:""}
+      </div>
+    </div>`;
+  });
+  $("fdFeed").innerHTML=html;
+
+  $("fdFeed").querySelectorAll("[data-fdtoggle]").forEach(b=>{
+    b.onclick=()=>b.closest(".fd-card").classList.toggle("aberto");
+  });
+  $("fdFeed").querySelectorAll("[data-fdver]").forEach(b=>{
+    b.onclick=e=>{e.stopPropagation();abrirSessao(b.dataset.fdver);};
+  });
+}
+
+/** A sessão inteira, em tela cheia, com a comparação exercício por exercício. */
+function abrirSessao(id){
+  const lista=fdTodas();
+  const i=lista.findIndex(x=>x.w.id===id);
+  if(i<0)return;
+  const {w,dia}=lista[i];
+  const pr=fdProgressao(lista,i);
+
+  /* sessão anterior do mesmo treino, para comparar exercício por exercício */
+  let ant=null;
+  for(let j=i+1;j<lista.length;j++){if(lista[j].w.name===w.name&&lista[j].w.ex){ant=lista[j].w;break;}}
+  const antDe=n=>{
+    if(!ant)return null;
+    const e=(ant.ex||[]).find(x=>x.n===n);
+    if(!e||!e.sets.length)return null;
+    return e.sets.reduce((a,x)=>Math.max(a,x.kg||0),0);
+  };
+
+  $("ssTitulo").textContent=w.name;
+  $("ssSub").textContent=`${fdRotuloDia(dia)} · ${r0(w.min)} min · ${r0(w.kcal)} kcal`;
+  $("ssSelo").innerHTML=(w.ex&&w.ex.length)?fdSelo(pr):"";
+  $("ssCorpo").innerHTML=(w.ex||[]).map(e=>{
+    const antes=antDe(e.n);
+    const agora=(e.sets||[]).reduce((a,x)=>Math.max(a,x.kg||0),0);
+    let comp="";
+    if(antes!=null){
+      const d=agora-antes;
+      const cls=d>0?"up":d<0?"down":"same";
+      comp=`<span class="tp-d ${cls}">${d>0?"+":""}${kgTxt(d)} kg</span>`;
+    }
+    return `<div class="ss-ex">
+      <div class="ssn">${esc(e.n)} ${comp}</div>
+      ${(e.sets||[]).map((x,k)=>`<div class="ss-serie"><span class="i">${k+1}</span><span class="c">${kgTxt(x.kg)} kg × ${r0(x.rep)}</span><span class="r">${x.rir!=null?"RIR "+x.rir:""}</span></div>`).join("")}
+    </div>`;
+  }).join("")||'<div class="fd-vazio">Sem detalhe de séries neste registro.</div>';
+
+  $("sessaoOverlay").classList.add("open");
+}
+function fecharSessao(){$("sessaoOverlay").classList.remove("open");}
+
 function showView(name){
   hideSplash();
   currentView=name;
@@ -1705,9 +2062,14 @@ function showView(name){
   closeMenu();
   const tb=$("tabbar");
   if(tb){
-    tb.classList.toggle("show",["food","progresso","treino","perfil"].includes(name));
-    tb.querySelectorAll("[data-tab]").forEach(b=>b.classList.toggle("on",b.dataset.tab===name));
+    tb.classList.toggle("show",["inicio","food","progresso","treino","perfil"].includes(name));
+    /* Progresso saiu da barra e vive dentro do Início: enquanto ele está aberto,
+       quem fica aceso é o Início, senão nenhuma aba ficaria marcada e a pessoa
+       perderia a referência de onde está. */
+    tb.querySelectorAll("[data-tab]").forEach(b=>b.classList.toggle("on",
+      b.dataset.tab===name||(b.dataset.tab==="inicio"&&name==="progresso")));
   }
+  if(name==="inicio"){render();renderInicio();}
   if(name==="food"){render();if(!isConfigured()&&!promptedSetup){promptedSetup=true;setTimeout(openGoals,150);}}
   if(name==="progresso"){renderGoals();}
   if(name==="treino"){renderTreino();setTimeout(maybeTIntro,250);}
@@ -1715,6 +2077,12 @@ function showView(name){
   window.scrollTo(0,0);
 }
 document.querySelectorAll("#tabbar [data-tab]").forEach(b=>b.onclick=()=>showView(b.dataset.tab));
+document.querySelectorAll("[data-volta]").forEach(b=>b.onclick=()=>showView(b.dataset.volta));
+if($("fdDia"))$("fdDia").onclick=()=>showView("food");
+if($("fdIrProgresso"))$("fdIrProgresso").onclick=()=>showView("progresso");
+if($("fdIrTreino"))$("fdIrTreino").onclick=()=>showView("treino");
+if($("ssFechar"))$("ssFechar").onclick=fecharSessao;
+if($("sessaoOverlay"))$("sessaoOverlay").onclick=e=>{if(e.target===$("sessaoOverlay"))fecharSessao();};
 document.getElementById("tabAdd").onclick=()=>{
   if(currentView!=="food")showView("food");
   const s=$("addCard");
@@ -1791,7 +2159,7 @@ $("taAdd").onclick=()=>{
   const entry={id:uid(),name:c.name,min:c.min,kcal:c.kcal};
   if(c.dist){entry.km=c.km;entry.intens=c.label+" · "+r1(c.speed)+" km/h";}
   tToday().push(entry);
-  save();renderTreino();render();showCongrats("Treino registrado");
+  save();renderTreino();render();renderInicio();showCongrats("Treino registrado");
 };
 
 function renderTreino(){
@@ -1808,7 +2176,7 @@ function renderTreino(){
   $("tCount").textContent=td.length+(td.length===1?" treino":" treinos");
   $("tTodayList").innerHTML=td.length?td.map(w=>`<div class="proto-meal-row"><div><div class="n">${esc(w.name)}</div><div class="m">${r0(w.min)} min${w.km?` · ${r1(w.km)} km`:""} · ${r0(w.kcal)} kcal${w.intens?` · ${w.intens}`:""}${w.rir!=null?` · RIR médio ${w.rir}`:""}${w.vol?` · ${r0(w.vol)} kg movimentados`:""}</div></div><div class="acts"><button class="del" data-tdel="${w.id}">Excluir</button></div></div>`).join(""):'<div class="proto-empty">Nenhum treino registrado hoje.</div>';
   $("tTodayList").querySelectorAll("[data-tdel]").forEach(b=>b.onclick=()=>{
-    store.tdays[todayKey()]=tToday().filter(x=>x.id!==b.dataset.tdel);save();renderTreino();render();
+    store.tdays[todayKey()]=tToday().filter(x=>x.id!==b.dataset.tdel);save();renderTreino();render();renderInicio();
   });
   taPreview();
   renderTVol();
@@ -2568,7 +2936,7 @@ $("trNext").onclick=()=>{
   tToday().push({id:uid(),name:trS.w.nome,min,kcal,vol:Math.round(vol),intens:label,rir:avgTxt!==null?Math.round(avgTxt*10)/10:null,ex:exDetail});
   clearInterval(trInt);stopRest();trS=null;trPersist();tRunOverlay.classList.remove("open");
   audioSession("auto");
-  save();renderTreino();render();
+  save();renderTreino();render();renderInicio();
   showCongrats(`Treino finalizado — ${min} min (${Math.round(workMin)} de esforço) · intensidade ${label} · ${kcal} kcal`);
 };
 $("trQuit").onclick=async()=>{if(await appConfirm("Cancelar o treino em andamento? Nada será registrado.",{okText:"Sim, cancelar",cancelText:"Continuar treino"})){clearInterval(trInt);stopRest();trS=null;trPersist();tRunOverlay.classList.remove("open");audioSession("auto");}};
@@ -3039,9 +3407,9 @@ function routeAfterLogin(){
   if(!user&&cloudEnabled)return;
   fillUser();
   if(userName()&&trRestore())return; // treino em andamento volta exatamente de onde parou
-  if(currentView==="food"||currentView==="treino")return; // already inside app
+  if(["inicio","food","treino"].includes(currentView))return; // já está dentro do app
   if(!userName()){ showView("welcome"); return; }
-  showView("food");
+  showView("inicio");
 }
 $("welcomeGo").onclick=()=>{
   const n=$("welcomeName").value.trim();
@@ -3783,9 +4151,9 @@ $("saveGoals").onclick=()=>{
   const getd=computeGETD(store.goals);
   if(getd>0){store.getd=Math.round(getd);$("getdInput").value=store.getd;}
   save();render();goalsOverlay.classList.remove("open");
-  if(onboarding){onboarding=false;fillUser();showView("food");}
+  if(onboarding){onboarding=false;fillUser();showView("inicio");}
 };
-$("cancelGoals").onclick=()=>{goalsOverlay.classList.remove("open");if(onboarding){onboarding=false;showView("food");}};
+$("cancelGoals").onclick=()=>{goalsOverlay.classList.remove("open");if(onboarding){onboarding=false;showView("inicio");}};
 goalsOverlay.onclick=e=>{if(e.target===goalsOverlay&&!onboarding)goalsOverlay.classList.remove("open");};
 $("editGoals").onclick=openGoals;$("setGoalBtn").onclick=openGoals;
 /* ---- wizard de objetivo ---- */

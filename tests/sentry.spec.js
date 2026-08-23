@@ -159,7 +159,7 @@ test.describe('Monitoramento de erros', () => {
     }));
 
     expect(estado.semSentry, 'a Sentry não deveria ter carregado neste teste').toBe(true);
-    expect(estado.view, 'o app precisa abrir mesmo assim').toBe('view-food');
+    expect(estado.view, 'o app precisa abrir mesmo assim').toBe('view-inicio');
     expect(erros, 'a falha da Sentry não pode virar erro no app').toEqual([]);
   });
 

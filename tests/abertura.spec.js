@@ -42,7 +42,7 @@ test.describe('Abertura', () => {
       view: document.querySelector('.view.on')?.id,
     }));
 
-    expect(estado.view, 'o app deveria ter aberto').toBe('view-food');
+    expect(estado.view, 'o app deveria ter aberto').toBe('view-inicio');
     expect(estado.splash, 'a abertura precisa sumir do documento').toBe(false);
     expect(erros).toEqual([]);
   });
@@ -72,7 +72,7 @@ test.describe('Abertura', () => {
 
     // e sai quando o login enfim responde
     await page.waitForFunction(() => !document.getElementById('splash'), null, { timeout: 15000 });
-    expect(await page.evaluate(() => document.querySelector('.view.on')?.id)).toBe('view-food');
+    expect(await page.evaluate(() => document.querySelector('.view.on')?.id)).toBe('view-inicio');
   });
 
   test('avisa quando a espera se arrasta, em vez de fingir que está tudo bem', async ({ page }) => {
