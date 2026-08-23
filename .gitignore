@@ -17,3 +17,8 @@ android/.gradle/
 android/build/
 android/app/build/
 android/local.properties
+
+# Chave de assinatura do APK. Ela vive em segredos do repositório, nunca aqui:
+# quem tem a chave assina um APK que o Android aceita como atualização deste.
+*.jks
+*.keystore
