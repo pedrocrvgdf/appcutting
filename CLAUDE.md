@@ -351,10 +351,42 @@ const appNativo = !!(window.TResults && window.TResults.disponivel());
 disputando. Existe teste para cada um desses (`tests/app-nativo.spec.js`), e o
 último deles garante que no navegador comum tudo continua como era.
 
-O APK é montado pelo GitHub Actions (`.github/workflows/apk.yml`) e baixado pela
-aba **Actions** — não é preciso instalar o Android Studio. É um APK de
-depuração, assinado com a chave de teste: instala por "fontes desconhecidas" e
-serve para uso pessoal, não para a Play Store.
+#### Como o APK chega ao celular
+
+O APK é montado pelo GitHub Actions (`.github/workflows/apk.yml`) — não é preciso
+instalar o Android Studio. O fluxo tem dois caminhos:
+
+| | O que roda | Para quê |
+|---|---|---|
+| Pull request | `assembleDebug`, artefato | conferir que o Kotlin compila |
+| Push na `main` | `assembleRelease` assinado, **Release publicada** | é de onde o celular se atualiza |
+
+**A chave de assinatura é fixa e vive em segredos do repositório**
+(`ANDROID_KEYSTORE_BASE64` e `ANDROID_KEYSTORE_SENHA`), nunca no git — há
+`*.jks` no `.gitignore` para isso. Antes ela não existia: o Gradle inventava uma
+chave de depuração a cada execução, e como cada execução roda numa máquina nova,
+**cada build saía com uma chave diferente**. O Android recusa instalar por cima
+de um app assinado por outra chave, então atualizar exigia desinstalar — e
+desinstalar apaga o armazenamento do WebView: treino em andamento, tema e a
+senha guardada da digital iam junto.
+
+Regras que o fluxo cobra sozinho:
+
+- **Suba `versionCode` e `versionName`** a cada mudança em `android/`. A Release
+  é etiquetada `v{versionName}+{versionCode}`, e etiqueta repetida **falha o
+  build** de propósito: publicar por cima faria o celular de quem já atualizou
+  achar que está em dia rodando código antigo.
+- Se a assinatura não pegar, o Gradle não reclama — ele só nomeia o arquivo
+  `-unsigned` e segue. Existe conferência para isso, porque quem reclamaria
+  seria o celular, tarde demais.
+
+No celular, quem busca a Release e instala sozinho é o **Obtainium**, apontado
+para `github.com/pedrocrvgdf/appcutting`. Nada disso passa pela Play Store.
+
+**Lembre-se de que quase nenhuma mudança precisa de APK novo.** A tela vem do
+GitHub Pages e se atualiza sozinha; o APK só muda quando muda a parte nativa —
+temporizador na barra, alarme, ou o atalho da digital. Por isso o fluxo só roda
+quando `android/**` muda.
 
 #### Duas armadilhas que já custaram um teste em celular real
 

@@ -1,8 +1,16 @@
 name: APK do Android
 
-# Monta o app Android e deixa o arquivo pronto para baixar.
+# Monta o app Android e publica em Releases, para o celular se atualizar sozinho.
+#
 # Existe porque o T-RESULTS é mantido pelo navegador: sem isto seria preciso
 # instalar o Android Studio só para gerar o APK.
+#
+# Dois caminhos, de propósito:
+#
+# - pull request (ou repositório sem a chave): monta só o APK de depuração. Serve
+#   como conferência de que o Kotlin compila, que é o que o PR precisa saber.
+# - push na main com a chave configurada: monta o APK assinado com a chave fixa e
+#   publica como Release. É de lá que o celular busca a atualização.
 
 on:
   push:
@@ -15,6 +23,9 @@ on:
       - 'android/**'
       - '.github/workflows/apk.yml'
   workflow_dispatch:        # botão "Run workflow" na aba Actions
+
+permissions:
+  contents: write           # necessário para criar a Release
 
 jobs:
   apk:
@@ -42,14 +53,125 @@ jobs:
         with:
           gradle-version: '8.11.1'
 
-      - name: Montar
+      # A versão do app decide o nome da Release. Ler do build.gradle.kts evita
+      # que ela e a etiqueta se desencontrem.
+      - name: Ler a versão do app
+        id: versao
+        run: |
+          set -euo pipefail
+          ARQ=android/app/build.gradle.kts
+          NOME=$(grep -oP 'versionName\s*=\s*"\K[^"]+' "$ARQ")
+          CODIGO=$(grep -oP 'versionCode\s*=\s*\K\d+' "$ARQ")
+          if [ -z "$NOME" ] || [ -z "$CODIGO" ]; then
+            echo "::error::não achei versionName/versionCode em $ARQ"; exit 1
+          fi
+          echo "nome=$NOME"       >> "$GITHUB_OUTPUT"
+          echo "codigo=$CODIGO"   >> "$GITHUB_OUTPUT"
+          echo "tag=v$NOME+$CODIGO" >> "$GITHUB_OUTPUT"
+          echo "Versão $NOME (código $CODIGO)"
+
+      - name: Ver se a chave de assinatura está configurada
+        id: chave
+        env:
+          ARQUIVO: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$ARQUIVO" ]; then echo "tem=sim" >> "$GITHUB_OUTPUT"; else echo "tem=nao" >> "$GITHUB_OUTPUT"; fi
+
+      # -------- Sem chave: só conferir que compila --------
+
+      - name: Montar (depuração)
+        if: steps.chave.outputs.tem == 'nao' || github.event_name == 'pull_request'
         working-directory: android
         run: gradle assembleDebug --no-daemon --stacktrace
 
-      - name: Guardar o APK para download
+      - name: Guardar o APK de depuração
+        if: steps.chave.outputs.tem == 'nao' || github.event_name == 'pull_request'
         uses: actions/upload-artifact@v7
         with:
-          name: T-RESULTS-apk
+          name: T-RESULTS-apk-depuracao
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 90
+
+      # -------- Com chave: montar assinado e publicar --------
+
+      # Etiqueta repetida significa que a versão não subiu. Publicar por cima
+      # faria o celular de quem já atualizou achar que está em dia enquanto roda
+      # código antigo — falhar aqui é mais honesto.
+      - name: Conferir que a versão subiu
+        if: steps.chave.outputs.tem == 'sim' && github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.versao.outputs.tag }}
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::a Release $TAG já existe. Suba versionCode e versionName em android/app/build.gradle.kts antes de publicar de novo."
+            exit 1
+          fi
+
+      - name: Recompor a chave
+        if: steps.chave.outputs.tem == 'sim' && github.event_name != 'pull_request'
+        env:
+          BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          echo "$BASE64" | base64 -d > "$RUNNER_TEMP/tresults.jks"
+          test -s "$RUNNER_TEMP/tresults.jks"
+
+      - name: Montar (assinado)
+        if: steps.chave.outputs.tem == 'sim' && github.event_name != 'pull_request'
+        working-directory: android
+        env:
+          CHAVE_ARQUIVO: ${{ runner.temp }}/tresults.jks
+          CHAVE_SENHA: ${{ secrets.ANDROID_KEYSTORE_SENHA }}
+          CHAVE_ALIAS: tresults
+        run: gradle assembleRelease --no-daemon --stacktrace
+
+      # Um APK sem assinatura instala em ninguém. Se a configuração não pegou, o
+      # Gradle não reclama — quem reclama é o celular, tarde demais.
+      - name: Conferir que o APK saiu assinado
+        if: steps.chave.outputs.tem == 'sim' && github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          APK=$(ls android/app/build/outputs/apk/release/*.apk | head -1)
+
+          # Quando a configuração de assinatura não pega, o Gradle não reclama:
+          # ele só nomeia o arquivo "-unsigned" e segue. Quem reclamaria seria o
+          # celular, tarde demais. Esta conferência não depende de ferramenta
+          # nenhuma estar instalada.
+          case "$APK" in
+            *unsigned*) echo "::error::o APK saiu SEM assinatura ($APK). Confira os segredos ANDROID_KEYSTORE_BASE64 e ANDROID_KEYSTORE_SENHA."; exit 1 ;;
+          esac
+
+          # E, se o apksigner estiver por perto, mostra a impressão digital do
+          # certificado — é ela que precisa ser sempre a mesma entre versões.
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          ASSINADOR=$(ls "$SDK"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1 || true)
+          if [ -n "$ASSINADOR" ]; then
+            "$ASSINADOR" verify --print-certs "$APK" | grep -i 'SHA-256 digest' || true
+          else
+            echo "apksigner não encontrado; ficou só a conferência pelo nome do arquivo"
+          fi
+
+          echo "APK_CAMINHO=$APK" >> "$GITHUB_ENV"
+
+      - name: Apagar a chave do disco
+        if: always()
+        run: rm -f "$RUNNER_TEMP/tresults.jks"
+
+      - name: Publicar a Release
+        if: steps.chave.outputs.tem == 'sim' && github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.versao.outputs.tag }}
+          name: T-RESULTS ${{ steps.versao.outputs.nome }}
+          files: ${{ env.APK_CAMINHO }}
+          body: |
+            App Android do T-RESULTS, versão ${{ steps.versao.outputs.nome }}.
+
+            A tela do app vem do GitHub Pages e se atualiza sozinha. Este APK só
+            muda quando muda a parte nativa: o temporizador na barra, o alarme
+            que sobrepõe a música, ou o atalho da digital.
+
+            Instala por cima da versão anterior, sem desinstalar e sem perder
+            nada.
