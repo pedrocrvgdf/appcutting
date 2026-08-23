@@ -15,8 +15,9 @@ object Ajustes {
 
     private const val ARQUIVO = "tresults"
     private const val SOM = "som_alarme"
-    private const val BIOMETRIA = "biometria"
     private const val VOLUME = "volume_alarme"
+    /** Chave da trava de abertura, que deixou de existir. Ver `limparHeranca`. */
+    private const val BIOMETRIA_ANTIGA = "biometria"
 
     /** Alarme mudo não é alarme; por isso o mínimo não é zero. */
     const val VOLUME_MINIMO = 10
@@ -66,9 +67,15 @@ object Ajustes {
         prefs(ctx).edit().putInt(VOLUME, v.coerceIn(VOLUME_MINIMO, 100)).apply()
     }
 
-    fun biometriaAtiva(ctx: Context): Boolean = prefs(ctx).getBoolean(BIOMETRIA, false)
-
-    fun definirBiometria(ctx: Context, ativa: Boolean) {
-        prefs(ctx).edit().putBoolean(BIOMETRIA, ativa).apply()
+    /**
+     * A digital travava a abertura do app; hoje ela entra na conta (ver
+     * `Credencial`). O interruptor antigo não tem para onde migrar — a senha
+     * nunca foi guardada, e sem ela não há atalho a criar. Some a chave para
+     * ninguém depois achar que ela ainda decide alguma coisa.
+     */
+    fun limparHeranca(ctx: Context) {
+        if (prefs(ctx).contains(BIOMETRIA_ANTIGA)) {
+            prefs(ctx).edit().remove(BIOMETRIA_ANTIGA).apply()
+        }
     }
 }

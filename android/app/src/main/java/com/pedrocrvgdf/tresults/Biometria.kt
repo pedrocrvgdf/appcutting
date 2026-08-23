@@ -1,66 +1,70 @@
 package com.pedrocrvgdf.tresults
 
 import android.content.Context
-import android.os.Build
 import androidx.biometric.BiometricManager
-import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK
-import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
+import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
 import androidx.biometric.BiometricPrompt
 import androidx.fragment.app.FragmentActivity
 
 /**
- * A trava por digital.
+ * A digital, usada para entrar na conta.
  *
- * O app guarda peso, medidas e alimentação. Quem pega o celular emprestado não
- * precisa ver nada disso.
+ * **O que ela é e o que não é:** ela não substitui a sessão do Firebase, que
+ * continua sendo quem guarda o acesso aos dados na nuvem. Ela destrava a senha
+ * guardada neste aparelho (ver `Credencial`) para o login acontecer sem
+ * digitação.
  *
- * **O que ela é e o que não é:** ela protege a *abertura do app*, não a conta.
- * A sessão do Firebase continua sendo o que guarda o acesso aos dados na nuvem;
- * isto aqui evita que alguém com o celular na mão abra e leia.
+ * Aqui é `BIOMETRIC_STRONG` sozinho, sem PIN como alternativa, e isso é
+ * deliberado: só a biometria de classe 3 pode destravar uma chave do Keystore, e
+ * `CryptoObject` com credencial de aparelho só é aceito do Android 11 para
+ * cima. Aceitar biometria fraca aqui daria um prompt que sempre falharia na hora
+ * de decifrar. Quem não confirma continua com a senha, que nunca deixa de ser
+ * uma saída — por isso o botão negativo se chama "Usar a senha".
  */
 object Biometria {
 
-    /* PIN e padrão entram junto com a digital de propósito: digital que falha
-       sem alternativa tranca a pessoa fora do próprio app. Abaixo do Android 11
-       essa combinação não é aceita, e aí fica só a biometria. */
-    private val tipos: Int
-        get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            BIOMETRIC_WEAK or DEVICE_CREDENTIAL
-        } else {
-            BIOMETRIC_WEAK
-        }
-
     fun disponivel(ctx: Context): Boolean = try {
-        BiometricManager.from(ctx).canAuthenticate(tipos) == BiometricManager.BIOMETRIC_SUCCESS
+        BiometricManager.from(ctx).canAuthenticate(BIOMETRIC_STRONG) ==
+            BiometricManager.BIOMETRIC_SUCCESS
     } catch (e: Exception) {
         false
     }
 
-    fun pedir(act: FragmentActivity, aoLiberar: () -> Unit, aoFalhar: () -> Unit) {
+    fun pedir(
+        act: FragmentActivity,
+        subtitulo: String,
+        crypto: BiometricPrompt.CryptoObject,
+        aoLiberar: (BiometricPrompt.AuthenticationResult) -> Unit,
+        aoFalhar: () -> Unit
+    ) {
         val prompt = BiometricPrompt(
             act,
-            ContextCompatExecutor(act),
+            ExecutorNoFioPrincipal(act),
             object : BiometricPrompt.AuthenticationCallback() {
-                override fun onAuthenticationSucceeded(r: BiometricPrompt.AuthenticationResult) = aoLiberar()
+                override fun onAuthenticationSucceeded(r: BiometricPrompt.AuthenticationResult) =
+                    aoLiberar(r)
+
+                /* Só o erro encerra o prompt. `onAuthenticationFailed` é um dedo
+                   que não bateu, e o prompt segue aberto para nova tentativa —
+                   tratá-lo como falha fecharia o fluxo no primeiro deslize. */
                 override fun onAuthenticationError(codigo: Int, msg: CharSequence) = aoFalhar()
             }
         )
 
         val info = BiometricPrompt.PromptInfo.Builder()
             .setTitle("T-RESULTS")
-            .setSubtitle("Confirme que é você para abrir")
-            .setAllowedAuthenticators(tipos)
-            .apply {
-                // sem PIN como alternativa, o diálogo exige um botão de saída
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) setNegativeButtonText("Cancelar")
-            }
+            .setSubtitle(subtitulo)
+            .setAllowedAuthenticators(BIOMETRIC_STRONG)
+            .setNegativeButtonText("Usar a senha")
+            .setConfirmationRequired(false)
             .build()
 
-        try { prompt.authenticate(info) } catch (e: Exception) { aoFalhar() }
+        try { prompt.authenticate(info, crypto) } catch (e: Exception) { aoFalhar() }
     }
 }
 
 /** Executor no fio principal, sem trazer dependência só para isto. */
-private class ContextCompatExecutor(private val act: FragmentActivity) : java.util.concurrent.Executor {
+private class ExecutorNoFioPrincipal(private val act: FragmentActivity) :
+    java.util.concurrent.Executor {
     override fun execute(comando: Runnable) { act.runOnUiThread(comando) }
 }

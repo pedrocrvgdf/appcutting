@@ -22,6 +22,9 @@ window.__t={
   ALARM_DUR, ALARM_CICLO, restTick, ALARM_SONS,
   somDoAlarme:()=>somDoAlarme(),
   appNativo:()=>appNativo,
+  /* Trocar quem está logado, para alcançar o modo local — onde não há conta e
+     portanto não há senha a conferir. */
+  setUser:u=>{user=u;},
   alarmNodesLen:()=>alarmNodes.length,
   setRestEnd:v=>{trRestEnd=v;},
   forcarFimDoDescanso:()=>{trRestEnd=Date.now();restTick();},
@@ -71,13 +74,40 @@ const urlApp = () => 'file://' + COPIA;
 const FB_APP = `export function initializeApp(){return {};}`;
 const FB_AUTH = `
 export function getAuth(){return {};}
-export function onAuthStateChanged(a,fn){setTimeout(()=>fn({uid:"u1",email:"teste@t-results.app"}),20);}
-export function signInWithEmailAndPassword(){return Promise.resolve();}
+/* window.__semLogin (posto por addInitScript) começa a sessão deslogada, para
+   dar acesso à tela de entrada; sem ele o app entra sozinho, como antes. */
+let aoMudar=null;
+export function onAuthStateChanged(a,fn){
+  aoMudar=fn;
+  setTimeout(()=>fn(window.__semLogin?null:{uid:"u1",email:"teste@t-results.app"}),20);
+}
+export function signInWithEmailAndPassword(a,email,senha){
+  window.__logins=window.__logins||[];
+  window.__logins.push({email,senha});
+  if(window.__senhaCerta!==undefined&&senha!==window.__senhaCerta){
+    const e=new Error("senha incorreta");e.code="auth/invalid-credential";
+    return Promise.reject(e);
+  }
+  window.__semLogin=false;
+  if(aoMudar)setTimeout(()=>aoMudar({uid:"u1",email:email||"teste@t-results.app"}),5);
+  return Promise.resolve();
+}
 export function createUserWithEmailAndPassword(){return Promise.resolve();}
 export function signOut(){return Promise.resolve();}
 export function sendPasswordResetEmail(){return Promise.resolve();}
-export const EmailAuthProvider={credential:()=>({})};
-export function reauthenticateWithCredential(){return Promise.resolve();}
+export const EmailAuthProvider={credential:(email,senha)=>({email,senha})};
+/* Registra o que foi conferido em window.__reauth. Enquanto window.__senhaCerta
+   não for definida, aceita qualquer senha — é o comportamento que os testes
+   antigos esperam; definindo, dá para provar que senha errada não apaga nada. */
+export function reauthenticateWithCredential(user,cred){
+  window.__reauth=window.__reauth||[];
+  window.__reauth.push(cred);
+  if(window.__senhaCerta!==undefined&&(!cred||cred.senha!==window.__senhaCerta)){
+    const e=new Error("senha incorreta");e.code="auth/invalid-credential";
+    return Promise.reject(e);
+  }
+  return Promise.resolve();
+}
 export function deleteUser(){return Promise.resolve();}`;
 /* Chamadas às Cloud Functions ficam registradas em window.__fnCalls, e a
    resposta de cada uma vem de window.__fnRespostas. Sem resposta definida, a

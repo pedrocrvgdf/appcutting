@@ -110,16 +110,42 @@ class PonteWeb(private val act: Activity) {
         Ajustes.definirVolume(act, v)
     }
 
-    /* ---------------- Biometria ---------------- */
+    /* ---------------- Entrar com a digital ----------------
+
+       As duas operações abaixo são assíncronas de verdade: elas abrem o prompt
+       do sistema e só respondem quando a pessoa encosta o dedo. Por isso não
+       devolvem valor — respondem chamando `window.__digital` de volta na
+       página, com `{acao, ok, ...}`. */
 
     @JavascriptInterface
-    fun biometriaDisponivel(): Boolean = Biometria.disponivel(act)
+    fun digitalDisponivel(): Boolean = Biometria.disponivel(act)
+
+    /** Existe senha guardada neste aparelho para a conta que está logada? */
+    @JavascriptInterface
+    fun atalhoAtivo(): Boolean = Credencial.existe(act)
+
+    /**
+     * Este e-mail é o do atalho guardado?
+     *
+     * A página pergunta em vez de pedir o e-mail salvo, de propósito: assim o
+     * endereço de quem estava logado nunca é exibido para quem pegou o celular.
+     */
+    @JavascriptInterface
+    fun atalhoConfere(email: String?): Boolean =
+        Credencial.existe(act) && Credencial.confere(act, email)
 
     @JavascriptInterface
-    fun biometriaAtiva(): Boolean = Ajustes.biometriaAtiva(act)
+    fun guardarAtalho(email: String?, senha: String?) {
+        act.runOnUiThread { (act as? MainActivity)?.guardarAtalho(email, senha) }
+    }
 
     @JavascriptInterface
-    fun definirBiometria(ativa: Boolean) {
-        Ajustes.definirBiometria(act, ativa)
+    fun entrarComDigital(email: String?) {
+        act.runOnUiThread { (act as? MainActivity)?.entrarComDigital(email) }
+    }
+
+    @JavascriptInterface
+    fun esquecerAtalho() {
+        Credencial.esquecer(act)
     }
 }
