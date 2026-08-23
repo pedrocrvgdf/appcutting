@@ -111,6 +111,51 @@ O T-RESULTS é um **app**, não um site. Ele precisa se comportar como tal.
   via `hideSplash()` — se você criar outro caminho que abre uma tela, chame
   `hideSplash()` nele também, senão o app fica preso na abertura.
 
+### Números na tela são em português
+
+Casa decimal se escreve com **vírgula**. Existe `kgTxt(v)` para isso: arredonda
+para uma casa e troca o ponto pela vírgula, **sem forçar decimal** — 5 km sai
+"5", 7,5 km sai "7,5". `r1()` devolve um número cru e escreve `42.5` com ponto:
+use-o para contas, nunca direto no HTML. Já apareceram com ponto o peso das
+séries, a diferença de carga e a distância do cardio; hoje há teste para os três
+(`tests/feed.spec.js`).
+
+### A aba Início e o feed
+
+O Início é a tela de entrada (`showView("inicio")`). Ele reúne três coisas:
+
+- **o saldo do dia**, que leva para a Alimentação ao toque (`#fdDia`)
+- **os atalhos** para Progresso (`#fdIrProgresso`) e para treinar
+- **o feed**, o histórico das sessões já feitas, da mais recente para a mais
+  antiga (`renderInicio()`)
+
+O **Progresso saiu da barra de abas** e vive dentro do Início. Por isso a aba
+"Início" continua acesa enquanto o Progresso está aberto, e a tela tem um
+`[data-volta]` que devolve para o Início — se esse botão quebrar, a tela some do
+app. Existe teste para isso.
+
+Cada cartão do feed abre no próprio lugar (`data-fdtoggle`) e, dentro dele, há
+"Ver a sessão inteira" (`data-fdver`), que abre `#sessaoOverlay` com todas as
+séries e a comparação com a vez anterior.
+
+Cuidados ao mexer aqui:
+
+- **A progressão compara com a sessão anterior do mesmo treino**, não com a
+  anterior no tempo. Ela é calculada sobre `fdTodas()` — a lista **inteira** —
+  e não sobre as 60 mostradas: senão a 61ª sessão se anunciaria "primeira vez"
+  e a pessoa acharia que o app perdeu o histórico dela.
+- **Sem sessão anterior o selo diz "primeira vez"**, nunca "0%" — inventar um
+  número é pior que omitir. Queda de carga aparece como queda; esconder seria
+  mentir para quem usa o app justamente para progredir.
+- **Registro manual (cardio) não tem `ex` nem `vol`.** Todo caminho do feed
+  precisa aguentar isso sem quebrar.
+- **Chame `renderInicio()` sempre que o histórico mudar** — ao salvar um treino,
+  ao apagar um, e no lançamento manual. Sem isso o feed fica desatualizado até
+  a próxima troca de aba.
+- Nas três colunas de números, o valor é empurrado para baixo
+  (`margin-top:auto`) porque "Duração (min)" quebra em duas linhas e
+  "Gasto (kcal)" não — sem isso os números ficam em alturas diferentes.
+
 ---
 
 ## 5. Testes — rode antes de entregar
@@ -146,6 +191,10 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 | `tests/alarme-descanso.spec.js` | Tela do alarme, interrupção da música, insistência, permissão |
 | `tests/abertura.spec.js` | Splash, avisos de espera, instalação como app |
 | `tests/push.spec.js` | Aviso com o app fechado, e o app funcionando sem ele |
+| `tests/feed.spec.js` | Feed do Início: ordem, progressão, cartão que expande, sessão inteira, vírgula decimal |
+| `tests/perfil.spec.js` | Som do alarme e trava por digital, no app Android e no navegador |
+| `tests/app-nativo.spec.js` | Caminho web desligado quando o app Android está presente |
+| `tests/service-worker.spec.js` | Cache do app, versão, e a página de diagnóstico |
 | `tests/app.js` | Utilitários: Firebase falso, estado inicial, atalhos de navegação |
 
 Os testes carregam uma **cópia instrumentada** do `index.html` (gerada em

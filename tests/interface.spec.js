@@ -86,7 +86,7 @@ test.describe('Comportamento de app', () => {
     const erros = await abrirApp(page, estadoBase());
     await page.waitForTimeout(600);
     expect(erros).toEqual([]);
-    expect(await page.evaluate(() => document.querySelector('.view.on')?.id)).toBe('view-food');
+    expect(await page.evaluate(() => document.querySelector('.view.on')?.id)).toBe('view-inicio');
   });
 });
 
@@ -175,6 +175,21 @@ for (const largura of [390, 320]) {
       await abrirApp(page, estadoBase());
       await apertarOTexto(page);
       expect(await cortados(page, '.datenav .chip, .ringstats > div > *')).toEqual([]);
+    });
+
+    test('o feed do Início não corta os números das sessões', async ({ page }) => {
+      /* A unidade saiu do valor para o rótulo justamente porque "310 kcal" não
+         cabia em 320px e era cortado no meio. */
+      await abrirApp(page, estadoBase({ tdays: { [require('./app').diaISO(0)]: [{
+        id: 'x1', name: 'Treino de peito e tríceps', min: 128, kcal: 1450, vol: 18750,
+        intens: 'intensa', rir: 1,
+        ex: [{ n: 'Supino inclinado com halteres', g: 'peito', sec: [], sets: [{ kg: 42.5, rep: 10, rir: 1 }] }],
+      }] } }));
+      await page.addStyleTag({ content: '*{letter-spacing:.06em !important}' });
+      await page.waitForTimeout(120);
+
+      expect(await cortados(page, '#fdFeed .fd-stat .v, #fdFeed .fd-nome .n, .fd-tx .fd-v, .fd-tx .fd-m'),
+        'número cortado no feed é o defeito que o dono reclamou nos macros').toEqual([]);
     });
 
     test('nenhuma tela rola para o lado', async ({ page }) => {
