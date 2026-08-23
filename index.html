@@ -17,7 +17,7 @@
 <title>T - Results</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
 <script>(function(){try{var t=localStorage.getItem("tresults.theme");var d=(t==="dark")||(t!=="light"&&window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches);if(d)document.documentElement.setAttribute("data-theme","dark");}catch(e){}})();</script>
 
 <!-- ==================== MONITORAMENTO DE ERROS (Sentry) ====================
@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v16";
+window.APP_RELEASE = "tresults-v17";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -99,19 +99,30 @@ window.APP_RELEASE = "tresults-v16";
      tudo: `--traco` é o contorno dos componentes e `--line` continua sendo o
      divisor fino. São coisas diferentes — se virarem uma só, cada separador de
      lista vira uma tarja preta e a tela fica ilegível. */
+  /* Direção "soft": sem contorno, sombra difusa e canto grande.
+     Quem separa um cartão do fundo aqui é a sombra, não uma linha — por isso
+     o fundo é levemente esverdeado em vez de branco: sombra sobre branco puro
+     some, e os cartões pareceriam flutuar sem chão. */
   :root{
-    --bg:#FFF6E5; --surface:#FFFFFF; --ink:#14201C; --muted:#6B7B74;
-    --line:#EDE4D2; --traco:#14201C;
+    --bg:#F4F9F6; --surface:#FFFFFF; --ink:#2C3A34; --muted:#7C8C85;
+    --line:#EAF4EF;
     --primary:#0E7C6B; --primary-08:rgba(14,124,107,.10);
-    --primary-14:rgba(14,124,107,.18); --warn:#D8452B; --sched:#64748B;
-    --ok:#16A34A; --amber:#D97706; --water:#2563EB;
-    --mp:#0E7C6B; --mc:#4FB3A0; --mg:#A8DCD1;
-    --shadow:0 1px 2px rgba(21,32,29,.05), 0 8px 24px rgba(21,32,29,.05);
-    --dura:4px 4px 0 var(--traco);
-    --dura-sm:3px 3px 0 var(--traco);
+    --primary-14:rgba(14,124,107,.18); --warn:#D8452B; --sched:#7C8C85;
+    --ok:#3F8A6B; --amber:#9B7A28; --water:#4FB3A0;
+    /* Os macros ficam na família do verde da marca, e não em cores diversas:
+       o que distingue um do outro é o tom, do mais claro ao mais fundo. */
+    --mp:#6FC49C; --mc:#4FB3A0; --mg:#0E7C6B;
+    --mp-bg:#DDF3E7; --mc-bg:#CFEBE1; --mg-bg:#C2E4DA;
+    --agua-bg:#D6EFEA; --agua:#4FB3A0; --agua-ink:#1F5F52;
+    --selo-bg:#DDF3E7; --selo-ink:#14483A;
+    --macro-ink:#3F8A6B; --macro-num:#14483A;
+    --anel:#8FD9C2; --anel-tri:#EAF4EF;
+    --shadow:0 6px 20px rgba(14,124,107,.08);
+    --sombra:0 10px 30px rgba(14,124,107,.10);
+    --sombra-sm:0 5px 16px rgba(14,124,107,.08);
     --mono:ui-monospace,"SF Mono","Roboto Mono",Menlo,Consolas,monospace;
-    --sans:'Nunito',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
-    --display:'Baloo 2','Nunito',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    --sans:'Quicksand',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    --display:'Quicksand',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
     --mmhl:#0E7C6B;
     color-scheme:only light;
   }
@@ -121,13 +132,22 @@ window.APP_RELEASE = "tresults-v16";
      contraste entre elas que faz o traço aparecer. Fundo escuro com contorno
      escuro apagaria o desenho inteiro. */
   html[data-theme="dark"]{
-    --bg:#17211D; --surface:#26332C; --ink:#F2EFE4; --muted:#9DAAA3;
-    --line:#33443B; --traco:#000000;
+    --bg:#141C19; --surface:#1E2A25; --ink:#E8F0EC; --muted:#8FA39A;
+    --line:#2A3A33;
     --primary:#2FB39A; --primary-08:rgba(47,179,154,.16);
-    --primary-14:rgba(47,179,154,.26); --warn:#FF7A59; --sched:#8B98A5;
-    --ok:#34D399; --amber:#F5A623; --water:#5B9DF7;
-    --mp:#2FB39A; --mc:#6FD4BF; --mg:#A9E7D8;
-    --shadow:0 1px 2px rgba(0,0,0,.25), 0 8px 24px rgba(0,0,0,.25);
+    --primary-14:rgba(47,179,154,.26); --warn:#FF7A59; --sched:#8FA39A;
+    --ok:#34D399; --amber:#F5A623; --water:#2FB39A;
+    --mp:#6FD4BF; --mc:#3FC4A8; --mg:#2FB39A;
+    --mp-bg:#24382F; --mc-bg:#22423A; --mg-bg:#1F4A40;
+    --agua-bg:#1F3F3A; --agua:#3FC4A8; --agua-ink:#BEEBDF;
+    --selo-bg:#1F4A40; --selo-ink:#8FD9C2;
+    --macro-ink:#9FBCB0; --macro-num:#E8F0EC;
+    --anel:#3FC4A8; --anel-tri:#2A3A33;
+    /* No escuro a sombra colorida não aparece: quem separa o cartão do fundo
+       passa a ser o próprio tom da superfície, mais claro que o fundo. */
+    --shadow:0 6px 20px rgba(0,0,0,.35);
+    --sombra:0 10px 30px rgba(0,0,0,.38);
+    --sombra-sm:0 5px 16px rgba(0,0,0,.30);
     --mmhl:#3EE6B0;
     color-scheme:dark;
   }
@@ -208,7 +228,7 @@ window.APP_RELEASE = "tresults-v16";
   }
   .view{display:none}
   .view.on{display:block}
-  .in{width:100%;padding:12px;border:2.5px solid var(--traco);border-radius:13px;background:var(--surface);color:var(--ink);font-weight:700;outline:none}
+  .in{width:100%;padding:12px;border:0;border-radius:13px;background:var(--surface);color:var(--ink);font-weight:700;outline:none}
   .in:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-14)}
   label.lbl{display:block;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 5px 2px}
   .dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
@@ -263,7 +283,7 @@ window.APP_RELEASE = "tresults-v16";
   #view-choice{min-height:100vh;min-height:100svh;display:none;flex-direction:column;padding:0 16px calc(24px + env(safe-area-inset-bottom))}
   #view-choice.on{display:flex}
   .choice-top{padding:20px 0 4px;max-width:440px;width:100%;margin:0 auto}
-  .account{display:flex;align-items:center;gap:12px;background:var(--surface);border:3px solid var(--traco);border-radius:18px;padding:11px 12px;box-shadow:var(--dura-sm)}
+  .account{display:flex;align-items:center;gap:12px;background:var(--surface);border:0;border-radius:18px;padding:11px 12px;box-shadow:var(--sombra-sm)}
   .account .avatar{width:38px;height:38px;border-radius:11px;flex:none;background:var(--primary-08);display:flex;align-items:center;justify-content:center}
   .account .avatar svg{width:20px;height:20px;stroke:var(--primary);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   .account .info{flex:1;min-width:0;display:flex;flex-direction:column}
@@ -323,12 +343,12 @@ window.APP_RELEASE = "tresults-v16";
 
   /* ============ APP ALIMENTAÇÃO (igual antes) ============ */
   .date{font-size:13px;color:var(--muted);font-family:var(--mono)}
-  .hero{background:var(--surface);border:3px solid var(--traco);border-radius:22px;padding:20px;box-shadow:var(--dura);position:relative;overflow:hidden}
+  .hero{background:var(--surface);border:0;border-radius:30px;padding:20px;box-shadow:var(--sombra);position:relative;overflow:hidden}
   .hero .toplabel{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
   .datenav{display:flex;align-items:center;gap:8px;margin:0 2px 12px}
   .datenav .date{flex:0 0 auto;margin:0}
-  .datenav button{background:var(--surface);border:2.5px solid var(--traco);border-radius:11px;width:36px;height:36px;font-size:20px;line-height:1;color:var(--ink);display:flex;align-items:center;justify-content:center;flex:0 0 auto;box-shadow:var(--dura-sm)}
-  .datenav button:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--traco)}
+  .datenav button{background:var(--surface);border:0;border-radius:14px;width:36px;height:36px;font-size:20px;line-height:1;color:var(--ink);display:flex;align-items:center;justify-content:center;flex:0 0 auto;box-shadow:var(--sombra-sm)}
+  .datenav button:active{transform:scale(.97);box-shadow:var(--sombra-sm)}
   .datenav .chip{width:auto;padding:0 13px;height:36px;font-size:12.5px;font-weight:800;color:var(--primary)}
   .datenav .hist{margin-left:auto}
   .hist-row{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;text-align:left;background:var(--bg);border:1px solid var(--line);border-radius:11px;padding:11px 13px;margin-bottom:8px}
@@ -354,7 +374,7 @@ window.APP_RELEASE = "tresults-v16";
   .bar>span{display:block;height:100%;background:var(--primary);border-radius:99px;transition:width .25s ease}
   .hero.over .bar>span{background:var(--warn)}
   .macros{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
-  .macro{background:var(--bg);border:2.5px solid var(--traco);border-radius:14px;padding:9px 8px;text-align:center}
+  .macro{background:var(--bg);border:0;border-radius:14px;padding:9px 8px;text-align:center}
   .macro .k{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:800}
   .macro .v{font-size:17px;font-weight:800;font-family:var(--mono);margin-top:2px}
   .macro .v small{font-size:11px;color:var(--muted);font-weight:600}
@@ -362,7 +382,7 @@ window.APP_RELEASE = "tresults-v16";
   .getd input{width:66px;padding:4px 6px;border:1px solid var(--line);border-radius:8px;text-align:right;font-family:var(--mono);font-weight:700;color:var(--ink);background:var(--surface)}
   .sec{margin-top:22px}
   .sec-title{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-  .card{background:var(--surface);border:3px solid var(--traco);border-radius:20px;padding:15px;box-shadow:var(--dura)}
+  .card{background:var(--surface);border:0;border-radius:26px;padding:15px;box-shadow:var(--sombra)}
   .field{position:relative}
   .row{display:flex;gap:10px}.row>*{flex:1}
   .drop{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:30;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);max-height:260px;overflow:auto;display:none}
@@ -380,20 +400,20 @@ window.APP_RELEASE = "tresults-v16";
   .picked.show{display:flex}
   .picked .n{font-size:13px;font-weight:700}.picked .m{font-size:11px;color:var(--muted);font-family:var(--mono)}
   .picked button{color:var(--muted);font-size:18px;line-height:1;padding:2px 4px}
-  .seg{display:flex;background:var(--bg);border:2.5px solid var(--traco);border-radius:14px;padding:3px;gap:3px}
+  .seg{display:flex;background:var(--bg);border:0;border-radius:14px;padding:3px;gap:3px}
   .seg button{flex:1;padding:9px;border-radius:10px;font-size:13px;font-weight:800;color:var(--muted);transition:.12s}
-  .seg button.on{background:var(--surface);color:var(--ink);border:2px solid var(--traco)}
+  .seg button.on{background:var(--surface);color:var(--ink);border:0}
   .seg button.on[data-v="agendado"]{color:var(--sched)}
   .seg button.on[data-v="consumido"]{color:var(--primary)}
   .switchrow{display:flex;align-items:center;justify-content:space-between;margin-top:12px;font-size:13px;color:var(--muted)}
-  .btn{width:100%;margin-top:14px;padding:15px;border:3px solid var(--traco);border-radius:16px;
+  .btn{width:100%;margin-top:14px;padding:15px;border:0;border-radius:20px;
     background:var(--primary);color:#fff;font-family:var(--display);font-weight:700;font-size:17px;
-    display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:var(--dura);
+    display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:var(--sombra);
     transition:transform .08s ease,box-shadow .08s ease}
   /* O botão afunda dentro da própria sombra ao ser tocado: é o retorno físico
      que a direção cartoon promete, e some junto com a sombra quando desativado. */
-  .btn:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--traco)}
-  .btn:disabled{opacity:.45;box-shadow:var(--dura-sm);transform:none}
+  .btn:active{transform:translate(3px,3px);box-shadow:var(--sombra-sm)}
+  .btn:disabled{opacity:.45;box-shadow:var(--sombra-sm);transform:none}
   .flash{margin-top:10px;font-size:12.5px;color:var(--primary);font-weight:600;font-family:var(--mono);min-height:16px;text-align:center}
   .items{display:flex;flex-direction:column;gap:8px}
   .item{background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:11px 12px;box-shadow:var(--shadow)}
@@ -474,17 +494,17 @@ window.APP_RELEASE = "tresults-v16";
   #liqSum .lq-rest{font-size:13px;font-weight:700;color:var(--water);margin-top:5px}
   #liqSum .lq-rest b{font-weight:800}
   .liq-add{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;align-items:stretch}
-  .liq-add button{height:44px;padding:0 16px;border-radius:14px;background:var(--surface);border:2.5px solid var(--traco);font-weight:800;font-size:13.5px;color:var(--ink);font-family:inherit;box-shadow:var(--dura-sm)}
-  .liq-add button:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--traco)}
-  .liq-add input{width:76px;height:44px;padding:0 10px;border:2.5px solid var(--traco);border-radius:14px;font-size:13.5px;font-weight:800;font-family:var(--mono);text-align:center;background:var(--surface)}
+  .liq-add button{height:44px;padding:0 16px;border-radius:14px;background:var(--surface);border:0;font-weight:800;font-size:13.5px;color:var(--ink);font-family:inherit;box-shadow:var(--sombra-sm)}
+  .liq-add button:active{transform:scale(.97);box-shadow:var(--sombra-sm)}
+  .liq-add input{width:76px;height:44px;padding:0 10px;border:0;border-radius:14px;font-size:13.5px;font-weight:800;font-family:var(--mono);text-align:center;background:var(--surface)}
   .liq-add input::placeholder{font-family:var(--sans);font-weight:700}
-  .liq-add #liqAddCustom{background:var(--primary);border-color:var(--traco);color:#fff}
+  .liq-add #liqAddCustom{background:var(--primary);color:#fff}
   .liq-add .reset{margin-left:auto;color:var(--muted);border:none;background:transparent;box-shadow:none;font-size:12.5px;letter-spacing:.03em;text-transform:uppercase;font-weight:800}
   .liq-add .reset:active{transform:none;box-shadow:none}
   .liq-hint{margin-top:12px;font-size:12px;line-height:1.55;color:var(--muted)}
   .liq-hint b{color:var(--ink);font-weight:700}
   #liqRing .dv{fill:var(--water)}
-  .ins-card{background:var(--bg);border:2px solid var(--traco);border-radius:16px;padding:14px;margin-bottom:12px}
+  .ins-card{background:var(--bg);border:0;border-radius:16px;padding:14px;margin-bottom:12px}
   .ins-empty{font-size:13px;color:var(--muted);padding:6px 2px;line-height:1.5}
   .ins-empty b{color:var(--ink)}
   .macrobar{display:flex;height:16px;border-radius:8px;overflow:hidden;background:var(--line);margin-bottom:12px}
@@ -495,7 +515,7 @@ window.APP_RELEASE = "tresults-v16";
   .macroleg b{color:var(--ink);font-family:var(--mono);font-weight:700}
   .macroleg s{margin-left:auto;text-decoration:none;font-family:var(--mono)}
   #streakLine{margin:0 2px 10px}
-  .streak-pill{display:inline-flex;align-items:center;gap:7px;background:var(--surface);border:2.5px solid var(--traco);border-radius:999px;padding:6px 14px 6px 10px;box-shadow:var(--dura-sm)}
+  .streak-pill{display:inline-flex;align-items:center;gap:7px;background:var(--surface);border:0;border-radius:999px;padding:6px 14px 6px 10px;box-shadow:var(--sombra-sm)}
   .streak-pill .sn{color:var(--primary)}
   .streak-pill svg{width:16px;height:19px;flex:none}
   .streak-pill .sn{font-family:var(--mono);font-weight:800;font-size:14px;color:var(--ink)}
@@ -511,16 +531,16 @@ window.APP_RELEASE = "tresults-v16";
   .wt-pace{font-size:12.5px;font-weight:700;margin:-2px 0 8px;line-height:1.45}
   .wt-tabs{display:inline-flex;gap:4px}
   .tr-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
-  .tr-timer{font-family:var(--mono);font-size:18px;font-weight:800;color:#fff;letter-spacing:0;background:var(--primary);border:2.5px solid var(--traco);border-radius:11px;padding:4px 11px;box-shadow:var(--dura-sm)}
+  .tr-timer{font-family:var(--mono);font-size:18px;font-weight:800;color:#fff;letter-spacing:0;background:var(--primary);border:0;border-radius:11px;padding:4px 11px;box-shadow:var(--sombra-sm)}
   .tr-ex{font-family:var(--display);font-size:24px;font-weight:800;margin-bottom:3px;letter-spacing:0}
   .tr-plan{font-size:12.5px;color:var(--muted);margin-bottom:14px;line-height:1.5}
-  .tr-set{background:var(--surface);border:3px solid var(--traco);border-radius:18px;padding:12px 14px;margin-bottom:12px;box-shadow:var(--dura-sm);animation:softIn .28s ease backwards}
+  .tr-set{background:var(--surface);border:0;border-radius:18px;padding:12px 14px;margin-bottom:12px;box-shadow:var(--sombra-sm);animation:softIn .28s ease backwards}
   .tr-set:nth-child(2){animation-delay:.04s}.tr-set:nth-child(3){animation-delay:.08s}.tr-set:nth-child(4){animation-delay:.12s}.tr-set:nth-child(5){animation-delay:.16s}
   .tr-set .tsr1{display:flex;align-items:center;gap:10px}
-  .tr-set .snum{flex:none;width:32px;height:32px;border-radius:50%;border:2.5px solid var(--traco);background:var(--primary);color:#fff;font-family:var(--mono);font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center}
+  .tr-set .snum{flex:none;width:32px;height:32px;border-radius:50%;border:0;background:var(--primary);color:#fff;font-family:var(--mono);font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center}
   .tr-set .sl{flex:1;min-width:0;font-size:13px;font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .tr-set .fld{position:relative;flex:none}
-  .tr-set .fld input{width:82px;padding:11px 30px 11px 10px;border:2.5px solid var(--traco);border-radius:12px;font-size:15px;font-family:var(--mono);font-weight:800;text-align:center;background:var(--bg);transition:border-color .15s,box-shadow .15s}
+  .tr-set .fld input{width:82px;padding:11px 30px 11px 10px;border:0;border-radius:12px;font-size:15px;font-family:var(--mono);font-weight:800;text-align:center;background:var(--bg);transition:border-color .15s,box-shadow .15s}
   /* cargas com meio quilo (57,5 / 102,5) precisam caber inteiras, inclusive como sugestão */
   .tr-set .fld input.ikg{width:92px;padding-left:8px;padding-right:24px}
   .tr-set .fld input.irep{width:80px;padding-left:8px}
@@ -529,9 +549,9 @@ window.APP_RELEASE = "tresults-v16";
   .tr-set .tsr2{display:flex;align-items:center;gap:10px;margin-top:10px}
   .tr-set .rirl{font-size:10.5px;font-weight:800;color:var(--muted);letter-spacing:.06em;flex:none}
   .rirseg{display:flex;gap:6px;flex:1}
-  .rirseg button{flex:1;height:44px;border-radius:12px;border:2.5px solid var(--traco);background:var(--surface);font-weight:800;font-size:14px;font-family:var(--mono);color:var(--ink);transition:transform .08s,background .15s,color .15s,box-shadow .08s}
+  .rirseg button{flex:1;height:44px;border-radius:12px;border:0;background:var(--surface);font-weight:800;font-size:14px;font-family:var(--mono);color:var(--ink);transition:transform .08s,background .15s,color .15s,box-shadow .08s}
   .rirseg button:active{transform:translate(2px,2px)}
-  .rirseg button.on{background:var(--primary);color:#fff;box-shadow:var(--dura-sm)}
+  .rirseg button.on{background:var(--primary);color:#fff;box-shadow:var(--sombra-sm)}
   .tr-hint{font-size:11.5px;color:var(--muted);line-height:1.55;margin:10px 2px 0}
   /* referência da última sessão, série a série: quanto levantei da última vez */
   .tsprev{display:flex;align-items:center;gap:8px;margin-top:8px;padding-left:40px;font-size:11.5px;color:var(--muted);font-family:var(--mono);line-height:1.5}
@@ -557,11 +577,13 @@ window.APP_RELEASE = "tresults-v16";
        fim do número é justamente o defeito que estamos consertando. */
     .macros2 .m2 .r>span:last-child{display:flex;flex-direction:column;align-items:flex-start;line-height:1.2}
     .macros2 .m2 .r b{font-size:13px}
-    .datenav{gap:6px}
+    .datenav{gap:5px}
+    .datenav button{width:32px;height:32px;font-size:18px}
+    .datenav .chip{width:auto;height:32px}
     .datenav .chip{padding:0 9px;font-size:11.5px}
     /* `flex:0 0 auto` impedia a data de encolher, e quem era empurrado para
        fora da tela era o botão Histórico — que fica depois dela na linha. */
-    .datenav .date{flex:1 1 auto;font-size:12.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .datenav .date{flex:1 1 auto;font-size:11.5px;letter-spacing:-.01em;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .card,.hero{padding:13px}
     .liq-add{gap:6px}
     .liq-add button{padding:0 13px}
@@ -602,12 +624,12 @@ window.APP_RELEASE = "tresults-v16";
      entre os cartões; em coral, é o primeiro lugar onde o olho cai. */
   #trRest{position:relative;overflow:hidden;background:var(--primary);color:#fff;
     transition:transform .08s ease,box-shadow .08s ease}
-  #trRest:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--traco)}
+  #trRest:active{transform:translate(3px,3px);box-shadow:var(--sombra-sm)}
   #trRest .rfill{position:absolute;inset:0;width:0%;background:rgba(255,255,255,.22);transition:width .95s linear;z-index:0}
   #trRest .rtxt{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:8px}
   #trRest.resting{background:var(--surface);color:var(--primary);animation:restPulse 1.6s ease infinite}
   @keyframes restPulse{0%,100%{box-shadow:0 0 0 0 rgba(14,124,107,.25)}50%{box-shadow:0 0 0 9px rgba(14,124,107,0)}}
-  #trRest.done{background:var(--mg);color:#0B3A31;animation:donePop .4s cubic-bezier(.3,1.4,.5,1)}
+  #trRest.done{background:var(--selo-bg);color:var(--selo-ink);animation:donePop .4s cubic-bezier(.3,1.4,.5,1)}
   @keyframes donePop{0%{transform:scale(.95)}100%{transform:scale(1)}}
   .wt-tabs button{font-size:11px;font-weight:800;padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--muted);letter-spacing:0}
   .wt-tabs button.on{background:var(--primary);border-color:var(--primary);color:#fff}
@@ -623,11 +645,11 @@ window.APP_RELEASE = "tresults-v16";
   .wt-row .wt-unit{font-size:12px;color:var(--muted)}
   .wt-row .wt-del{color:var(--warn);font-weight:700;font-size:19px;line-height:1;padding:2px 8px;background:none;border:none}
   .wt-add{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
-  .wt-add input{padding:11px;border:2.5px solid var(--traco);border-radius:12px;font-size:13.5px;font-weight:700;font-family:inherit;background:var(--surface)}
+  .wt-add input{padding:11px;border:0;border-radius:12px;font-size:13.5px;font-weight:700;font-family:inherit;background:var(--surface)}
   .wt-add .wt-date{flex:1 1 132px}
   .wt-add .wt-w{flex:2 1 110px}
-  .wt-add button{padding:11px 18px;border:2.5px solid var(--traco);border-radius:12px;background:var(--primary);color:#fff;font-weight:800;font-size:13.5px;flex:0 0 auto;box-shadow:var(--dura-sm)}
-  .wt-add button:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--traco)}
+  .wt-add button{padding:11px 18px;border:0;border-radius:12px;background:var(--primary);color:#fff;font-weight:800;font-size:13.5px;flex:0 0 auto;box-shadow:var(--sombra-sm)}
+  .wt-add button:active{transform:scale(.97);box-shadow:var(--sombra-sm)}
   .cta{text-align:center;padding:6px 4px}
   .cta p{font-size:13px;color:var(--muted);margin:0 0 12px}
   .pace-list{display:flex;flex-direction:column;gap:8px}
@@ -656,7 +678,7 @@ window.APP_RELEASE = "tresults-v16";
   @keyframes overlayFade{from{opacity:0}to{opacity:1}}
   .overlay.open .modal{animation:modalUp .40s cubic-bezier(.22,.68,.36,1)}
   @keyframes modalUp{from{opacity:0;transform:translateY(48px)}to{opacity:1;transform:none}}
-  .modal{background:var(--surface);width:100%;max-width:560px;max-height:88vh;overflow-y:auto;border-top:3px solid var(--traco);border-radius:26px 26px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom));box-shadow:0 -8px 40px rgba(21,32,29,.2)}
+  .modal{background:var(--surface);width:100%;max-width:560px;max-height:88vh;overflow-y:auto;border-top:1px solid var(--line);border-radius:32px 32px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom));box-shadow:0 -8px 40px rgba(21,32,29,.2)}
   .modal h3{font-size:17px;margin-bottom:14px}
   .modal .grid4{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .modal .btn.secondary{background:var(--bg);color:var(--ink);margin-top:8px}
@@ -670,14 +692,17 @@ window.APP_RELEASE = "tresults-v16";
   .soon-wrap h2{font-size:22px}
   .soon-wrap p{color:var(--muted);font-size:14px;margin-top:8px;max-width:320px;margin-left:auto;margin-right:auto}
   /* ============ TAB BAR + HERO RING (v2) ============ */
-  #tabbar{position:fixed;left:0;right:0;bottom:0;z-index:60;display:none;align-items:center;justify-content:space-around;background:var(--surface);border-top:3px solid var(--traco);padding:8px 8px calc(8px + env(safe-area-inset-bottom))}
+  /* A barra levanta do fundo com o canto arredondado e uma sombra para cima,
+     em vez de ser separada por uma linha: é o que faz a tela parecer folheada
+     em camadas em vez de dividida por régua. */
+  #tabbar{position:fixed;left:0;right:0;bottom:0;z-index:60;display:none;align-items:center;justify-content:space-around;background:var(--surface);border-radius:30px 30px 0 0;box-shadow:0 -6px 24px rgba(14,124,107,.08);padding:8px 8px calc(8px + env(safe-area-inset-bottom))}
   #tabbar.show{display:flex}
   #tabbar button{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:56px;font-size:10.5px;font-weight:700;color:var(--muted);padding:4px 6px;border-radius:10px}
   #tabbar button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
   #tabbar button.on{color:var(--primary);font-weight:800}
-  #tabbar .fab{width:58px;height:58px;border:3.5px solid var(--traco);border-radius:50%;background:var(--primary);margin-top:-32px;display:flex;align-items:center;justify-content:center;box-shadow:var(--dura);color:#fff;min-width:58px;padding:0;transition:transform .08s ease,box-shadow .08s ease}
+  #tabbar .fab{width:60px;height:60px;border:0;border-radius:24px;background:var(--primary);margin-top:-32px;display:flex;align-items:center;justify-content:center;box-shadow:var(--sombra);color:#fff;min-width:58px;padding:0;transition:transform .08s ease,box-shadow .08s ease}
   #tabbar .fab svg{width:26px;height:26px;stroke:#fff;stroke-width:3}
-  #tabbar .fab:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--traco)}
+  #tabbar .fab:active{transform:translate(3px,3px);box-shadow:var(--sombra-sm)}
   .ringwrap{display:flex;align-items:center;gap:18px;margin-top:12px}
   .ringstats{flex:1;display:flex;flex-direction:column;gap:10px;font-size:13px;min-width:0}
   .ringstats>div{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
@@ -693,16 +718,16 @@ window.APP_RELEASE = "tresults-v16";
      abre em duas profundidades de propósito — expandir mostra os exercícios
      sem tirar a pessoa da rolagem; tocar em "ver tudo" abre a sessão inteira
      com a comparação contra a vez anterior. */
-  .volta{flex:none;width:38px;height:38px;margin-right:2px;border:2.5px solid var(--traco);
+  .volta{flex:none;width:38px;height:38px;margin-right:2px;border:0;
     border-radius:12px;background:var(--surface);display:flex;align-items:center;justify-content:center;
-    box-shadow:var(--dura-sm)}
+    box-shadow:var(--sombra-sm)}
   .volta svg{width:20px;height:20px;stroke:var(--ink);fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
-  .volta:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--traco)}
+  .volta:active{transform:scale(.97);box-shadow:var(--sombra-sm)}
 
   .fd-resumo{display:flex;align-items:center;gap:14px;width:100%;text-align:left;
-    background:var(--surface);border:3px solid var(--traco);border-radius:22px;
-    padding:14px;box-shadow:var(--dura);margin-bottom:12px}
-  .fd-resumo:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--traco)}
+    background:var(--surface);border:0;border-radius:22px;
+    padding:14px;box-shadow:var(--sombra);margin-bottom:12px}
+  .fd-resumo:active{transform:translate(3px,3px);box-shadow:var(--sombra-sm)}
   .fd-anel{position:relative;width:76px;height:76px;flex:none}
   .fd-anel svg{width:76px;height:76px}
   .fd-anel-n{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
@@ -718,17 +743,17 @@ window.APP_RELEASE = "tresults-v16";
 
   .fd-atalhos{display:flex;gap:10px;margin-bottom:18px}
   .fd-atalho{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;height:50px;
-    background:var(--surface);border:2.5px solid var(--traco);border-radius:15px;
-    font-weight:800;font-size:14px;color:var(--ink);box-shadow:var(--dura-sm)}
+    background:var(--surface);border:0;border-radius:15px;
+    font-weight:800;font-size:14px;color:var(--ink);box-shadow:var(--sombra-sm)}
   .fd-atalho svg{width:18px;height:18px;stroke:var(--primary);fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
-  .fd-atalho:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--traco)}
+  .fd-atalho:active{transform:scale(.97);box-shadow:var(--sombra-sm)}
 
   .fd-dia{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
     color:var(--muted);margin:16px 2px 8px}
-  .fd-card{background:var(--surface);border:3px solid var(--traco);border-radius:20px;
-    padding:14px;margin-bottom:12px;box-shadow:var(--dura)}
+  .fd-card{background:var(--surface);border:0;border-radius:20px;
+    padding:14px;margin-bottom:12px;box-shadow:var(--sombra)}
   .fd-top{display:flex;align-items:flex-start;gap:11px;width:100%;text-align:left}
-  .fd-ico{flex:none;width:40px;height:40px;border-radius:13px;border:2.5px solid var(--traco);
+  .fd-ico{flex:none;width:40px;height:40px;border-radius:13px;border:0;
     background:var(--primary);display:flex;align-items:center;justify-content:center}
   .fd-ico svg{width:20px;height:20px;stroke:#fff;fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
   .fd-nome{flex:1;min-width:0}
@@ -745,7 +770,7 @@ window.APP_RELEASE = "tresults-v16";
      "Gasto (kcal)" cabe em uma, e aí o 52 descia abaixo do 310. Com o valor
      empurrado para o fim (margin-top:auto) e as três caixas esticadas pela
      grade, os números ficam alinhados por baixo com qualquer fonte. */
-  .fd-stat{border:2.5px solid var(--traco);border-radius:13px;padding:8px 9px;background:var(--bg);
+  .fd-stat{border:0;border-radius:13px;padding:8px 9px;background:var(--bg);
     min-width:0;display:flex;flex-direction:column}
   .fd-stat .k{font-size:9.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
   .fd-stat .v{font-family:var(--mono);font-size:15px;font-weight:800;margin-top:auto;padding-top:2px;
@@ -755,11 +780,11 @@ window.APP_RELEASE = "tresults-v16";
      sessão anterior do mesmo treino. Sem sessão anterior ela não existe, e
      inventar um valor seria pior que omitir. */
   .fd-prog{display:inline-flex;align-items:center;gap:6px;margin-top:11px;
-    border:2.5px solid var(--traco);border-radius:999px;padding:5px 12px;
-    font-size:12.5px;font-weight:800;box-shadow:var(--dura-sm)}
+    border:0;border-radius:999px;padding:5px 12px;
+    font-size:12.5px;font-weight:800;box-shadow:var(--sombra-sm)}
   .fd-prog svg{width:14px;height:14px;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
-  .fd-prog.sobe{background:var(--mg);color:#0B3A31}
-  .fd-prog.sobe svg{stroke:#0B3A31}
+  .fd-prog.sobe{background:var(--selo-bg);color:var(--selo-ink)}
+  .fd-prog.sobe svg{stroke:var(--selo-ink)}
   .fd-prog.desce{background:var(--surface);color:var(--warn)}
   .fd-prog.desce svg{stroke:var(--warn)}
   .fd-prog.igual{background:var(--surface);color:var(--muted)}
@@ -772,10 +797,10 @@ window.APP_RELEASE = "tresults-v16";
   .fd-ex+.fd-ex{border-top:1px solid var(--line)}
   .fd-ex .en{flex:1;min-width:0;font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .fd-ex .es{flex:none;font-family:var(--mono);font-size:12px;font-weight:700;color:var(--muted)}
-  .fd-vertudo{width:100%;margin-top:12px;height:44px;border:2.5px solid var(--traco);border-radius:13px;
-    background:var(--bg);font-weight:800;font-size:13.5px;color:var(--primary);box-shadow:var(--dura-sm)}
-  .fd-vertudo:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--traco)}
-  .fd-vazio{background:var(--surface);border:3px dashed var(--traco);border-radius:20px;
+  .fd-vertudo{width:100%;margin-top:12px;height:44px;border:0;border-radius:13px;
+    background:var(--bg);font-weight:800;font-size:13.5px;color:var(--primary);box-shadow:var(--sombra-sm)}
+  .fd-vertudo:active{transform:scale(.97);box-shadow:var(--sombra-sm)}
+  .fd-vazio{background:var(--surface);border:2px dashed var(--line);border-radius:20px;
     padding:22px 18px;text-align:center;font-size:13.5px;font-weight:700;color:var(--muted);line-height:1.6}
 
   /* Sessão inteira, em tela cheia */
@@ -783,7 +808,7 @@ window.APP_RELEASE = "tresults-v16";
   .ss-ex .ssn{font-family:var(--display);font-size:16px;font-weight:800;margin-bottom:6px}
   .ss-serie{display:flex;align-items:center;gap:9px;padding:7px 0;font-size:13px}
   .ss-serie+.ss-serie{border-top:1px solid var(--line)}
-  .ss-serie .i{flex:none;width:24px;height:24px;border-radius:50%;border:2px solid var(--traco);
+  .ss-serie .i{flex:none;width:24px;height:24px;border-radius:50%;border:0;
     background:var(--bg);display:flex;align-items:center;justify-content:center;
     font-family:var(--mono);font-size:11px;font-weight:800}
   .ss-serie .c{flex:1;font-family:var(--mono);font-weight:700}
@@ -803,15 +828,27 @@ window.APP_RELEASE = "tresults-v16";
   }
 
   .macros2{display:flex;gap:9px;margin-top:16px}
-  .macros2 .m2{flex:1;background:var(--surface);border:2.5px solid var(--traco);border-radius:15px;padding:10px 11px;min-width:0;box-shadow:var(--dura-sm)}
+  /* Os três macros são tons da mesma família, do mais claro ao mais fundo:
+     é o tom que distingue um do outro, não uma cor diferente para cada. Sem
+     sombra aqui de propósito — eles já vivem dentro de um cartão, e sombra
+     dentro de sombra vira sujeira. */
+  .macros2 .m2{flex:1;border:0;border-radius:22px;padding:11px 12px;min-width:0}
+  .macros2 .m2:nth-child(1){background:var(--mp-bg)}
+  .macros2 .m2:nth-child(2){background:var(--mc-bg)}
+  .macros2 .m2:nth-child(3){background:var(--mg-bg)}
   .macros2 .m2 .r{display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-width:0}
   .macros2 .m2 .r>*{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .macros2 .m2 .r .t{color:var(--muted);font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase}
-  .macros2 .m2 .r b{font-family:var(--mono);font-weight:800;font-size:13.5px}
-  .macros2 .m2 .r small{color:var(--muted);font-weight:700;font-size:10.5px}
-  .macros2 .bar2{height:6px;border-radius:99px;background:var(--line);margin-top:8px;overflow:hidden}
-  .macros2 .bar2 span{display:block;height:100%;background:var(--primary);border-radius:99px;transition:width .3s ease}
-  .pf-row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:14px;border-radius:12px;font-size:14px;font-weight:700}
+  .macros2 .m2 .r .t{color:var(--macro-ink);font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase}
+  .macros2 .m2 .r b{color:var(--macro-num);font-family:var(--mono);font-weight:800;font-size:13.5px}
+  .macros2 .m2 .r small{color:var(--macro-ink);font-weight:700;font-size:10.5px}
+  /* A trilha é branca porque o bloco já é colorido: trilha cinza sobre tinta
+     verde some, e a barra pareceria flutuar sem fundo. */
+  .macros2 .bar2{height:6px;border-radius:99px;background:var(--surface);margin-top:8px;overflow:hidden}
+  .macros2 .bar2 span{display:block;height:100%;border-radius:99px;transition:width .3s ease}
+  .macros2 .m2:nth-child(1) .bar2 span{background:var(--mp)}
+  .macros2 .m2:nth-child(2) .bar2 span{background:var(--mc)}
+  .macros2 .m2:nth-child(3) .bar2 span{background:var(--mg)}
+  .pf-row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:14px;border-radius:18px;font-size:14px;font-weight:700}
   .pf-row+.pf-row{border-top:1px solid var(--line);border-radius:0}
   .pf-row svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
   .pf-row.danger{color:var(--warn)}
@@ -822,7 +859,7 @@ window.APP_RELEASE = "tresults-v16";
   .pf-opt{display:flex;align-items:center;gap:11px;width:100%;text-align:left;
           padding:11px 12px;border-radius:10px;font-size:14px;font-weight:600}
   .pf-opt:active{background:var(--primary-08)}
-  .pf-opt .mark{width:19px;height:19px;border-radius:50%;border:2.5px solid var(--traco);flex:none}
+  .pf-opt .mark{width:19px;height:19px;border-radius:50%;border:0;flex:none}
   .pf-opt.on .mark{border-color:var(--primary);background:var(--primary);
                    box-shadow:inset 0 0 0 3px var(--card)}
   .pf-opt.on{color:var(--primary)}
@@ -831,14 +868,14 @@ window.APP_RELEASE = "tresults-v16";
                    transition:transform .18s ease}
   .pf-row.aberto svg.chev{transform:rotate(90deg)}
   .rng{-webkit-appearance:none;appearance:none;width:100%;height:8px;border-radius:99px;
-       background:var(--bg);border:2.5px solid var(--traco);outline:none;margin:10px 0 4px}
+       background:var(--bg);border:0;outline:none;margin:10px 0 4px}
   /* 26px: dedo em celular, não ponteiro de mouse. Contorno e sombra dura são os
      mesmos dos outros controles — sem isso o deslizante parece de outro app. */
   .rng::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:26px;height:26px;
-       border-radius:50%;background:var(--primary);border:3px solid var(--traco);
-       box-shadow:var(--dura-sm);margin-top:-1px}
+       border-radius:50%;background:var(--primary);border:0;
+       box-shadow:var(--sombra-sm);margin-top:-1px}
   .rng::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:var(--primary);
-       border:3px solid var(--traco);box-shadow:var(--dura-sm)}
+       border:0;box-shadow:var(--sombra-sm)}
   .rng-legenda{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);
        font-weight:600;padding:0 1px}
 
@@ -848,7 +885,7 @@ window.APP_RELEASE = "tresults-v16";
   .login-or{display:flex;align-items:center;gap:12px;margin:16px 0 12px}
   .login-or span{flex:1;height:1px;background:var(--line)}
   .login-or em{font-style:normal;font-size:12px;font-weight:700;color:var(--muted)}
-  .btn-outline{width:100%;padding:14px;border-radius:14px;background:var(--surface);border:1.5px solid var(--primary-14);color:var(--primary);font-weight:800;font-size:15px}
+  .btn-outline{width:100%;padding:14px;border-radius:18px;background:var(--surface);border:0;box-shadow:var(--sombra-sm);color:var(--primary);font-weight:800;font-size:15px}
   .btn-outline:active{background:var(--primary-08)}
   .login-brand .mark{border-radius:20px;width:64px;height:64px}
   .pfgoal{background:var(--primary);border-radius:20px;padding:18px 20px;color:#fff;margin-bottom:12px}
@@ -858,9 +895,18 @@ window.APP_RELEASE = "tresults-v16";
   .pfg-edit:active{background:rgba(255,255,255,.3)}
   .pfg-title{font-size:19px;font-weight:800;margin-top:6px}
   .pfg-chips{display:flex;gap:8px;margin-top:14px}
-  .pfg-chips>div{flex:1;background:rgba(255,255,255,.1);border-radius:13px;padding:10px 12px;display:flex;flex-direction:column;min-width:0}
+  .pfg-chips>div{flex:1;background:rgba(255,255,255,.1);border-radius:18px;padding:10px 12px;display:flex;flex-direction:column;min-width:0}
   .pfg-chips .k{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.65)}
   .pfg-chips .v{font-size:15px;font-weight:800;margin-top:1px;white-space:nowrap}
+  /* Em 320px "Meta/dia" e "3 meses" não cabiam e saíam cortados no meio da
+     palavra. Aqui a folga vem de apertar o espaçamento e o corpo, não de
+     esconder texto: número cortado é pior que número pequeno. */
+  @media (max-width:370px){
+    .pfg-chips{gap:6px}
+    .pfg-chips>div{padding:9px 8px}
+    .pfg-chips .k{font-size:9.5px;letter-spacing:.01em}
+    .pfg-chips .v{font-size:13.5px}
+  }
   .weekbars{display:flex;gap:5px;margin-top:10px}
   .weekbars .wb{flex:1;text-align:center}
   .weekbars .wbcol{height:44px;display:flex;align-items:flex-end}
@@ -1018,9 +1064,8 @@ window.APP_RELEASE = "tresults-v16";
   <button class="fd-resumo" id="fdDia">
     <span class="fd-anel">
       <svg viewBox="0 0 120 120" aria-hidden="true">
-        <circle cx="60" cy="60" r="50" fill="none" stroke="var(--traco)" stroke-width="18"/>
-        <circle cx="60" cy="60" r="50" fill="none" stroke="var(--line)" stroke-width="12"/>
-        <circle cx="60" cy="60" r="50" fill="none" stroke="var(--primary)" stroke-width="12"
+        <circle cx="60" cy="60" r="50" fill="none" stroke="var(--anel-tri)" stroke-width="12"/>
+        <circle cx="60" cy="60" r="50" fill="none" stroke="var(--anel)" stroke-width="12"
                 stroke-linecap="round" stroke-dasharray="0 314" id="fdArco"
                 transform="rotate(-90 60 60)"/>
       </svg>
@@ -1072,7 +1117,7 @@ window.APP_RELEASE = "tresults-v16";
     <div class="toplabel" id="heroTop">Saldo para comer hoje</div>
     <div class="ringwrap">
       <svg width="148" height="148" viewBox="0 0 148 148" aria-hidden="true">
-        <circle cx="74" cy="74" r="62" fill="none" stroke="var(--traco)" stroke-width="19"/><circle cx="74" cy="74" r="62" fill="none" stroke="var(--line)" stroke-width="13"/>
+        <circle cx="74" cy="74" r="62" fill="none" stroke="var(--anel-tri)" stroke-width="13"/>
         <circle id="ringFill" cx="74" cy="74" r="62" fill="none" stroke="var(--primary)" stroke-width="13" stroke-linecap="round" stroke-dasharray="389.6" stroke-dashoffset="389.6" transform="rotate(-90 74 74)" style="transition:stroke-dashoffset .5s ease"/>
         <text x="74" y="68" text-anchor="middle" class="num" id="balance" style="font-weight:800;font-size:30px;fill:var(--ink)">—</text>
         <text x="74" y="88" text-anchor="middle" style="font-size:11.5px;font-weight:700;fill:var(--muted)">kcal restantes</text>
@@ -3929,7 +3974,7 @@ function renderCharts(t,meta){
   const color=over?"var(--warn)":"var(--primary)";
   const C=2*Math.PI*52;
   const donut=`<svg class="donut" width="116" height="116" viewBox="0 0 120 120" aria-hidden="true">
-    <circle cx="60" cy="60" r="52" fill="none" stroke="var(--traco)" stroke-width="18"/><circle cx="60" cy="60" r="52" fill="none" stroke="var(--line)" stroke-width="12"/>
+    <circle cx="60" cy="60" r="52" fill="none" stroke="var(--anel-tri)" stroke-width="12"/>
     <circle cx="60" cy="60" r="52" fill="none" stroke="${color}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C*(1-frac)).toFixed(1)}" transform="rotate(-90 60 60)" style="transition:stroke-dashoffset .7s cubic-bezier(.22,.68,.36,1)"/>
     <text x="60" y="57" text-anchor="middle" class="dv">${Math.round(pct)}%</text>
     <text x="60" y="73" text-anchor="middle" class="dl">do plano</text>
@@ -4132,7 +4177,7 @@ function renderLiqRing(liq,liqT){
   const pct=liqT>0?liq/liqT*100:0, frac=Math.max(0,Math.min(pct/100,1));
   const C=2*Math.PI*52;
   el.innerHTML=`<svg class="donut" width="116" height="116" viewBox="0 0 120 120" aria-hidden="true">
-    <circle cx="60" cy="60" r="52" fill="none" stroke="var(--traco)" stroke-width="18"/><circle cx="60" cy="60" r="52" fill="none" stroke="var(--line)" stroke-width="12"/>
+    <circle cx="60" cy="60" r="52" fill="none" stroke="var(--anel-tri)" stroke-width="12"/>
     <circle cx="60" cy="60" r="52" fill="none" stroke="var(--water)" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C*(1-frac)).toFixed(1)}" transform="rotate(-90 60 60)" style="transition:stroke-dashoffset .7s cubic-bezier(.22,.68,.36,1)"/>
     <text x="60" y="57" text-anchor="middle" class="dv">${Math.round(pct)}%</text>
     <text x="60" y="73" text-anchor="middle" class="dl">da meta</text>
@@ -4430,7 +4475,12 @@ function renderDateLabel(){
   const dias=["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
   const isToday=viewKey===todayKey(), isYest=viewKey===keyOf(addDays(new Date(),-1));
   const suffix=isToday?" · Hoje":isYest?" · Ontem":"";
-  $("dateLabel").textContent=dias[d.getDay()]+" "+String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+suffix;
+  /* Em tela estreita o dia da semana vem abreviado. "Domingo 23/08 · Hoje" não
+     cabia e saía cortado no meio de "Hoje" — e dia abreviado se lê inteiro,
+     enquanto palavra pela metade parece defeito. */
+  let nome=dias[d.getDay()];
+  try{ if(window.matchMedia("(max-width:370px)").matches)nome=nome.slice(0,3); }catch(e){}
+  $("dateLabel").textContent=nome+" "+String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+suffix;
   $("dayToday").style.display=isToday?"none":"flex";
   $("dayNext").style.visibility=isToday?"hidden":"visible";
   $("heroTop").textContent=isToday?"Saldo para comer hoje":"Saldo do dia (histórico)";

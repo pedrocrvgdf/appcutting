@@ -119,6 +119,30 @@ O T-RESULTS é um **app**, não um site. Ele precisa se comportar como tal.
   via `hideSplash()` — se você criar outro caminho que abre uma tela, chame
   `hideSplash()` nele também, senão o app fica preso na abertura.
 
+### A direção visual é "soft", e não tem contorno
+
+O app já foi cartoon — contorno preto grosso e sombra dura deslocada. **Não é
+mais.** A direção atual é a que o dono escolheu depois: pastel arredondado.
+
+- **Nada de `border` como decoração.** Quem separa um cartão do fundo é a sombra
+  difusa (`--sombra`, `--sombra-sm`), não uma linha. `--line` sobrou para
+  divisores de verdade — entre linhas de uma lista.
+- O fundo (`--bg`) é levemente esverdeado de propósito: sombra sobre branco puro
+  desaparece, e os cartões pareceriam flutuar sem chão.
+- Cantos grandes: 26–30px nos cartões, 18–22px no que vive dentro deles.
+- Fonte **Quicksand** em `--sans` e `--display`. Ela vai só até o peso 700; os
+  `font-weight:800` do código são apertados para 700 pelo navegador, sem
+  estrago.
+- Botão apertado **encolhe** (`transform:scale(.97)`), não afunda contra um
+  contorno.
+- **Os macros são tons da mesma família do verde da marca**, do mais claro ao
+  mais fundo (`--mp`/`--mc`/`--mg` e os `-bg`), e não uma cor diferente para
+  cada. Foi pedido explicitamente: "tire as cores diversas, deixe como
+  predominância a cor do app".
+- Fundo tingido pede tinta escura por cima: `--selo-bg`/`--selo-ink` e
+  `--macro-ink`/`--macro-num` existem porque reaproveitar `--mg` como fundo de
+  texto escuro deixou o selo "+25% de carga" ilegível no tema claro.
+
 ### Números na tela são em português
 
 Casa decimal se escreve com **vírgula**. Existe `kgTxt(v)` para isso: arredonda
