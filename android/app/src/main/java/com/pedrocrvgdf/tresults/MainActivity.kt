@@ -11,19 +11,16 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
-import android.view.Gravity
-import android.view.ViewGroup
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.widget.FrameLayout
-import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import org.json.JSONObject
 
 /**
  * A casca nativa do T-RESULTS.
@@ -38,13 +35,9 @@ import androidx.core.content.ContextCompat
 class MainActivity : AppCompatActivity() {
 
     private lateinit var web: WebView
-    private lateinit var cortina: TextView
 
-    /** Quando saímos de vista. Serve para decidir se a trava volta a pedir. */
-    private var saiuEm = 0L
     /** Ligado enquanto outra tela nossa está aberta (o seletor de som). */
     private var emOutraTela = false
-    private var liberado = false
 
     private val pedirNotificacao =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* opcional */ }
@@ -64,6 +57,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(estado)
 
         Notificacoes.criarCanais(this)
+        Ajustes.limparHeranca(this)
         pedirPermissaoDeNotificacao()
         conferirTelaCheia()
 
@@ -98,23 +92,7 @@ class MainActivity : AppCompatActivity() {
             addJavascriptInterface(PonteWeb(this@MainActivity), "TResults")
         }
 
-        /* A cortina cobre a página enquanto a digital não é confirmada. Cobrir é
-           melhor do que esperar para carregar: o app já vai abrindo por trás, e
-           quando a pessoa confirma a tela está pronta. */
-        cortina = TextView(this).apply {
-            text = "T-RESULTS"
-            gravity = Gravity.CENTER
-            setTextColor(Color.WHITE)
-            textSize = 22f
-            setBackgroundColor(Color.parseColor("#0E7C6B"))
-            isClickable = true      // engole toques que passariam para a página
-            visibility = ViewGroup.INVISIBLE
-        }
-
-        setContentView(FrameLayout(this).apply {
-            addView(web, FrameLayout.LayoutParams(-1, -1))
-            addView(cortina, FrameLayout.LayoutParams(-1, -1))
-        })
+        setContentView(web)
 
         if (estado != null) web.restoreState(estado) else web.loadUrl(BuildConfig.ENDERECO)
 
@@ -124,20 +102,6 @@ class MainActivity : AppCompatActivity() {
                 if (web.canGoBack()) web.goBack() else finish()
             }
         })
-
-        if (Ajustes.biometriaAtiva(this)) travar()
-    }
-
-    override fun onStart() {
-        super.onStart()
-        if (!Ajustes.biometriaAtiva(this) || emOutraTela) return
-        // volta a pedir depois de um tempo fora; entre uma série e outra, não
-        if (!liberado || System.currentTimeMillis() - saiuEm > 2 * 60_000) travar()
-    }
-
-    override fun onStop() {
-        super.onStop()
-        saiuEm = System.currentTimeMillis()
     }
 
     override fun onSaveInstanceState(estado: Bundle) {
@@ -161,31 +125,66 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /* ---------------- Trava por digital ---------------- */
+    /* ---------------- Entrar com a digital ----------------
 
-    private fun travar() {
-        liberado = false
-        cortina.visibility = ViewGroup.VISIBLE
-        Biometria.pedir(this, aoLiberar = {
-            liberado = true
-            cortina.visibility = ViewGroup.INVISIBLE
-        }, aoFalhar = {
-            naoConfirmou()
-        })
+       A digital não tranca a abertura do app: ela guarda e devolve a senha da
+       conta, para o login acontecer sem digitação. Quem não confirma continua
+       entrando pela senha — a saída nunca deixa de existir. */
+
+    /** Cifra a senha sob a chave do Keystore, depois da digital confirmada. */
+    fun guardarAtalho(email: String?, senha: String?) {
+        val crypto = Credencial.prepararParaGuardar(this)
+        if (crypto == null) { responder("guardar", false, motivo = "sem_chave"); return }
+
+        Biometria.pedir(
+            this,
+            subtitulo = "Confirme para guardar sua entrada neste aparelho",
+            crypto = crypto,
+            aoLiberar = { r ->
+                val ok = Credencial.guardar(this, r.cryptoObject?.cipher, email, senha)
+                responder("guardar", ok, motivo = if (ok) "" else "falhou")
+            },
+            aoFalhar = { responder("guardar", false, motivo = "cancelado") }
+        )
+    }
+
+    /** Devolve a senha para a página entrar, depois da digital confirmada. */
+    fun entrarComDigital(email: String?) {
+        if (!Credencial.confere(this, email)) {
+            responder("entrar", false, motivo = "outra_conta"); return
+        }
+        val crypto = Credencial.prepararParaAbrir(this)
+        /* `null` aqui é chave invalidada — digital nova cadastrada desde que a
+           senha foi guardada. A credencial já foi descartada; a página precisa
+           saber para voltar a pedir a senha em vez de insistir na digital. */
+        if (crypto == null) { responder("entrar", false, motivo = "biometria_mudou"); return }
+
+        Biometria.pedir(
+            this,
+            subtitulo = "Entre na sua conta T-RESULTS",
+            crypto = crypto,
+            aoLiberar = { r ->
+                val senha = Credencial.abrir(this, r.cryptoObject?.cipher)
+                if (senha == null) responder("entrar", false, motivo = "biometria_mudou")
+                else responder("entrar", true, senha = senha)
+            },
+            aoFalhar = { responder("entrar", false, motivo = "cancelado") }
+        )
     }
 
     /**
-     * Não confirmou. A saída é fechar o app, e não destravar — senão a trava
-     * não trava nada. Tentar de novo fica a um toque de distância.
+     * A resposta volta para a página por `window.__digital`.
+     *
+     * `JSONObject` e não interpolação de texto: a senha vira um literal
+     * escapado, e uma aspas dentro dela deixa de ser capaz de quebrar o
+     * JavaScript que estamos montando.
      */
-    private fun naoConfirmou() {
-        AlertDialog.Builder(this)
-            .setTitle("Não foi possível confirmar")
-            .setMessage("Confirme sua identidade para abrir o T-RESULTS.")
-            .setCancelable(false)
-            .setPositiveButton("Tentar de novo") { _, _ -> travar() }
-            .setNegativeButton("Fechar") { _, _ -> finish() }
-            .show()
+    private fun responder(acao: String, ok: Boolean, senha: String = "", motivo: String = "") {
+        val dados = JSONObject()
+            .put("acao", acao).put("ok", ok)
+            .put("senha", senha).put("motivo", motivo)
+        val js = "window.__digital&&window.__digital($dados)"
+        web.evaluateJavascript(js, null)
     }
 
     /* ---------------- Permissões ---------------- */

@@ -94,6 +94,14 @@ O T-RESULTS é um **app**, não um site. Ele precisa se comportar como tal.
   navegador com a URL do site e destroem a sensação de app. Use as funções
   internas: `appAlert(msg)`, `appConfirm(msg, opts)` e `askDanger(opts)`
   (esta última para ações destrutivas, com confirmação por senha).
+- **Ação destrutiva com conta na nuvem pede a senha da conta** — `askDanger`
+  com `pw:true` — e a senha é conferida com `reauthenticateWithCredential`
+  antes de qualquer coisa ser apagada. Não é enfeite: `pushRemote` grava o
+  documento inteiro **sem merge**, então o apagado sobe por cima do histórico e
+  não sobra cópia em lugar nenhum. Antes de existir esta regra, três toques de
+  quem estivesse com o celular destravado destruíam a conta inteira. Em modo
+  local (sem `cloudEnabled`/`user`) não há senha a conferir, e exigir uma
+  trancaria a pessoa fora do próprio app. Coberto por `tests/conta.spec.js`.
 - **Zoom é bloqueado** por CSS (`touch-action`), por interceptação do gesto de
   pinça do iOS e do `Ctrl`+roda. Não reintroduza zoom sem combinar.
 - Texto da interface **não é selecionável**; campos de digitação continuam sendo.
@@ -192,7 +200,9 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 | `tests/abertura.spec.js` | Splash, avisos de espera, instalação como app |
 | `tests/push.spec.js` | Aviso com o app fechado, e o app funcionando sem ele |
 | `tests/feed.spec.js` | Feed do Início: ordem, progressão, cartão que expande, sessão inteira, vírgula decimal |
-| `tests/perfil.spec.js` | Som do alarme e trava por digital, no app Android e no navegador |
+| `tests/perfil.spec.js` | Som do alarme e o atalho da digital, no app Android e no navegador |
+| `tests/digital.spec.js` | Entrar com a digital: e-mail que confere, e cada caminho de falha voltando para a senha |
+| `tests/conta.spec.js` | Excluir dados exigindo a senha da conta |
 | `tests/app-nativo.spec.js` | Caminho web desligado quando o app Android está presente |
 | `tests/service-worker.spec.js` | Cache do app, versão, e a página de diagnóstico |
 | `tests/app.js` | Utilitários: Firebase falso, estado inicial, atalhos de navegação |
@@ -288,10 +298,46 @@ lugar (`tests/perfil.spec.js` cobre os dois lados):
 | | No app Android | No navegador |
 |---|---|---|
 | **Som do alarme** | seletor do sistema, com os sons do celular | quatro acordes gerados na hora, guardados em `tresults.som` |
-| **Trava por digital** | `BiometricPrompt`, com PIN como alternativa | não aparece — a web não alcança |
+| **Entrar com a digital** | `BiometricPrompt` + chave do Keystore | não aparece — a web não alcança |
 
-A trava protege a **abertura do app**, não a conta: quem guarda o acesso aos
-dados na nuvem continua sendo a sessão do Firebase.
+### A digital entra na conta; ela não tranca a abertura
+
+Ela já foi uma trava de abertura, e isso estava errado por dois motivos: pedia o
+dedo a cada vez que o app voltava do segundo plano, e num Android ≤ 10 (sem PIN
+de reserva) uma digital apagada deixava o app **impossível de abrir**. Hoje a
+digital faz outra coisa: guarda a senha da conta neste aparelho e a devolve na
+hora de entrar.
+
+- `Credencial.kt` — a senha é cifrada em **AES-256/GCM** com chave do
+  `AndroidKeyStore`, `setUserAuthenticationRequired(true)` e autenticação **por
+  uso** (não por janela de tempo). Quem recusa a decifragem é o hardware, não o
+  nosso código.
+- `setInvalidatedByBiometricEnrollment(true)` — cadastrar um dedo novo destrói a
+  chave. Quem acrescenta a própria digital ao celular de outra pessoa **não**
+  herda o acesso; a credencial some e a senha volta a ser pedida.
+- `BIOMETRIC_STRONG` sozinho, sem PIN: só biometria de classe 3 destrava chave do
+  Keystore. Aceitar biometria fraca daria um prompt que sempre falharia ao
+  decifrar.
+- **A senha nunca sai do aparelho**, não vai para o Firestore e não é sincronizada.
+- **Todo caminho de falha termina na senha digitada.** Cancelar não é erro e não
+  acusa nada. Se a chave foi invalidada, o app diz isso e volta para a senha; se
+  a senha guardada não vale mais (trocada em outro aparelho), o atalho é apagado
+  em vez de virar um botão que nunca funciona. Existe teste para cada um
+  (`tests/digital.spec.js`).
+
+Na tela de entrada, o botão só aparece quando o e-mail escrito **confere** com o
+atalho guardado — e quem confere é o Android (`atalhoConfere`), justamente para o
+app nunca **exibir** o e-mail de quem estava logado a quem pegou o celular.
+
+Ligar o atalho pede a senha da conta e a confere com
+`reauthenticateWithCredential` **antes** de guardar: sem isso o atalho passaria a
+repetir uma senha errada para sempre, e a pessoa só descobriria no dia em que
+precisasse dela.
+
+O prompt do sistema é assíncrono — o Android responde chamando
+`window.__digital` de volta na página. Se você criar outro caminho que abre o
+prompt, garanta que ele **sempre** responde: uma promessa pendurada deixa a tela
+de entrada esperando para sempre.
 
 A página conversa com o Android por `window.TResults` (ver `PonteWeb.kt`):
 

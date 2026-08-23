@@ -20,11 +20,34 @@ const PONTE = op => {
     testarSom: () => window.__nativo.push({ chamada: 'testarSom' }),
     volumeDoAlarme: () => window.__vol,
     definirVolume: v => { window.__vol = v; window.__nativo.push({ chamada: 'definirVolume', v }); },
-    biometriaDisponivel: () => op.biometria,
-    biometriaAtiva: () => window.__bioAtiva,
-    definirBiometria: a => { window.__bioAtiva = a; window.__nativo.push({ chamada: 'definirBiometria', a }); },
+    digitalDisponivel: () => op.biometria,
+    atalhoAtivo: () => !!window.__cred,
+    atalhoConfere: e => !!window.__cred && window.__cred.email === e,
+    /* O prompt do sistema é assíncrono de verdade: responde depois, chamando
+       window.__digital de volta. Imitar isso com retorno imediato esconderia
+       exatamente os defeitos de ordem que este caminho pode ter. */
+    guardarAtalho: (email, senha) => {
+      window.__nativo.push({ chamada: 'guardarAtalho', email, senha });
+      setTimeout(() => {
+        if (window.__digitalFalha)
+          return window.__digital({ acao: 'guardar', ok: false, motivo: window.__digitalFalha });
+        window.__cred = { email, senha };
+        window.__digital({ acao: 'guardar', ok: true, senha: '', motivo: '' });
+      }, 10);
+    },
+    entrarComDigital: email => {
+      window.__nativo.push({ chamada: 'entrarComDigital', email });
+      setTimeout(() => {
+        if (window.__digitalFalha)
+          return window.__digital({ acao: 'entrar', ok: false, motivo: window.__digitalFalha });
+        if (!window.__cred || window.__cred.email !== email)
+          return window.__digital({ acao: 'entrar', ok: false, motivo: 'outra_conta' });
+        window.__digital({ acao: 'entrar', ok: true, senha: window.__cred.senha, motivo: '' });
+      }, 10);
+    },
+    esquecerAtalho: () => { window.__nativo.push({ chamada: 'esquecerAtalho' }); window.__cred = null; },
   };
-  window.__bioAtiva = op.ativa;
+  window.__cred = op.cred || null;
   window.__vol = op.vol === undefined ? 100 : op.vol;
 };
 
@@ -164,8 +187,8 @@ test.describe('Som do alarme — no navegador', () => {
     expect(await page.evaluate(() => document.getElementById('pfVolVal').textContent)).toBe('45%');
   });
 
-  test('a trava por digital não aparece no navegador', async ({ page }) => {
-    /* Ela é do aparelho. Mostrar um botão que não faz nada é pior que não ter. */
+  test('o atalho da digital não aparece no navegador', async ({ page }) => {
+    /* Ele é do aparelho. Mostrar um botão que não faz nada é pior que não ter. */
     await abrirApp(page, estadoBase());
     await irAoPerfil(page);
     expect(await visivel(page, 'pfSegWrap')).toBe(false);
@@ -255,10 +278,23 @@ test.describe('Som do alarme — dentro do app Android', () => {
   });
 });
 
-test.describe('Trava por digital', () => {
+test.describe('Ligar e desligar o atalho da digital', () => {
+
+  const SENHA = 'senha-de-verdade';
+  const CONTA = 'teste@t-results.app';
+
+  const digitarSenha = (page, s) => page.evaluate(v => {
+    const c = document.getElementById('dgPw');
+    c.value = v; c.dispatchEvent(new Event('input', { bubbles: true }));
+  }, s);
+
+  const confirmar = async page => {
+    await page.evaluate(() => document.getElementById('dgConfirm').click());
+    await page.waitForTimeout(350);
+  };
 
   test('aparece quando o celular tem biometria', async ({ page }) => {
-    await page.addInitScript(PONTE, { som: 'Cesium', biometria: true, ativa: false });
+    await page.addInitScript(PONTE, { som: 'Cesium', biometria: true });
     await abrirApp(page, estadoBase());
     await irAoPerfil(page);
 
@@ -267,32 +303,76 @@ test.describe('Trava por digital', () => {
   });
 
   test('some quando o celular não tem biometria cadastrada', async ({ page }) => {
-    await page.addInitScript(PONTE, { som: 'Cesium', biometria: false, ativa: false });
+    await page.addInitScript(PONTE, { som: 'Cesium', biometria: false });
     await abrirApp(page, estadoBase());
     await irAoPerfil(page);
 
     expect(await visivel(page, 'pfSegWrap')).toBe(false);
   });
 
-  test('ligar e desligar chega ao Android', async ({ page }) => {
-    await page.addInitScript(PONTE, { som: 'Cesium', biometria: true, ativa: false });
+  test('ligar pede a senha da conta antes de guardar', async ({ page }) => {
+    /* Guardar sem conferir criaria um atalho que repete uma senha errada para
+       sempre — e a pessoa só descobriria no dia em que precisasse entrar. */
+    await page.addInitScript(PONTE, { som: 'Cesium', biometria: true });
     await abrirApp(page, estadoBase());
+    await page.evaluate(s => { window.__senhaCerta = s; }, SENHA);
     await irAoPerfil(page);
 
     await page.evaluate(() => document.getElementById('pfBio').click());
-    await page.waitForTimeout(150);
+    await page.waitForTimeout(250);
+
+    expect(await page.evaluate(() =>
+      getComputedStyle(document.getElementById('dgPwWrap')).display)).not.toBe('none');
+
+    await digitarSenha(page, SENHA);
+    await confirmar(page);
+
+    const conferidas = await page.evaluate(() => window.__reauth || []);
+    expect(conferidas.map(c => c.senha), 'conferida com o Firebase, não com o aparelho').toEqual([SENHA]);
+
+    const guardadas = await page.evaluate(() =>
+      window.__nativo.filter(c => c.chamada === 'guardarAtalho'));
+    expect(guardadas).toHaveLength(1);
+    expect(guardadas[0]).toMatchObject({ email: CONTA, senha: SENHA });
+    expect(await page.evaluate(() => document.getElementById('pfBioVal').textContent)).toBe('Ligado');
+  });
+
+  test('senha errada não cria o atalho', async ({ page }) => {
+    await page.addInitScript(PONTE, { som: 'Cesium', biometria: true });
+    await abrirApp(page, estadoBase());
+    await page.evaluate(s => { window.__senhaCerta = s; }, SENHA);
+    await irAoPerfil(page);
+
+    await page.evaluate(() => document.getElementById('pfBio').click());
+    await page.waitForTimeout(250);
+    await digitarSenha(page, 'chute');
+    await confirmar(page);
+
+    expect(await page.evaluate(() =>
+      window.__nativo.filter(c => c.chamada === 'guardarAtalho')),
+      'a senha errada não pode ter chegado ao cofre').toEqual([]);
+    expect(await page.evaluate(() => document.getElementById('pfBioVal').textContent)).toBe('Desligado');
+  });
+
+  test('desligar apaga a senha guardada no aparelho', async ({ page }) => {
+    await page.addInitScript(PONTE, { som: 'Cesium', biometria: true, cred: { email: CONTA, senha: SENHA } });
+    await abrirApp(page, estadoBase());
+    await irAoPerfil(page);
+
     expect(await page.evaluate(() => document.getElementById('pfBioVal').textContent)).toBe('Ligado');
 
     await page.evaluate(() => document.getElementById('pfBio').click());
-    await page.waitForTimeout(150);
-    expect(await page.evaluate(() => document.getElementById('pfBioVal').textContent)).toBe('Desligado');
+    await page.waitForTimeout(250);
+    await page.evaluate(() => document.getElementById('appDlgOk').click());
+    await page.waitForTimeout(250);
 
-    expect(await page.evaluate(() => window.__nativo.filter(c => c.chamada === 'definirBiometria').map(c => c.a)))
-      .toEqual([true, false]);
+    expect(await page.evaluate(() => window.__nativo.map(c => c.chamada))).toContain('esquecerAtalho');
+    expect(await page.evaluate(() => window.__cred), 'a senha some do aparelho').toBeNull();
+    expect(await page.evaluate(() => document.getElementById('pfBioVal').textContent)).toBe('Desligado');
   });
 
-  test('já ligada, o perfil mostra ligada ao abrir', async ({ page }) => {
-    await page.addInitScript(PONTE, { som: 'Cesium', biometria: true, ativa: true });
+  test('já ligado, o perfil mostra ligado ao abrir', async ({ page }) => {
+    await page.addInitScript(PONTE, { som: 'Cesium', biometria: true, cred: { email: CONTA, senha: SENHA } });
     await abrirApp(page, estadoBase());
     await irAoPerfil(page);
 

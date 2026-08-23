@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v15";
+window.APP_RELEASE = "tresults-v16";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -938,6 +938,8 @@ window.APP_RELEASE = "tresults-v15";
       <div class="field"><label class="lbl" for="email">E-mail</label><input class="in" id="email" type="email" inputmode="email" autocomplete="email" placeholder="seu@email.com"></div>
       <div class="field"><label class="lbl" for="pass">Senha</label><input class="in" id="pass" type="password" autocomplete="current-password" placeholder="mínimo 6 caracteres"></div>
       <button class="btn" id="btnLogin" style="margin-top:6px">Entrar</button>
+      <button class="btn-outline" id="btnDigital" style="margin-top:8px;display:none">
+        <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-3px;margin-right:7px"><path d="M3.5 8.5a10 10 0 0 1 17 0M6 11.5a6 6 0 0 1 12 0v2.5M9 12a3 3 0 0 1 6 0v4M12 12.5V18"/></svg>Entrar com a digital</button>
       <div class="login-minor"><button class="link" id="btnReset">Esqueci a senha</button></div>
       <div class="login-or"><span></span><em>primeira vez aqui?</em><span></span></div>
       <button class="btn-outline" id="btnSignup">Criar conta grátis</button>
@@ -1282,7 +1284,7 @@ window.APP_RELEASE = "tresults-v15";
     <div class="card" style="padding:4px;margin-bottom:14px">
       <button class="pf-row" id="pfBio">
         <svg viewBox="0 0 24 24"><path d="M3.5 8.5a10 10 0 0 1 17 0M6 11.5a6 6 0 0 1 12 0v2.5M9 12a3 3 0 0 1 6 0v4M12 12.5V18"/></svg>
-        <span>Desbloquear com biometria</span><span class="pf-val" id="pfBioVal">Desligado</span>
+        <span>Entrar com a digital</span><span class="pf-val" id="pfBioVal">Desligado</span>
       </button>
     </div>
   </div>
@@ -2070,6 +2072,9 @@ function showView(name){
       b.dataset.tab===name||(b.dataset.tab==="inicio"&&name==="progresso")));
   }
   if(name==="inicio"){render();renderInicio();}
+  /* Cada chegada à tela de entrada é uma visita nova: a digital volta a poder
+     ser pedida sozinha quando o e-mail do atalho for escrito. */
+  if(name==="login"){try{digitalJaPediu=false;renderDigitalLogin();}catch(e){}}
   if(name==="food"){render();if(!isConfigured()&&!promptedSetup){promptedSetup=true;setTimeout(openGoals,150);}}
   if(name==="progresso"){renderGoals();}
   if(name==="treino"){renderTreino();setTimeout(maybeTIntro,250);}
@@ -2662,11 +2667,39 @@ function definirVolume(v){
   if(appNativo){try{window.TResults.definirVolume(v);}catch(e){}}
 }
 
-const biometriaDisponivel=()=>!!naPonte("biometriaDisponivel",false);
-const biometriaAtiva=()=>!!naPonte("biometriaAtiva",false);
-function definirBiometria(ativa){
+/* ---- Entrar com a digital ----
+   A digital não tranca a abertura do app: ela guarda a senha da conta neste
+   aparelho, cifrada por uma chave do Keystore que só a digital libera, e a
+   devolve na hora de entrar. Só existe dentro do app Android; no navegador
+   `appNativo` é falso e nada disso aparece. */
+const digitalDisponivel=()=>!!naPonte("digitalDisponivel",false);
+const atalhoAtivo=()=>!!naPonte("atalhoAtivo",false);
+const atalhoConfere=e=>{
+  if(!appNativo)return false;
+  try{ return !!window.TResults.atalhoConfere(e||""); }catch(err){ return false; }
+};
+function esquecerAtalho(){
   if(!appNativo)return;
-  try{ window.TResults.definirBiometria(!!ativa); }catch(e){}
+  try{ window.TResults.esquecerAtalho(); }catch(e){}
+}
+
+/* O prompt do sistema é assíncrono: o Android responde chamando
+   `window.__digital` de volta. Uma promessa por vez, e quem chegar depois
+   substitui a anterior — dois prompts empilhados não existem. */
+let digitalPend=null;
+window.__digital=r=>{
+  const p=digitalPend;digitalPend=null;
+  if(p)p(r||{ok:false,motivo:"vazio"});
+};
+function pedirDigital(acao,dados){
+  if(!appNativo)return Promise.resolve({ok:false,motivo:"sem_app"});
+  return new Promise(res=>{
+    digitalPend=res;
+    try{
+      if(acao==="guardar")window.TResults.guardarAtalho(dados.email||"",dados.senha||"");
+      else window.TResults.entrarComDigital(dados.email||"");
+    }catch(e){ digitalPend=null; res({ok:false,motivo:"sem_app"}); }
+  });
 }
 
 const fmtSec=s=>String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");
@@ -3283,9 +3316,45 @@ function renderSomDoAlarme(){
 
 function renderBiometria(){
   const wrap=$("pfSegWrap");if(!wrap)return;
-  if(!biometriaDisponivel()){wrap.style.display="none";return;}
+  if(!digitalDisponivel()){wrap.style.display="none";return;}
   wrap.style.display="";
-  $("pfBioVal").textContent=biometriaAtiva()?"Ligado":"Desligado";
+  $("pfBioVal").textContent=atalhoAtivo()?"Ligado":"Desligado";
+}
+
+/* Ligar o atalho é guardar a senha da conta neste aparelho. Ela é conferida com
+   o Firebase antes de ser guardada — senão o atalho passaria a repetir uma senha
+   errada para sempre — e a pessoa precisa dizer sim sabendo o que acontece. */
+async function ligarAtalhoDigital(){
+  if(!(cloudEnabled&&user&&user.email))
+    return appAlert("Entre na sua conta primeiro.","Sem conta");
+
+  const r=await askDanger({
+    ico:"🔒",title:"Entrar com a digital",
+    msg:"Sua senha vai ficar <b>guardada neste aparelho</b>, cifrada por uma chave que só a sua digital abre — é ela que a digital vai usar para entrar.<br><br>Ela não sai daqui e não vai para a nuvem. Cadastrar uma digital nova no celular apaga o atalho.<br><br>Digite sua senha para confirmar:",
+    confirm:"Guardar",pw:true
+  });
+  if(!r.ok)return;
+
+  try{
+    await window.__fb.reauthenticateWithCredential(
+      user,window.__fb.EmailAuthProvider.credential(user.email,r.pw));
+  }catch(e){
+    return appAlert(mapErr(e&&e.code)+" O atalho não foi criado.","Não deu para confirmar");
+  }
+
+  const g=await pedirDigital("guardar",{email:user.email,senha:r.pw});
+  renderBiometria();
+  if(!g.ok&&g.motivo!=="cancelado")
+    appAlert("Este aparelho não deixou guardar a digital. Você continua entrando com a senha.","Não deu certo");
+}
+
+async function alternarAtalhoDigital(){
+  if(atalhoAtivo()){
+    if(await appConfirm("A digital deixa de entrar na sua conta e a senha guardada é apagada deste aparelho.",
+      {okText:"Desligar"})){esquecerAtalho();renderBiometria();}
+    return;
+  }
+  await ligarAtalhoDigital();
 }
 
 /* O seletor de som do Android é outra tela: quando ela volta, o app avisa aqui
@@ -3303,7 +3372,7 @@ $("pfSomTeste").onclick=()=>testarSom();
    cada passo do arraste viraria uma metralhadora de alarmes. */
 $("pfVol").oninput=e=>{$("pfVolVal").textContent=e.target.value+"%";};
 $("pfVol").onchange=e=>{definirVolume(e.target.value);renderVolume();testarSom();};
-$("pfBio").onclick=()=>{definirBiometria(!biometriaAtiva());renderBiometria();};
+$("pfBio").onclick=()=>alternarAtalhoDigital();
 
 $("pfEdit").onclick=()=>{showView("food");setTimeout(openGoals,120);};
 $("pfTheme").onclick=()=>{localStorage.setItem("tresults.theme",themeIsDark()?"light":"dark");applyTheme();renderPerfil();};
@@ -3337,7 +3406,10 @@ function askDanger(opt){
     $("dgPwWrap").style.display=opt.pw?"block":"none";$("dgPw").value="";$("dgErr").textContent="";
     $("dgConfirm").textContent=opt.confirm||"Confirmar";
     const ov=$("dangerOverlay");ov.classList.add("open");
-    const done=v=>{ov.classList.remove("open");$("dgConfirm").onclick=null;$("dgCancel").onclick=null;ov.onclick=null;res(v);};
+    /* A senha é limpa do campo ao fechar, e não só ao abrir da próxima vez:
+       senão ela fica no DOM esperando — e o valor de um input é lido por
+       qualquer script da página. */
+    const done=v=>{ov.classList.remove("open");$("dgConfirm").onclick=null;$("dgCancel").onclick=null;ov.onclick=null;$("dgPw").value="";res(v);};
     $("dgConfirm").onclick=()=>{
       if(opt.pw&&!$("dgPw").value.trim()){$("dgErr").textContent="Digite sua senha para confirmar.";$("dgPw").focus();return;}
       done({ok:true,pw:$("dgPw").value});
@@ -3348,13 +3420,31 @@ function askDanger(opt){
     if(opt.pw)setTimeout(()=>$("dgPw").focus(),200);
   });
 }
+/* Excluir os dados é irreversível de verdade: pushRemote grava o documento
+   inteiro sem merge, então o apagado sobe para a nuvem por cima do histórico e
+   não sobra cópia em lugar nenhum. Por isso pede a senha da conta — é a única
+   coisa que quem pegou o celular destravado não tem. O campo de senha do
+   askDanger existe desde sempre para isto e nunca tinha sido usado. */
 async function resetData(){
+  const comConta=!!(cloudEnabled&&user&&user.email);
   const r=await askDanger({
     ico:"⚠️",title:"Excluir dados",
-    msg:"Você está prestes a <b>excluir os dados da sua conta</b>: dieta, protocolos, treinos, pesos e objetivo. Você vai <b>perder todo o seu progresso</b> e o app voltará ao primeiro acesso (sua conta e login continuam existindo).<br><br><b>Tem certeza de que deseja continuar?</b>",
-    confirm:"Sim, excluir tudo"
+    msg:"Você está prestes a <b>excluir os dados da sua conta</b>: dieta, protocolos, treinos, pesos e objetivo. Você vai <b>perder todo o seu progresso</b> e o app voltará ao primeiro acesso (sua conta e login continuam existindo).<br><br>Isso apaga também a cópia salva na nuvem, e <b>não dá para desfazer</b>.<br><br><b>Tem certeza de que deseja continuar?</b>",
+    confirm:"Sim, excluir tudo",
+    pw:comConta
   });
   if(!r.ok)return;
+  /* Sem conta (modo local) não há senha a conferir, e exigir uma trancaria a
+     pessoa fora do próprio app. */
+  if(comConta){
+    try{
+      await window.__fb.reauthenticateWithCredential(
+        user,window.__fb.EmailAuthProvider.credential(user.email,r.pw));
+    }catch(e){
+      appAlert(mapErr(e&&e.code)+" Nada foi excluído.","Não deu para confirmar");
+      return;
+    }
+  }
   trDiscardRun();
   store=blankStore();
   localStorage.setItem(KEY,JSON.stringify(store));
@@ -3480,6 +3570,48 @@ function mapErr(code){const m={
   "auth/too-many-requests":"Muitas tentativas. Aguarde um pouco.","auth/network-request-failed":"Sem internet no momento."};
   return m[code]||"Não foi possível concluir. Tente de novo.";}
 $("btnLogin").onclick=async()=>{ if(!cloudEnabled)return; try{await window.__fb.signInWithEmailAndPassword(auth,email(),pass());authMsg("Entrou!",true);}catch(e){authMsg(mapErr(e.code));} };
+
+/* ---- A digital na tela de entrada ----
+   O botão só aparece quando o e-mail escrito é o mesmo do atalho guardado
+   neste aparelho. Perguntamos ao Android se confere em vez de pedir o e-mail
+   salvo: assim o endereço de quem estava logado nunca é exibido para quem
+   pegou o celular. */
+let digitalJaPediu=false;
+function renderDigitalLogin(){
+  const b=$("btnDigital");if(!b)return;
+  const serve=appNativo&&digitalDisponivel()&&atalhoConfere(email());
+  b.style.display=serve?"":"none";
+  /* O pedido é este: escreveu o e-mail e ele tem cadastro aqui, a digital é
+     pedida na hora. Uma vez por visita à tela — reabrir o prompt a cada tecla
+     depois de a pessoa ter cancelado seria perseguição, não conveniência. */
+  if(serve&&!digitalJaPediu){digitalJaPediu=true;entrarComDigital();}
+}
+
+async function entrarComDigital(){
+  if(!cloudEnabled)return;
+  const alvo=email();
+  const r=await pedirDigital("entrar",{email:alvo});
+  if(!r.ok){
+    /* Cancelar não é erro: a pessoa escolheu digitar a senha. */
+    if(r.motivo==="cancelado")return;
+    if(r.motivo==="biometria_mudou"){
+      renderDigitalLogin();
+      return authMsg("A digital do aparelho mudou. Entre com a senha desta vez.");
+    }
+    return authMsg("Não deu para entrar com a digital. Use a senha.");
+  }
+  try{
+    await window.__fb.signInWithEmailAndPassword(auth,alvo,r.senha);
+    authMsg("Entrou!",true);
+  }catch(e){
+    /* A senha guardada não vale mais — trocada em outro aparelho. Insistir na
+       digital deixaria a pessoa presa num botão que nunca funciona. */
+    esquecerAtalho();renderDigitalLogin();
+    authMsg("Sua senha mudou desde a última vez. Entre com a senha nova.");
+  }
+}
+$("btnDigital").onclick=()=>entrarComDigital();
+$("email").addEventListener("input",renderDigitalLogin);
 $("btnSignup").onclick=async()=>{ if(!cloudEnabled)return; try{await window.__fb.createUserWithEmailAndPassword(auth,email(),pass());authMsg("Conta criada!",true);}catch(e){authMsg(mapErr(e.code));} };
 $("btnReset").onclick=async()=>{ if(!cloudEnabled)return; if(!email())return authMsg("Escreva seu e-mail acima primeiro."); try{await window.__fb.sendPasswordResetEmail(auth,email());authMsg("Enviei um e-mail para redefinir a senha.",true);}catch(e){authMsg(mapErr(e.code));} };
 $("pass").addEventListener("keydown",e=>{if(e.key==="Enter")$("btnLogin").click();});
