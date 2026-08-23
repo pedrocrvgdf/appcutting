@@ -2,8 +2,7 @@ package com.pedrocrvgdf.tresults
 
 import android.app.Activity
 import android.media.AudioAttributes
-import android.media.Ringtone
-import android.media.RingtoneManager
+import android.media.MediaPlayer
 import android.os.Handler
 import android.os.Looper
 import android.webkit.JavascriptInterface
@@ -20,7 +19,7 @@ import android.webkit.JavascriptInterface
  */
 class PonteWeb(private val act: Activity) {
 
-    private var previa: Ringtone? = null
+    private var previa: MediaPlayer? = null
 
     /** A página usa isto para saber que está dentro do app. */
     @JavascriptInterface
@@ -64,20 +63,32 @@ class PonteWeb(private val act: Activity) {
         act.runOnUiThread { (act as? MainActivity)?.abrirSeletorDeSom() }
     }
 
-    /** Prévia curta, para ouvir antes de decidir. */
+    /**
+     * Prévia curta, para ouvir antes de decidir.
+     *
+     * Usa MediaPlayer, e não Ringtone, por um motivo só: precisa tocar no mesmo
+     * volume do alarme de verdade. Prévia alta com alarme baixo — ou o contrário
+     * — não serve para julgar nada, que é justamente para o que ela existe.
+     */
     @JavascriptInterface
     fun testarSom() {
         act.runOnUiThread {
             try {
                 pararPrevia()
                 val uri = Ajustes.somDoAlarme(act) ?: return@runOnUiThread
-                val r = RingtoneManager.getRingtone(act, uri) ?: return@runOnUiThread
-                r.audioAttributes = AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ALARM)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build()
-                previa = r
-                r.play()
+                previa = MediaPlayer().apply {
+                    setDataSource(act, uri)
+                    setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_ALARM)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .build()
+                    )
+                    val f = Ajustes.fatorDeVolume(act)
+                    setVolume(f, f)
+                    prepare()
+                    start()
+                }
                 Handler(Looper.getMainLooper()).postDelayed({ pararPrevia() }, 4000)
             } catch (e: Exception) { /* som inacessível: nada a fazer, e nada quebra */ }
         }
@@ -85,7 +96,18 @@ class PonteWeb(private val act: Activity) {
 
     private fun pararPrevia() {
         try { previa?.stop() } catch (e: Exception) { }
+        try { previa?.release() } catch (e: Exception) { }
         previa = null
+    }
+
+    /* ---------------- Volume ---------------- */
+
+    @JavascriptInterface
+    fun volumeDoAlarme(): Int = Ajustes.volume(act)
+
+    @JavascriptInterface
+    fun definirVolume(v: Int) {
+        Ajustes.definirVolume(act, v)
     }
 
     /* ---------------- Biometria ---------------- */

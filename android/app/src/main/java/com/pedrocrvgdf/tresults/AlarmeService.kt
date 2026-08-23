@@ -85,6 +85,9 @@ class AlarmeService : Service() {
                 setDataSource(this@AlarmeService, som)
                 setAudioAttributes(atributos)
                 isLooping = true
+                // multiplica o volume de alarme do sistema; não mexe nele
+                val f = Ajustes.fatorDeVolume(this@AlarmeService)
+                setVolume(f, f)
                 prepare()
                 start()
             }

@@ -17,7 +17,7 @@
 <title>T - Results</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
 <script>(function(){try{var t=localStorage.getItem("tresults.theme");var d=(t==="dark")||(t!=="light"&&window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches);if(d)document.documentElement.setAttribute("data-theme","dark");}catch(e){}})();</script>
 
 <!-- ==================== MONITORAMENTO DE ERROS (Sentry) ====================
@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v12";
+window.APP_RELEASE = "tresults-v14";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -94,26 +94,39 @@ window.APP_RELEASE = "tresults-v12";
 <script async src="https://js.sentry-cdn.com/7aaeee92a2510ed6867849ed623aec88.min.js" crossorigin="anonymous"></script>
 
 <style>
+  /* ============ DIREÇÃO VISUAL ============
+     Contorno grosso, sombra dura deslocada e cor cheia. A regra que sustenta
+     tudo: `--traco` é o contorno dos componentes e `--line` continua sendo o
+     divisor fino. São coisas diferentes — se virarem uma só, cada separador de
+     lista vira uma tarja preta e a tela fica ilegível. */
   :root{
-    --bg:#FAFAF6; --surface:#FFFFFF; --ink:#111815; --muted:#66756F;
-    --line:#E7EAE4; --primary:#0E7C6B; --primary-08:rgba(14,124,107,.08);
-    --primary-14:rgba(14,124,107,.14); --warn:#C2410C; --sched:#64748B;
+    --bg:#FFF6E5; --surface:#FFFFFF; --ink:#14201C; --muted:#6B7B74;
+    --line:#EDE4D2; --traco:#14201C;
+    --primary:#0E7C6B; --primary-08:rgba(14,124,107,.10);
+    --primary-14:rgba(14,124,107,.18); --warn:#D8452B; --sched:#64748B;
     --ok:#16A34A; --amber:#D97706; --water:#2563EB;
-    --mp:#0E7C6B; --mc:#E08A00; --mg:#7C5CFF;
+    --mp:#0E7C6B; --mc:#4FB3A0; --mg:#A8DCD1;
     --shadow:0 1px 2px rgba(21,32,29,.05), 0 8px 24px rgba(21,32,29,.05);
+    --dura:4px 4px 0 var(--traco);
+    --dura-sm:3px 3px 0 var(--traco);
     --mono:ui-monospace,"SF Mono","Roboto Mono",Menlo,Consolas,monospace;
-    --sans:'Manrope',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    --sans:'Nunito',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    --display:'Baloo 2','Nunito',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
     --mmhl:#0E7C6B;
     color-scheme:only light;
   }
   body{background-image:linear-gradient(var(--bg),var(--bg))}
   .card,.modal,.hero{background-image:linear-gradient(var(--surface),var(--surface))}
+  /* No escuro o contorno vira preto puro e as superfícies sobem de tom: é o
+     contraste entre elas que faz o traço aparecer. Fundo escuro com contorno
+     escuro apagaria o desenho inteiro. */
   html[data-theme="dark"]{
-    --bg:#101614; --surface:#1A211E; --ink:#ECEFEA; --muted:#96A39D;
-    --line:#2A332E; --primary:#2FB39A; --primary-08:rgba(47,179,154,.12);
-    --primary-14:rgba(47,179,154,.22); --warn:#F0713A; --sched:#8B98A5;
+    --bg:#17211D; --surface:#26332C; --ink:#F2EFE4; --muted:#9DAAA3;
+    --line:#33443B; --traco:#000000;
+    --primary:#2FB39A; --primary-08:rgba(47,179,154,.16);
+    --primary-14:rgba(47,179,154,.26); --warn:#FF7A59; --sched:#8B98A5;
     --ok:#34D399; --amber:#F5A623; --water:#5B9DF7;
-    --mp:#2FB39A; --mc:#F5A623; --mg:#A78BFA;
+    --mp:#2FB39A; --mc:#6FD4BF; --mg:#A9E7D8;
     --shadow:0 1px 2px rgba(0,0,0,.25), 0 8px 24px rgba(0,0,0,.25);
     --mmhl:#3EE6B0;
     color-scheme:dark;
@@ -124,7 +137,9 @@ window.APP_RELEASE = "tresults-v12";
   input,textarea,select,[contenteditable]{-webkit-user-select:text;user-select:text}
   img,svg{-webkit-user-drag:none}
   .wrap{max-width:560px;margin:0 auto;padding:0 16px calc(100px + env(safe-area-inset-bottom))}
-  h1,h2,h3{margin:0;font-weight:800;letter-spacing:-.01em}
+  h1,h2,h3{margin:0;font-family:var(--display);font-weight:800;letter-spacing:0}
+  /* Números que mudam a cada segundo continuam em mono, de propósito: fonte de
+     largura variável faz o cronômetro do treino tremer a cada dígito. */
   .num{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
   button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
   input,select{font-family:inherit;font-size:16px}
@@ -193,7 +208,7 @@ window.APP_RELEASE = "tresults-v12";
   }
   .view{display:none}
   .view.on{display:block}
-  .in{width:100%;padding:12px 12px;border:1px solid var(--line);border-radius:11px;background:var(--surface);color:var(--ink);outline:none}
+  .in{width:100%;padding:12px;border:2.5px solid var(--traco);border-radius:13px;background:var(--surface);color:var(--ink);font-weight:700;outline:none}
   .in:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-14)}
   label.lbl{display:block;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 5px 2px}
   .dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
@@ -248,7 +263,7 @@ window.APP_RELEASE = "tresults-v12";
   #view-choice{min-height:100vh;min-height:100svh;display:none;flex-direction:column;padding:0 16px calc(24px + env(safe-area-inset-bottom))}
   #view-choice.on{display:flex}
   .choice-top{padding:20px 0 4px;max-width:440px;width:100%;margin:0 auto}
-  .account{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:11px 12px;box-shadow:var(--shadow)}
+  .account{display:flex;align-items:center;gap:12px;background:var(--surface);border:3px solid var(--traco);border-radius:18px;padding:11px 12px;box-shadow:var(--dura-sm)}
   .account .avatar{width:38px;height:38px;border-radius:11px;flex:none;background:var(--primary-08);display:flex;align-items:center;justify-content:center}
   .account .avatar svg{width:20px;height:20px;stroke:var(--primary);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   .account .info{flex:1;min-width:0;display:flex;flex-direction:column}
@@ -294,6 +309,10 @@ window.APP_RELEASE = "tresults-v12";
   #themeMoon{transition:fill .25s ease}
   .dg-ico{width:58px;height:58px;border-radius:50%;background:rgba(194,65,12,.1);display:flex;align-items:center;justify-content:center;font-size:26px;margin:4px auto 12px}
   .btn.dgr{background:var(--warn)}
+  /* Secundário continua sendo botão de verdade — contorno e sombra iguais —,
+     só troca o preenchimento. Sem isso ele viraria um link e as telas que só
+     têm botões secundários ficariam sem nada para tocar. */
+  .btn.secondary{background:var(--surface);color:var(--ink)}
   #navMenu button{display:flex;align-items:center;gap:11px;width:100%;text-align:left;padding:11px 12px;border-radius:9px;font-size:14px;font-weight:600}
   #navMenu button:active{background:var(--primary-08)}
   #navMenu button.active{color:var(--primary)}
@@ -304,13 +323,13 @@ window.APP_RELEASE = "tresults-v12";
 
   /* ============ APP ALIMENTAÇÃO (igual antes) ============ */
   .date{font-size:13px;color:var(--muted);font-family:var(--mono)}
-  .hero{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .hero{background:var(--surface);border:3px solid var(--traco);border-radius:22px;padding:20px;box-shadow:var(--dura);position:relative;overflow:hidden}
   .hero .toplabel{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
   .datenav{display:flex;align-items:center;gap:8px;margin:0 2px 12px}
   .datenav .date{flex:0 0 auto;margin:0}
-  .datenav button{background:var(--surface);border:1px solid var(--line);border-radius:9px;width:34px;height:34px;font-size:20px;line-height:1;color:var(--muted);display:flex;align-items:center;justify-content:center;flex:0 0 auto}
-  .datenav button:active{background:var(--primary-08)}
-  .datenav .chip{width:auto;padding:0 12px;height:34px;font-size:12.5px;font-weight:700;color:var(--primary);border-color:var(--primary-14)}
+  .datenav button{background:var(--surface);border:2.5px solid var(--traco);border-radius:11px;width:36px;height:36px;font-size:20px;line-height:1;color:var(--ink);display:flex;align-items:center;justify-content:center;flex:0 0 auto;box-shadow:var(--dura-sm)}
+  .datenav button:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--traco)}
+  .datenav .chip{width:auto;padding:0 13px;height:36px;font-size:12.5px;font-weight:800;color:var(--primary)}
   .datenav .hist{margin-left:auto}
   .hist-row{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;text-align:left;background:var(--bg);border:1px solid var(--line);border-radius:11px;padding:11px 13px;margin-bottom:8px}
   .hist-row:active{background:var(--primary-08)}
@@ -335,15 +354,15 @@ window.APP_RELEASE = "tresults-v12";
   .bar>span{display:block;height:100%;background:var(--primary);border-radius:99px;transition:width .25s ease}
   .hero.over .bar>span{background:var(--warn)}
   .macros{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
-  .macro{background:var(--bg);border-radius:12px;padding:10px 8px;text-align:center}
-  .macro .k{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
-  .macro .v{font-size:17px;font-weight:700;font-family:var(--mono);margin-top:2px}
-  .macro .v small{font-size:11px;color:var(--muted);font-weight:500}
+  .macro{background:var(--bg);border:2.5px solid var(--traco);border-radius:14px;padding:9px 8px;text-align:center}
+  .macro .k{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:800}
+  .macro .v{font-size:17px;font-weight:800;font-family:var(--mono);margin-top:2px}
+  .macro .v small{font-size:11px;color:var(--muted);font-weight:600}
   .getd{display:flex;align-items:center;gap:6px;margin-top:14px;font-size:12px;color:var(--muted)}
   .getd input{width:66px;padding:4px 6px;border:1px solid var(--line);border-radius:8px;text-align:right;font-family:var(--mono);font-weight:700;color:var(--ink);background:var(--surface)}
   .sec{margin-top:22px}
   .sec-title{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-  .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:var(--shadow)}
+  .card{background:var(--surface);border:3px solid var(--traco);border-radius:20px;padding:15px;box-shadow:var(--dura)}
   .field{position:relative}
   .row{display:flex;gap:10px}.row>*{flex:1}
   .drop{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:30;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);max-height:260px;overflow:auto;display:none}
@@ -361,16 +380,20 @@ window.APP_RELEASE = "tresults-v12";
   .picked.show{display:flex}
   .picked .n{font-size:13px;font-weight:700}.picked .m{font-size:11px;color:var(--muted);font-family:var(--mono)}
   .picked button{color:var(--muted);font-size:18px;line-height:1;padding:2px 4px}
-  .seg{display:flex;background:var(--bg);border-radius:11px;padding:3px;gap:3px}
-  .seg button{flex:1;padding:9px;border-radius:8px;font-size:13px;font-weight:600;color:var(--muted);transition:.12s}
-  .seg button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(21,32,29,.08)}
+  .seg{display:flex;background:var(--bg);border:2.5px solid var(--traco);border-radius:14px;padding:3px;gap:3px}
+  .seg button{flex:1;padding:9px;border-radius:10px;font-size:13px;font-weight:800;color:var(--muted);transition:.12s}
+  .seg button.on{background:var(--surface);color:var(--ink);border:2px solid var(--traco)}
   .seg button.on[data-v="agendado"]{color:var(--sched)}
   .seg button.on[data-v="consumido"]{color:var(--primary)}
   .switchrow{display:flex;align-items:center;justify-content:space-between;margin-top:12px;font-size:13px;color:var(--muted)}
-  .btn{width:100%;margin-top:14px;padding:14px;border-radius:12px;background:var(--primary);color:#fff;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .1s ease,filter .12s ease}
-  .btn:active{transform:scale(.975);filter:brightness(.96)}
-  .btn:active{transform:translateY(1px)}
-  .btn:disabled{opacity:.45}
+  .btn{width:100%;margin-top:14px;padding:15px;border:3px solid var(--traco);border-radius:16px;
+    background:var(--primary);color:#fff;font-family:var(--display);font-weight:700;font-size:17px;
+    display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:var(--dura);
+    transition:transform .08s ease,box-shadow .08s ease}
+  /* O botão afunda dentro da própria sombra ao ser tocado: é o retorno físico
+     que a direção cartoon promete, e some junto com a sombra quando desativado. */
+  .btn:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--traco)}
+  .btn:disabled{opacity:.45;box-shadow:var(--dura-sm);transform:none}
   .flash{margin-top:10px;font-size:12.5px;color:var(--primary);font-weight:600;font-family:var(--mono);min-height:16px;text-align:center}
   .items{display:flex;flex-direction:column;gap:8px}
   .item{background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:11px 12px;box-shadow:var(--shadow)}
@@ -451,16 +474,17 @@ window.APP_RELEASE = "tresults-v12";
   #liqSum .lq-rest{font-size:13px;font-weight:700;color:var(--water);margin-top:5px}
   #liqSum .lq-rest b{font-weight:800}
   .liq-add{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;align-items:stretch}
-  .liq-add button{height:40px;padding:0 15px;border-radius:999px;background:var(--bg);border:1px solid var(--line);font-weight:700;font-size:13.5px;color:var(--ink);font-family:inherit}
-  .liq-add button:active{background:var(--primary-08);transform:scale(.97)}
-  .liq-add input{width:72px;height:40px;padding:0 10px;border:1px solid var(--line);border-radius:999px;font-size:13.5px;font-weight:700;font-family:var(--mono);text-align:center;background:var(--surface)}
-  .liq-add input::placeholder{font-family:var(--sans);font-weight:600}
-  .liq-add #liqAddCustom{background:var(--primary-08);border-color:var(--primary-14);color:var(--primary)}
-  .liq-add .reset{margin-left:auto;color:var(--muted);border:none;background:transparent;font-size:12.5px;letter-spacing:.03em;text-transform:uppercase;font-weight:800}
+  .liq-add button{height:44px;padding:0 16px;border-radius:14px;background:var(--surface);border:2.5px solid var(--traco);font-weight:800;font-size:13.5px;color:var(--ink);font-family:inherit;box-shadow:var(--dura-sm)}
+  .liq-add button:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--traco)}
+  .liq-add input{width:76px;height:44px;padding:0 10px;border:2.5px solid var(--traco);border-radius:14px;font-size:13.5px;font-weight:800;font-family:var(--mono);text-align:center;background:var(--surface)}
+  .liq-add input::placeholder{font-family:var(--sans);font-weight:700}
+  .liq-add #liqAddCustom{background:var(--primary);border-color:var(--traco);color:#fff}
+  .liq-add .reset{margin-left:auto;color:var(--muted);border:none;background:transparent;box-shadow:none;font-size:12.5px;letter-spacing:.03em;text-transform:uppercase;font-weight:800}
+  .liq-add .reset:active{transform:none;box-shadow:none}
   .liq-hint{margin-top:12px;font-size:12px;line-height:1.55;color:var(--muted)}
   .liq-hint b{color:var(--ink);font-weight:700}
   #liqRing .dv{fill:var(--water)}
-  .ins-card{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+  .ins-card{background:var(--bg);border:2px solid var(--traco);border-radius:16px;padding:14px;margin-bottom:12px}
   .ins-empty{font-size:13px;color:var(--muted);padding:6px 2px;line-height:1.5}
   .ins-empty b{color:var(--ink)}
   .macrobar{display:flex;height:16px;border-radius:8px;overflow:hidden;background:var(--line);margin-bottom:12px}
@@ -471,7 +495,8 @@ window.APP_RELEASE = "tresults-v12";
   .macroleg b{color:var(--ink);font-family:var(--mono);font-weight:700}
   .macroleg s{margin-left:auto;text-decoration:none;font-family:var(--mono)}
   #streakLine{margin:0 2px 10px}
-  .streak-pill{display:inline-flex;align-items:center;gap:7px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 8px;box-shadow:var(--shadow)}
+  .streak-pill{display:inline-flex;align-items:center;gap:7px;background:var(--surface);border:2.5px solid var(--traco);border-radius:999px;padding:6px 14px 6px 10px;box-shadow:var(--dura-sm)}
+  .streak-pill .sn{color:var(--primary)}
   .streak-pill svg{width:16px;height:19px;flex:none}
   .streak-pill .sn{font-family:var(--mono);font-weight:800;font-size:14px;color:var(--ink)}
   .streak-pill .st{font-size:12px;font-weight:700;color:var(--muted)}
@@ -486,27 +511,27 @@ window.APP_RELEASE = "tresults-v12";
   .wt-pace{font-size:12.5px;font-weight:700;margin:-2px 0 8px;line-height:1.45}
   .wt-tabs{display:inline-flex;gap:4px}
   .tr-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
-  .tr-timer{font-family:var(--mono);font-size:19px;color:var(--primary);letter-spacing:0}
-  .tr-ex{font-size:20px;font-weight:800;margin-bottom:3px;letter-spacing:-.01em}
+  .tr-timer{font-family:var(--mono);font-size:18px;font-weight:800;color:#fff;letter-spacing:0;background:var(--primary);border:2.5px solid var(--traco);border-radius:11px;padding:4px 11px;box-shadow:var(--dura-sm)}
+  .tr-ex{font-family:var(--display);font-size:24px;font-weight:800;margin-bottom:3px;letter-spacing:0}
   .tr-plan{font-size:12.5px;color:var(--muted);margin-bottom:14px;line-height:1.5}
-  .tr-set{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px;animation:softIn .28s ease backwards}
+  .tr-set{background:var(--surface);border:3px solid var(--traco);border-radius:18px;padding:12px 14px;margin-bottom:12px;box-shadow:var(--dura-sm);animation:softIn .28s ease backwards}
   .tr-set:nth-child(2){animation-delay:.04s}.tr-set:nth-child(3){animation-delay:.08s}.tr-set:nth-child(4){animation-delay:.12s}.tr-set:nth-child(5){animation-delay:.16s}
   .tr-set .tsr1{display:flex;align-items:center;gap:10px}
-  .tr-set .snum{flex:none;width:30px;height:30px;border-radius:9px;background:var(--primary-08);color:var(--primary);font-family:var(--mono);font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center}
+  .tr-set .snum{flex:none;width:32px;height:32px;border-radius:50%;border:2.5px solid var(--traco);background:var(--primary);color:#fff;font-family:var(--mono);font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center}
   .tr-set .sl{flex:1;min-width:0;font-size:13px;font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .tr-set .fld{position:relative;flex:none}
-  .tr-set .fld input{width:82px;padding:10px 30px 10px 10px;border:1px solid var(--line);border-radius:10px;font-size:14.5px;font-family:var(--mono);font-weight:700;text-align:center;background:var(--surface);transition:border-color .15s,box-shadow .15s}
+  .tr-set .fld input{width:82px;padding:11px 30px 11px 10px;border:2.5px solid var(--traco);border-radius:12px;font-size:15px;font-family:var(--mono);font-weight:800;text-align:center;background:var(--bg);transition:border-color .15s,box-shadow .15s}
   /* cargas com meio quilo (57,5 / 102,5) precisam caber inteiras, inclusive como sugestão */
   .tr-set .fld input.ikg{width:92px;padding-left:8px;padding-right:24px}
   .tr-set .fld input.irep{width:80px;padding-left:8px}
   .tr-set .fld input:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-08);outline:none}
-  .tr-set .fld .un{position:absolute;right:9px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;pointer-events:none}
+  .tr-set .fld .un{position:absolute;right:9px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:900;color:var(--muted);text-transform:uppercase;pointer-events:none}
   .tr-set .tsr2{display:flex;align-items:center;gap:10px;margin-top:10px}
   .tr-set .rirl{font-size:10.5px;font-weight:800;color:var(--muted);letter-spacing:.06em;flex:none}
   .rirseg{display:flex;gap:6px;flex:1}
-  .rirseg button{flex:1;height:34px;border-radius:9px;border:1px solid var(--line);background:var(--surface);font-weight:800;font-size:13px;font-family:var(--mono);color:var(--muted);transition:transform .1s,background .15s,color .15s,border-color .15s}
-  .rirseg button:active{transform:scale(.94)}
-  .rirseg button.on{background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:0 3px 10px rgba(14,124,107,.3)}
+  .rirseg button{flex:1;height:44px;border-radius:12px;border:2.5px solid var(--traco);background:var(--surface);font-weight:800;font-size:14px;font-family:var(--mono);color:var(--ink);transition:transform .08s,background .15s,color .15s,box-shadow .08s}
+  .rirseg button:active{transform:translate(2px,2px)}
+  .rirseg button.on{background:var(--primary);color:#fff;box-shadow:var(--dura-sm)}
   .tr-hint{font-size:11.5px;color:var(--muted);line-height:1.55;margin:10px 2px 0}
   /* referência da última sessão, série a série: quanto levantei da última vez */
   .tsprev{display:flex;align-items:center;gap:8px;margin-top:8px;padding-left:40px;font-size:11.5px;color:var(--muted);font-family:var(--mono);line-height:1.5}
@@ -521,6 +546,25 @@ window.APP_RELEASE = "tresults-v12";
     .tr-set .sl{display:none}
     .tr-set .snum{margin-right:auto}
     .tsprev{padding-left:0}
+    /* Contorno grosso e sombra deslocada custam largura real. Em tela estreita
+       quem cede é o preenchimento, nunca o texto — foi assim que os macros e o
+       chip de histórico apareceram cortados na primeira captura a 320px. */
+    .macros2{gap:6px}
+    .macros2 .m2{padding:8px 9px}
+    .macros2 .m2 .r .t{letter-spacing:0}
+    /* Em 320px "425/356g" não cabe numa linha só dentro da ilha. A meta desce
+       para a linha de baixo em vez de o número ser cortado pelo "…" — perder o
+       fim do número é justamente o defeito que estamos consertando. */
+    .macros2 .m2 .r>span:last-child{display:flex;flex-direction:column;align-items:flex-start;line-height:1.2}
+    .macros2 .m2 .r b{font-size:13px}
+    .datenav{gap:6px}
+    .datenav .chip{padding:0 9px;font-size:11.5px}
+    /* `flex:0 0 auto` impedia a data de encolher, e quem era empurrado para
+       fora da tela era o botão Histórico — que fica depois dela na linha. */
+    .datenav .date{flex:1 1 auto;font-size:12.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .card,.hero{padding:13px}
+    .liq-add{gap:6px}
+    .liq-add button{padding:0 13px}
   }
   .tvol-row{padding:9px 0;border-bottom:1px solid var(--line)}
   .tvol-row:last-of-type{border-bottom:none}
@@ -554,13 +598,16 @@ window.APP_RELEASE = "tresults-v12";
   .pace-opt .pfacts{display:block;font-style:normal;font-size:12px;font-weight:700;color:var(--primary);margin-top:4px}
   .mm .bs{fill:var(--line)}
   .mm [data-g]{fill:var(--line);transition:fill .3s ease,fill-opacity .3s ease}
-  #trRest{position:relative;overflow:hidden;transition:transform .12s ease}
-  #trRest:active{transform:scale(.98)}
-  #trRest .rfill{position:absolute;inset:0;width:0%;background:var(--primary-14);transition:width .95s linear;z-index:0}
+  /* A ação principal da tela de treino. Como `.btn.secondary` ele se perdia
+     entre os cartões; em coral, é o primeiro lugar onde o olho cai. */
+  #trRest{position:relative;overflow:hidden;background:var(--primary);color:#fff;
+    transition:transform .08s ease,box-shadow .08s ease}
+  #trRest:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--traco)}
+  #trRest .rfill{position:absolute;inset:0;width:0%;background:rgba(255,255,255,.22);transition:width .95s linear;z-index:0}
   #trRest .rtxt{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:8px}
-  #trRest.resting{background:var(--surface);color:var(--primary);border:1.5px solid var(--primary);animation:restPulse 1.6s ease infinite}
+  #trRest.resting{background:var(--surface);color:var(--primary);animation:restPulse 1.6s ease infinite}
   @keyframes restPulse{0%,100%{box-shadow:0 0 0 0 rgba(14,124,107,.25)}50%{box-shadow:0 0 0 9px rgba(14,124,107,0)}}
-  #trRest.done{background:rgba(22,163,74,.14);color:var(--ok);border:1.5px solid rgba(22,163,74,.4);animation:donePop .4s cubic-bezier(.3,1.4,.5,1)}
+  #trRest.done{background:var(--mg);color:#0B3A31;animation:donePop .4s cubic-bezier(.3,1.4,.5,1)}
   @keyframes donePop{0%{transform:scale(.95)}100%{transform:scale(1)}}
   .wt-tabs button{font-size:11px;font-weight:800;padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--muted);letter-spacing:0}
   .wt-tabs button.on{background:var(--primary);border-color:var(--primary);color:#fff}
@@ -576,11 +623,11 @@ window.APP_RELEASE = "tresults-v12";
   .wt-row .wt-unit{font-size:12px;color:var(--muted)}
   .wt-row .wt-del{color:var(--warn);font-weight:700;font-size:19px;line-height:1;padding:2px 8px;background:none;border:none}
   .wt-add{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
-  .wt-add input{padding:10px;border:1px solid var(--line);border-radius:10px;font-size:13.5px;font-family:inherit;background:var(--surface)}
+  .wt-add input{padding:11px;border:2.5px solid var(--traco);border-radius:12px;font-size:13.5px;font-weight:700;font-family:inherit;background:var(--surface)}
   .wt-add .wt-date{flex:1 1 132px}
   .wt-add .wt-w{flex:2 1 110px}
-  .wt-add button{padding:10px 16px;border-radius:10px;background:var(--primary);color:#fff;font-weight:700;font-size:13.5px;border:none;flex:0 0 auto}
-  .wt-add button:active{filter:brightness(.96)}
+  .wt-add button{padding:11px 18px;border:2.5px solid var(--traco);border-radius:12px;background:var(--primary);color:#fff;font-weight:800;font-size:13.5px;flex:0 0 auto;box-shadow:var(--dura-sm)}
+  .wt-add button:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--traco)}
   .cta{text-align:center;padding:6px 4px}
   .cta p{font-size:13px;color:var(--muted);margin:0 0 12px}
   .pace-list{display:flex;flex-direction:column;gap:8px}
@@ -609,7 +656,7 @@ window.APP_RELEASE = "tresults-v12";
   @keyframes overlayFade{from{opacity:0}to{opacity:1}}
   .overlay.open .modal{animation:modalUp .40s cubic-bezier(.22,.68,.36,1)}
   @keyframes modalUp{from{opacity:0;transform:translateY(48px)}to{opacity:1;transform:none}}
-  .modal{background:var(--surface);width:100%;max-width:560px;max-height:88vh;overflow-y:auto;border-radius:20px 20px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom));box-shadow:0 -8px 40px rgba(21,32,29,.2)}
+  .modal{background:var(--surface);width:100%;max-width:560px;max-height:88vh;overflow-y:auto;border-top:3px solid var(--traco);border-radius:26px 26px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom));box-shadow:0 -8px 40px rgba(21,32,29,.2)}
   .modal h3{font-size:17px;margin-bottom:14px}
   .modal .grid4{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .modal .btn.secondary{background:var(--bg);color:var(--ink);margin-top:8px}
@@ -623,28 +670,32 @@ window.APP_RELEASE = "tresults-v12";
   .soon-wrap h2{font-size:22px}
   .soon-wrap p{color:var(--muted);font-size:14px;margin-top:8px;max-width:320px;margin-left:auto;margin-right:auto}
   /* ============ TAB BAR + HERO RING (v2) ============ */
-  #tabbar{position:fixed;left:0;right:0;bottom:0;z-index:60;display:none;align-items:center;justify-content:space-around;background:var(--surface);border-top:1px solid var(--line);padding:8px 8px calc(8px + env(safe-area-inset-bottom))}
+  #tabbar{position:fixed;left:0;right:0;bottom:0;z-index:60;display:none;align-items:center;justify-content:space-around;background:var(--surface);border-top:3px solid var(--traco);padding:8px 8px calc(8px + env(safe-area-inset-bottom))}
   #tabbar.show{display:flex}
   #tabbar button{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:56px;font-size:10.5px;font-weight:700;color:var(--muted);padding:4px 6px;border-radius:10px}
   #tabbar button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
   #tabbar button.on{color:var(--primary);font-weight:800}
-  #tabbar .fab{width:52px;height:52px;border-radius:50%;background:var(--primary);margin-top:-30px;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(14,124,107,.35);color:#fff;min-width:52px;padding:0}
-  #tabbar .fab svg{width:24px;height:24px;stroke:#fff;stroke-width:2.4}
-  #tabbar .fab:active{transform:scale(.94)}
+  #tabbar .fab{width:58px;height:58px;border:3.5px solid var(--traco);border-radius:50%;background:var(--primary);margin-top:-32px;display:flex;align-items:center;justify-content:center;box-shadow:var(--dura);color:#fff;min-width:58px;padding:0;transition:transform .08s ease,box-shadow .08s ease}
+  #tabbar .fab svg{width:26px;height:26px;stroke:#fff;stroke-width:3}
+  #tabbar .fab:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--traco)}
   .ringwrap{display:flex;align-items:center;gap:18px;margin-top:12px}
   .ringstats{flex:1;display:flex;flex-direction:column;gap:10px;font-size:13px;min-width:0}
-  .ringstats>div{display:flex;justify-content:space-between;align-items:baseline}
+  .ringstats>div{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
   .ringstats>div+div{border-top:1px solid var(--line);padding-top:10px}
   .ringstats .k{color:var(--muted);font-weight:600}
   .ringstats b{font-family:var(--mono);font-weight:800}
   .hero.over #balance{fill:var(--warn)}
-  .macros2{display:flex;gap:8px;margin-top:16px}
-  .macros2 .m2{flex:1;background:var(--bg);border-radius:13px;padding:10px 12px;min-width:0}
-  .macros2 .m2 .r{display:flex;justify-content:space-between;font-size:11.5px;font-weight:700;gap:4px}
-  .macros2 .m2 .r .t{color:var(--muted)}
-  .macros2 .m2 .r b{font-family:var(--mono);font-weight:800}
-  .macros2 .m2 .r small{color:var(--muted);font-weight:600}
-  .macros2 .bar2{height:5px;border-radius:99px;background:var(--line);margin-top:7px;overflow:hidden}
+  /* Cada macro na sua cor: aqui é a cor que separa, não o rótulo.
+     Texto sempre escuro por cima — branco sobre amarelo some sob o sol da
+     janela da academia, que é onde este app é lido. */
+  .macros2{display:flex;gap:9px;margin-top:16px}
+  .macros2 .m2{flex:1;background:var(--surface);border:2.5px solid var(--traco);border-radius:15px;padding:10px 11px;min-width:0;box-shadow:var(--dura-sm)}
+  .macros2 .m2 .r{display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-width:0}
+  .macros2 .m2 .r>*{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .macros2 .m2 .r .t{color:var(--muted);font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase}
+  .macros2 .m2 .r b{font-family:var(--mono);font-weight:800;font-size:13.5px}
+  .macros2 .m2 .r small{color:var(--muted);font-weight:700;font-size:10.5px}
+  .macros2 .bar2{height:6px;border-radius:99px;background:var(--line);margin-top:8px;overflow:hidden}
   .macros2 .bar2 span{display:block;height:100%;background:var(--primary);border-radius:99px;transition:width .3s ease}
   .pf-row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:14px;border-radius:12px;font-size:14px;font-weight:700}
   .pf-row+.pf-row{border-top:1px solid var(--line);border-radius:0}
@@ -657,7 +708,7 @@ window.APP_RELEASE = "tresults-v12";
   .pf-opt{display:flex;align-items:center;gap:11px;width:100%;text-align:left;
           padding:11px 12px;border-radius:10px;font-size:14px;font-weight:600}
   .pf-opt:active{background:var(--primary-08)}
-  .pf-opt .mark{width:17px;height:17px;border-radius:50%;border:2px solid var(--line);flex:none}
+  .pf-opt .mark{width:19px;height:19px;border-radius:50%;border:2.5px solid var(--traco);flex:none}
   .pf-opt.on .mark{border-color:var(--primary);background:var(--primary);
                    box-shadow:inset 0 0 0 3px var(--card)}
   .pf-opt.on{color:var(--primary)}
@@ -665,6 +716,17 @@ window.APP_RELEASE = "tresults-v12";
   .pf-row svg.chev{width:15px;height:15px;opacity:.45;margin-left:2px;
                    transition:transform .18s ease}
   .pf-row.aberto svg.chev{transform:rotate(90deg)}
+  .rng{-webkit-appearance:none;appearance:none;width:100%;height:8px;border-radius:99px;
+       background:var(--bg);border:2.5px solid var(--traco);outline:none;margin:10px 0 4px}
+  /* 26px: dedo em celular, não ponteiro de mouse. Contorno e sombra dura são os
+     mesmos dos outros controles — sem isso o deslizante parece de outro app. */
+  .rng::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:26px;height:26px;
+       border-radius:50%;background:var(--primary);border:3px solid var(--traco);
+       box-shadow:var(--dura-sm);margin-top:-1px}
+  .rng::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:var(--primary);
+       border:3px solid var(--traco);box-shadow:var(--dura-sm)}
+  .rng-legenda{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);
+       font-weight:600;padding:0 1px}
 
   /* ============ v2.1: login, perfil, progresso ============ */
   .login-fields .in{padding:14px;border-radius:14px;border:1.5px solid var(--line)}
@@ -850,7 +912,7 @@ window.APP_RELEASE = "tresults-v12";
     <div class="toplabel" id="heroTop">Saldo para comer hoje</div>
     <div class="ringwrap">
       <svg width="148" height="148" viewBox="0 0 148 148" aria-hidden="true">
-        <circle cx="74" cy="74" r="62" fill="none" stroke="var(--line)" stroke-width="13"/>
+        <circle cx="74" cy="74" r="62" fill="none" stroke="var(--traco)" stroke-width="19"/><circle cx="74" cy="74" r="62" fill="none" stroke="var(--line)" stroke-width="13"/>
         <circle id="ringFill" cx="74" cy="74" r="62" fill="none" stroke="var(--primary)" stroke-width="13" stroke-linecap="round" stroke-dasharray="389.6" stroke-dashoffset="389.6" transform="rotate(-90 74 74)" style="transition:stroke-dashoffset .5s ease"/>
         <text x="74" y="68" text-anchor="middle" class="num" id="balance" style="font-weight:800;font-size:30px;fill:var(--ink)">—</text>
         <text x="74" y="88" text-anchor="middle" style="font-size:11.5px;font-weight:700;fill:var(--muted)">kcal restantes</text>
@@ -1041,6 +1103,15 @@ window.APP_RELEASE = "tresults-v12";
       <svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
     </button>
     <div class="pf-sub" id="pfSomLista" style="display:none"></div>
+    <div class="pf-row" style="cursor:default">
+      <svg viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7"/></svg>
+      <span>Volume</span><span class="pf-val" id="pfVolVal">100%</span>
+    </div>
+    <div class="pf-sub">
+      <input type="range" class="rng" id="pfVol" min="10" max="100" step="5" value="100"
+             aria-label="Volume do alarme">
+      <div class="rng-legenda"><span>Discreto</span><span>Academia cheia</span></div>
+    </div>
     <button class="pf-row" id="pfSomTeste">
       <svg viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14"/></svg>
       <span id="pfSomTesteLbl">Testar som</span>
@@ -1891,6 +1962,21 @@ const somDoAlarme=()=>{
   return ALARM_SONS[s]?s:"claro";
 };
 
+/* Volume do alarme, de 10 a 100.
+   O alarme toca no canal de alarme do celular, que costuma estar no máximo —
+   ótimo para acordar, demais para uma academia. Isto é um multiplicador do
+   volume do sistema, não uma troca dele: mexer no volume do aparelho afetaria
+   o despertador da pessoa.
+
+   O mínimo não é zero de propósito: alarme mudo não é alarme, é um botão de
+   desligar disfarçado. */
+const VOLKEY="tresults.volume";
+const VOL_MIN=10;
+const volumeDoAlarme=()=>{
+  const v=parseInt(localStorage.getItem(VOLKEY),10);
+  return Number.isFinite(v)?Math.min(100,Math.max(VOL_MIN,v)):100;
+};
+
 const ALARM_VOL=0.85;
 const ALARM_DUR=20;      // toca até ser dispensado, como um temporizador de celular
 const ALARM_CICLO=2.4;   // intervalo entre um toque e o seguinte
@@ -1983,6 +2069,7 @@ function scheduleAlarm(inSec){
     const ciclos=[];
     for(let c=0;c*ALARM_CICLO<ALARM_DUR;c++)ciclos.push(c*ALARM_CICLO);
     const notas=ALARM_SONS[somDoAlarme()].notas.map((f,i)=>[f,i*0.16]);
+    const vol=ALARM_VOL*(volumeDoAlarme()/100);
     ciclos.forEach(cycle=>{
       notas.forEach(([f,dt],k)=>{
         [[f,1],[f*2,.34],[f*3,.11]].forEach(([freq,amp])=>{
@@ -1990,7 +2077,7 @@ function scheduleAlarm(inSec){
           o.type="sine";o.frequency.value=freq;
           const t=t0+cycle+dt,dur=k===2?1.5:0.75;
           g.gain.setValueAtTime(0.0001,t);
-          g.gain.exponentialRampToValueAtTime(ALARM_VOL*amp,t+0.012);
+          g.gain.exponentialRampToValueAtTime(vol*amp,t+0.012);
           g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
           o.connect(g).connect(out);
           o.start(t);o.stop(t+dur+0.05);
@@ -2193,6 +2280,18 @@ function testarSom(){
   beepInit();
   scheduleAlarm(0);          // sem tomar o áudio: prévia não precisa parar a música
   setTimeout(alarmStop,3200);
+}
+
+/** Volume que vale agora: no app quem guarda é o Android. */
+const volumeAtual=()=>appNativo
+  ? Math.min(100,Math.max(VOL_MIN,parseInt(naPonte("volumeDoAlarme",100),10)||100))
+  : volumeDoAlarme();
+
+/** Guarda nos dois lados: o app toca pelo Android, o navegador pelo localStorage. */
+function definirVolume(v){
+  v=Math.min(100,Math.max(VOL_MIN,parseInt(v,10)||100));
+  localStorage.setItem(VOLKEY,String(v));
+  if(appNativo){try{window.TResults.definirVolume(v);}catch(e){}}
 }
 
 const biometriaDisponivel=()=>!!naPonte("biometriaDisponivel",false);
@@ -2780,7 +2879,16 @@ function renderPerfil(){
   const moon=$("themeMoon2");if(moon)moon.style.fill=themeIsDark()?"currentColor":"none";
   const lbl=$("themeLbl2");if(lbl)lbl.textContent=themeIsDark()?"Modo claro":"Modo escuro";
   renderSomDoAlarme();
+  renderVolume();
   renderBiometria();
+}
+
+function renderVolume(){
+  const s=$("pfVol"),v=$("pfVolVal");
+  if(!s||!v)return;
+  const atual=volumeAtual();
+  s.value=String(atual);
+  v.textContent=atual+"%";
 }
 
 /* Som do alarme. No app mostra o nome do som do sistema e abre o seletor dele;
@@ -2823,6 +2931,10 @@ $("pfSom").onclick=()=>{
   $("pfSom").classList.toggle("aberto",!aberta);
 };
 $("pfSomTeste").onclick=()=>testarSom();
+/* Arrastar só atualiza o número; soltar é que grava e toca a prévia — tocar a
+   cada passo do arraste viraria uma metralhadora de alarmes. */
+$("pfVol").oninput=e=>{$("pfVolVal").textContent=e.target.value+"%";};
+$("pfVol").onchange=e=>{definirVolume(e.target.value);renderVolume();testarSom();};
 $("pfBio").onclick=()=>{definirBiometria(!biometriaAtiva());renderBiometria();};
 
 $("pfEdit").onclick=()=>{showView("food");setTimeout(openGoals,120);};
@@ -3317,7 +3429,7 @@ function renderCharts(t,meta){
   const color=over?"var(--warn)":"var(--primary)";
   const C=2*Math.PI*52;
   const donut=`<svg class="donut" width="116" height="116" viewBox="0 0 120 120" aria-hidden="true">
-    <circle cx="60" cy="60" r="52" fill="none" stroke="var(--line)" stroke-width="12"/>
+    <circle cx="60" cy="60" r="52" fill="none" stroke="var(--traco)" stroke-width="18"/><circle cx="60" cy="60" r="52" fill="none" stroke="var(--line)" stroke-width="12"/>
     <circle cx="60" cy="60" r="52" fill="none" stroke="${color}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C*(1-frac)).toFixed(1)}" transform="rotate(-90 60 60)" style="transition:stroke-dashoffset .7s cubic-bezier(.22,.68,.36,1)"/>
     <text x="60" y="57" text-anchor="middle" class="dv">${Math.round(pct)}%</text>
     <text x="60" y="73" text-anchor="middle" class="dl">do plano</text>
@@ -3520,7 +3632,7 @@ function renderLiqRing(liq,liqT){
   const pct=liqT>0?liq/liqT*100:0, frac=Math.max(0,Math.min(pct/100,1));
   const C=2*Math.PI*52;
   el.innerHTML=`<svg class="donut" width="116" height="116" viewBox="0 0 120 120" aria-hidden="true">
-    <circle cx="60" cy="60" r="52" fill="none" stroke="var(--line)" stroke-width="12"/>
+    <circle cx="60" cy="60" r="52" fill="none" stroke="var(--traco)" stroke-width="18"/><circle cx="60" cy="60" r="52" fill="none" stroke="var(--line)" stroke-width="12"/>
     <circle cx="60" cy="60" r="52" fill="none" stroke="var(--water)" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C*(1-frac)).toFixed(1)}" transform="rotate(-90 60 60)" style="transition:stroke-dashoffset .7s cubic-bezier(.22,.68,.36,1)"/>
     <text x="60" y="57" text-anchor="middle" class="dv">${Math.round(pct)}%</text>
     <text x="60" y="73" text-anchor="middle" class="dl">da meta</text>
