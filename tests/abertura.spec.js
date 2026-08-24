@@ -154,3 +154,98 @@ test.describe('Instalação como app', () => {
     expect(metas.apple, 'a da Apple continua necessária no iOS').toBe('yes');
   });
 });
+
+test.describe('Imersão — o cumprimento entre a abertura e o app', () => {
+
+  /* Antes dela, o splash cortava seco para o Início: abrir o app parecia
+     trocar de página, não chegar em algum lugar. */
+
+  test('cumprimenta pelo nome depois da abertura', async ({ page }) => {
+    const erros = await abrirApp(page, estadoBase());
+
+    const im = await page.evaluate(() => {
+      const el = document.getElementById('imersao');
+      return {
+        visivel: !!el && el.classList.contains('on') && getComputedStyle(el).display !== 'none',
+        ola: document.getElementById('imOla')?.textContent,
+        nome: document.getElementById('imNome')?.textContent,
+        data: document.getElementById('imData')?.textContent,
+      };
+    });
+
+    expect(im.visivel).toBe(true);
+    expect(im.nome, 'o cumprimento é pessoal, não genérico').toBe('Pedro');
+    expect(im.ola).toMatch(/^(Bom dia|Boa tarde|Boa noite|Boa madrugada),$/);
+    expect(im.data, 'a data por extenso, em português').toMatch(/^\w+, \d{1,2} de [a-zç]+$/);
+    expect(erros).toEqual([]);
+  });
+
+  test('sai sozinha e deixa o app livre', async ({ page }) => {
+    /* Uma vinheta que não sai é uma tela travada com outro nome. */
+    await abrirApp(page, estadoBase());
+    await page.waitForTimeout(2900);   // 2 s de vida + a transição de saída
+
+    expect(await page.evaluate(() => !!document.getElementById('imersao')),
+      'ela precisa sumir do documento, não só ficar transparente').toBe(false);
+    expect(await page.evaluate(() => document.querySelector('.view.on')?.id)).toBe('view-inicio');
+  });
+
+  test('um toque dispensa na hora', async ({ page }) => {
+    /* Quem abre o app dez vezes no treino não pode ser refém da vinheta. */
+    await abrirApp(page, estadoBase());
+    await page.evaluate(() => document.getElementById('imersao').click());
+    await page.waitForTimeout(700);
+
+    expect(await page.evaluate(() => !!document.getElementById('imersao'))).toBe(false);
+  });
+
+  test('quem volta no meio de um treino não passa por ela', async ({ page }) => {
+    /* Voltar do descanso e dar de cara com "Boa noite" seria o app se achando
+       mais importante que a série. O treino retoma direto. */
+    const { iniciarTreino } = require('./app');
+    await abrirApp(page, estadoBase());
+    await page.evaluate(() => document.getElementById('imersao')?.remove());
+    await iniciarTreino(page);
+
+    await page.reload();
+    await page.waitForFunction(() => !!window.__t, null, { timeout: 15000 });
+    await page.waitForTimeout(600);
+
+    expect(await page.evaluate(() => document.querySelector('.view.on')?.id),
+      'o treino em andamento vem primeiro').toBe('view-treino');
+    expect(await page.evaluate(() => {
+      const el = document.getElementById('imersao');
+      return !el || !el.classList.contains('on');
+    }), 'a imersão não pode cobrir o treino').toBe(true);
+  });
+
+  test('sem nome configurado, vai direto às boas-vindas', async ({ page }) => {
+    /* "Boa noite, " sem nome é pior que não cumprimentar. */
+    const semNome = estadoBase();
+    const st = JSON.parse(semNome['cutting.v1']);
+    delete st.goals.nome;
+    semNome['cutting.v1'] = JSON.stringify(st);
+
+    await abrirApp(page, semNome);
+
+    expect(await page.evaluate(() => {
+      const el = document.getElementById('imersao');
+      return !el || !el.classList.contains('on');
+    })).toBe(true);
+    expect(await page.evaluate(() => document.querySelector('.view.on')?.id)).toBe('view-welcome');
+  });
+
+  test('respeita quem desliga animações no sistema', async ({ browser }) => {
+    /* Sem movimento, ela é só uma parede de 2 segundos na frente do app. */
+    const ctx = await browser.newContext({ reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    await abrirApp(page, estadoBase());
+
+    expect(await page.evaluate(() => {
+      const el = document.getElementById('imersao');
+      return !el || !el.classList.contains('on');
+    }), 'com animações desligadas ela nem aparece').toBe(true);
+    expect(await page.evaluate(() => document.querySelector('.view.on')?.id)).toBe('view-inicio');
+    await ctx.close();
+  });
+});

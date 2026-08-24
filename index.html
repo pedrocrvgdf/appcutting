@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v17";
+window.APP_RELEASE = "tresults-v18";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -195,6 +195,32 @@ window.APP_RELEASE = "tresults-v17";
   .sp-retry{opacity:0;padding:9px 18px;border-radius:10px;background:var(--surface);
     border:1px solid var(--line);color:var(--primary);font-weight:700;font-size:13px;
     animation:spFade .4s ease 15s forwards}
+  /* A imersão: o instante entre a abertura e o app.
+
+     Sem ela, o splash cortava seco para o Início — abrir o app parecia trocar
+     de página, não chegar em algum lugar. Ela cumprimenta pelo nome, respira
+     e sai sozinha. Dura pouco de propósito: quem abre o app dez vezes no
+     treino não pode ser feito refém de uma vinheta. Um toque dispensa. */
+  #imersao{position:fixed;inset:0;z-index:190;background:var(--bg);display:none;
+    flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    transition:opacity .5s ease,transform .5s cubic-bezier(.4,0,.2,1)}
+  #imersao.on{display:flex}
+  #imersao.sair{opacity:0;transform:translateY(-3%);pointer-events:none}
+  .im-marca{width:60px;height:60px;border-radius:20px;background:var(--primary);
+    display:flex;align-items:center;justify-content:center;margin-bottom:18px;
+    box-shadow:0 10px 30px rgba(14,124,107,.25);
+    opacity:0;animation:imSobe .5s ease .05s forwards}
+  .im-marca svg{width:32px;height:32px;stroke:#fff;fill:none;stroke-width:2;
+    stroke-linecap:round;stroke-linejoin:round}
+  .im-ola{font-size:16px;font-weight:600;color:var(--muted);
+    opacity:0;animation:imSobe .5s ease .22s forwards}
+  .im-nome{font-family:var(--display);font-size:36px;font-weight:700;color:var(--ink);
+    line-height:1.15;max-width:86vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    opacity:0;animation:imSobe .5s ease .34s forwards}
+  .im-data{font-size:13px;font-weight:600;color:var(--muted);margin-top:10px;
+    opacity:0;animation:imSobe .5s ease .5s forwards}
+  @keyframes imSobe{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
   @media (prefers-reduced-motion:reduce){
     .sp-in,.sp-slow,.sp-retry{opacity:1;animation:none}
     .sp-bar i{animation:none;width:100%}
@@ -956,6 +982,15 @@ window.APP_RELEASE = "tresults-v17";
     <div class="sp-slow">Conexão lenta — ainda tentando entrar…</div>
     <button class="sp-retry" onclick="location.reload()">Tentar de novo</button>
   </div>
+</div>
+
+<!-- ==================== IMERSÃO ====================
+     O cumprimento entre a abertura e o Início. Sai sozinha; um toque dispensa. -->
+<div id="imersao" aria-hidden="true">
+  <div class="im-marca"><svg viewBox="0 0 24 24"><path d="M3 12h4l2-5 3 10 2-7 2 4h5"/></svg></div>
+  <div class="im-ola" id="imOla"></div>
+  <div class="im-nome" id="imNome"></div>
+  <div class="im-data" id="imData"></div>
 </div>
 
 <!-- ==================== ALARME DO DESCANSO ====================
@@ -1913,6 +1948,34 @@ function hideSplash(){
   if(!s||s.classList.contains("hide"))return;
   s.classList.add("hide");
   setTimeout(()=>{if(s.parentNode)s.remove();},400);
+}
+
+/* ---- A imersão ----
+   O cumprimento entre a abertura e o Início. Só numa abertura fria: quem volta
+   no meio de um treino é levado direto ao treino (trRestore, antes dela), e
+   quem já está dentro do app não passa de novo por aqui. Ela sai sozinha em
+   2 s e qualquer toque dispensa — abrir o app dez vezes numa sessão de treino
+   não pode virar dez vinhetas. */
+function saudacao(h){if(h<6)return"Boa madrugada";if(h<12)return"Bom dia";if(h<18)return"Boa tarde";return"Boa noite";}
+function mostrarImersao(){
+  const el=$("imersao");if(!el)return;
+  const nome=userName();if(!nome)return;
+  /* Sem movimento, ela é só uma parede de 2 s na frente do app. */
+  try{if(window.matchMedia("(prefers-reduced-motion:reduce)").matches)return;}catch(e){}
+  $("imOla").textContent=saudacao(new Date().getHours())+",";
+  $("imNome").textContent=nome;
+  const d=new Date();
+  const dias=["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
+  const meses=["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+  $("imData").textContent=dias[d.getDay()]+", "+d.getDate()+" de "+meses[d.getMonth()];
+  el.classList.add("on");
+  const sair=()=>{
+    if(el.classList.contains("sair"))return;
+    el.classList.add("sair");
+    setTimeout(()=>{if(el.parentNode)el.remove();},550);
+  };
+  el.onclick=sair;
+  setTimeout(sair,2000);
 }
 /* ============================================================
    INÍCIO — o feed dos treinos já feitos
@@ -3544,6 +3607,7 @@ function routeAfterLogin(){
   if(userName()&&trRestore())return; // treino em andamento volta exatamente de onde parou
   if(["inicio","food","treino"].includes(currentView))return; // já está dentro do app
   if(!userName()){ showView("welcome"); return; }
+  mostrarImersao();   // o cumprimento cobre a chegada; showView tira o splash por baixo
   showView("inicio");
 }
 $("welcomeGo").onclick=()=>{
