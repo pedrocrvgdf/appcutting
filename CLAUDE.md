@@ -118,6 +118,12 @@ O T-RESULTS é um **app**, não um site. Ele precisa se comportar como tal.
   conexão lenta aos 6 s e botão de recomeçar aos 15 s. Ela sai em `showView()`,
   via `hideSplash()` — se você criar outro caminho que abre uma tela, chame
   `hideSplash()` nele também, senão o app fica preso na abertura.
+- **Depois da abertura vem a imersão** (`#imersao`, `mostrarImersao()`): o
+  cumprimento pelo nome, que cobre a chegada ao Início e sai sozinha em 2 s.
+  Regras dela: um toque dispensa; treino em andamento **não** passa por ela
+  (`trRestore` vem antes); sem nome configurado ela não aparece; e com
+  `prefers-reduced-motion` ela nem entra — sem movimento seria só uma parede
+  de 2 s na frente do app. Coberta em `tests/abertura.spec.js`.
 
 ### A direção visual é "soft", e não tem contorno
 
