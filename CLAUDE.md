@@ -280,6 +280,37 @@ Chaves usadas no armazenamento local, úteis para montar cenários:
   `alarmStop()`** — senão o som fica preso e a música do usuário não volta.
 - **Descanso vencido há mais de 3 minutos não alarma** (a pessoa voltou ao app
   muito depois). Mostra o estado, sem tocar nem interromper a música.
+- **O aviso tem duas caras, e quem escolhe é onde a pessoa estava.** Passou o
+  descanso inteiro com o app na frente (`descansouOlhando()`), recebe o pop-up
+  `#restPop`, que não tapa o treino — obrigar quem já estava olhando a apertar
+  "pronto" para voltar ao que via é atrito à toa. Saiu do app em algum momento,
+  recebe `#restDone` em tela cheia, que é o que alcança alguém com o celular no
+  bolso. **Som e vibração são iguais nos dois**: o discreto é o visual, não o
+  alarme. Não dá para decidir isso por `visibilityState` na hora — com o app em
+  segundo plano o JavaScript congela e `restFinish` só roda na volta, quando a
+  página já está visível de novo. Quem sabe a verdade é `trS.saiuNoDescanso`,
+  marcado no `visibilitychange` e no `trRestore` (restaurar = a página foi
+  descartada, logo a pessoa esteve fora).
+
+### Trocar o exercício no meio do treino
+
+Academia lotada, fila no aparelho, equipamento quebrado: `#trTrocar` troca o
+exercício da vez por outro do mesmo grupo (`EX_POR_GRUPO`) ou por um nome
+digitado.
+
+- **A troca é da sessão, nunca do protocolo.** `trS.w` é cópia profunda do
+  treino (`startTRun`), então mexer em `trS.w.ex[idx]` não reescreve o que a
+  pessoa montou. Existe teste que lê `store.tprotocol` depois da troca.
+- **Séries e descanso continuam os do prescrito.** Trocar de aparelho não é
+  trocar de plano.
+- O nome prescrito fica em `ex.orig`, e é o que o aviso `#trTrocado` mostra com
+  o botão "Desfazer" — sem isso, semanas depois o histórico pareceria dizer que
+  o treino mudou.
+- **O que fica registrado é o que foi feito**, não o que estava no papel: é o
+  histórico que a pessoa consulta para progredir.
+- A referência da última vez (`lastExSession`) segue o exercício **novo**:
+  comparar a carga do leg press com a do agachamento não diria nada.
+- Coberto em `tests/treino.spec.js`.
 
 ### Aviso com o app fechado (Web Push)
 

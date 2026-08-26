@@ -160,7 +160,11 @@ test.describe('Fora do app Android', () => {
 
     await page.evaluate(() => __t.forcarFimDoDescanso());
     await page.waitForTimeout(400);
-    expect(await page.evaluate(() => document.getElementById('restDone').classList.contains('open')),
-      'e a tela de alarme da web volta a ser necessária').toBe(true);
+    /* Qual dos dois avisos aparece depende de a pessoa estar ou não olhando o
+       app; o que este teste garante é que o caminho web volta a existir. */
+    expect(await page.evaluate(() =>
+      document.getElementById('restDone').classList.contains('open') ||
+      document.getElementById('restPop').classList.contains('open')),
+      'e o alarme da web volta a ser necessário').toBe(true);
   });
 });
