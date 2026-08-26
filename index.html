@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v20";
+window.APP_RELEASE = "tresults-v21";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -687,6 +687,11 @@ window.APP_RELEASE = "tresults-v20";
   .sub-op.atual{background:var(--primary-08);color:var(--primary);font-weight:700}
   .sub-op .tag{margin-left:auto;flex:none;font-size:11px;font-weight:700;color:var(--muted)}
   .sub-vazio{font-size:13px;color:var(--muted);padding:8px 2px;line-height:1.5}
+
+  /* Confirmação da idade lida da data: quem digita o ano errado percebe aqui,
+     e não meses depois com as calorias tortas. */
+  .cad-idade{font-size:12.5px;font-weight:600;color:var(--primary);margin-top:6px;min-height:16px}
+  .cad-idade.ruim{color:var(--warn)}
   .how-sub{font-size:12px;color:var(--muted);margin-bottom:10px}
   .how-imgwrap{position:relative;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:10px}
   .how-imgwrap img{width:100%;display:block;aspect-ratio:4/3;object-fit:contain}
@@ -1090,6 +1095,39 @@ window.APP_RELEASE = "tresults-v20";
       <div class="auth-msg" id="authMsg"></div>
     </div>
     <div class="login-foot" id="loginFoot">Ao continuar você concorda com os Termos de uso e a Política de privacidade.</div>
+  </div>
+</div>
+
+<!-- ==================== CRIAR CONTA ====================
+     Antes, criar conta era preencher os mesmos campos do "Entrar" e apertar
+     outro botão — e as pessoas não entendiam que já tinham digitado tudo.
+     Aqui o cadastro é um pedido próprio, com começo e fim. -->
+<div class="overlay" id="cadastroOverlay" style="z-index:108">
+  <div class="modal" style="max-width:440px">
+    <h3 style="margin-bottom:2px">Criar sua conta</h3>
+    <div class="how-sub">É rápido. A data de nascimento é o que deixa o app calcular suas calorias sozinho.</div>
+
+    <div class="field" style="margin-top:14px">
+      <label class="lbl" for="cadNome">Nome completo</label>
+      <input class="in" id="cadNome" type="text" autocomplete="name" placeholder="Como está no seu documento">
+    </div>
+    <div class="field" style="margin-top:10px">
+      <label class="lbl" for="cadNasc">Data de nascimento</label>
+      <input class="in" id="cadNasc" type="date" autocomplete="bday">
+      <div class="cad-idade" id="cadIdade"></div>
+    </div>
+    <div class="field" style="margin-top:10px">
+      <label class="lbl" for="cadEmail">E-mail</label>
+      <input class="in" id="cadEmail" type="email" inputmode="email" autocomplete="email" placeholder="seu@email.com">
+    </div>
+    <div class="field" style="margin-top:10px">
+      <label class="lbl" for="cadSenha">Senha</label>
+      <input class="in" id="cadSenha" type="password" autocomplete="new-password" placeholder="mínimo 6 caracteres">
+    </div>
+
+    <div class="auth-msg" id="cadMsg"></div>
+    <button class="btn" id="cadCriar" style="margin-top:12px">Criar conta</button>
+    <button class="btn secondary" id="cadFechar">Já tenho conta</button>
   </div>
 </div>
 
@@ -1793,7 +1831,7 @@ window.APP_RELEASE = "tresults-v20";
       <div class="seg" id="gSexoSeg"><button data-v="M" class="on">Masculino</button><button data-v="F">Feminino</button></div>
       <select id="gSexo" style="display:none"><option value="M">Masculino</option><option value="F">Feminino</option></select>
       <div class="row" style="margin-top:14px">
-        <div class="field"><label class="lbl">Idade</label><input class="in num" id="gIdade" type="number" inputmode="numeric"></div>
+        <div class="field"><label class="lbl" id="gIdadeLbl">Idade</label><input class="in num" id="gIdade" type="number" inputmode="numeric"><div class="cad-idade" id="gIdadeNota"></div></div>
         <div class="field"><label class="lbl">Altura (cm)</label><input class="in num" id="gAltura" type="number" inputmode="decimal"></div>
         <div class="field"><label class="lbl">Peso (kg)</label><input class="in num" id="gPesoAtual" type="number" inputmode="decimal"></div>
       </div>
@@ -3934,7 +3972,79 @@ async function entrarComDigital(){
 }
 $("btnDigital").onclick=()=>entrarComDigital();
 $("email").addEventListener("input",renderDigitalLogin);
-$("btnSignup").onclick=async()=>{ if(!cloudEnabled)return; try{await window.__fb.createUserWithEmailAndPassword(auth,email(),pass());authMsg("Conta criada!",true);}catch(e){authMsg(mapErr(e.code));} };
+/* ---- Criar conta ----
+
+   O cadastro é um pedido próprio, e não os mesmos campos do "Entrar" com outro
+   botão embaixo: gente de verdade preenchia e-mail e senha, apertava "Criar
+   conta grátis" e não entendia se tinha entrado ou se cadastrado.
+
+   Ele pede também nome e data de nascimento porque são o que falta para o app
+   calcular as calorias sem perguntar depois. */
+
+function cadRenderIdade(){
+  const el=$("cadIdade"),v=$("cadNasc").value;
+  if(!v){el.textContent="";el.className="cad-idade";return;}
+  const a=idadeDe(v);
+  if(a<10||a>100){el.textContent="Confira a data — deu "+a+" anos.";el.className="cad-idade ruim";}
+  else {el.textContent=a+" anos";el.className="cad-idade";}
+}
+
+function abrirCadastro(){
+  $("cadNome").value="";$("cadNasc").value="";
+  $("cadEmail").value=email();      // aproveita o que já foi escrito na entrada
+  $("cadSenha").value="";
+  $("cadMsg").textContent="";$("cadMsg").className="auth-msg";
+  cadRenderIdade();
+  $("cadastroOverlay").classList.add("open");
+  setTimeout(()=>$("cadNome").focus(),220);
+}
+function fecharCadastro(){$("cadastroOverlay").classList.remove("open");}
+const cadErro=m=>{$("cadMsg").textContent=m;$("cadMsg").className="auth-msg err";};
+
+async function criarConta(){
+  if(!cloudEnabled)return;
+  const nome=$("cadNome").value.trim();
+  const nasc=$("cadNasc").value;
+  const mail=$("cadEmail").value.trim();
+  const senha=$("cadSenha").value;
+
+  if(!nome)return cadErro("Escreva seu nome completo.");
+  if(!nasc)return cadErro("Informe sua data de nascimento.");
+  const anos=idadeDe(nasc);
+  /* Fora dessa faixa é quase sempre ano digitado errado, e a conta de calorias
+     sairia torta sem ninguém perceber. */
+  if(anos<10||anos>100)return cadErro("Confira a data de nascimento: deu "+anos+" anos.");
+  if(!mail)return cadErro("Informe seu e-mail.");
+  if((senha||"").length<6)return cadErro("A senha precisa ter pelo menos 6 caracteres.");
+
+  $("cadCriar").disabled=true;
+  try{
+    await window.__fb.createUserWithEmailAndPassword(auth,mail,senha);
+    /* Grava antes de a navegação acontecer: o onAuthStateChanged dispara em
+       seguida e já precisa encontrar o nome, senão manda para a tela que
+       pergunta o nome de novo. */
+    store.goals=store.goals||{};
+    store.goals.nome=nome;
+    store.goals.nasc=nasc;
+    store.goals.idade=anos;   // acompanha a data; recalculado a cada leitura
+    save();fillUser();
+    fecharCadastro();
+    authMsg("Conta criada!",true);
+  }catch(e){
+    cadErro(mapErr(e&&e.code));
+  }finally{
+    $("cadCriar").disabled=false;
+  }
+}
+
+$("btnSignup").onclick=abrirCadastro;
+$("cadCriar").onclick=criarConta;
+$("cadFechar").onclick=fecharCadastro;
+$("cadastroOverlay").onclick=ev=>{if(ev.target===$("cadastroOverlay"))fecharCadastro();};
+$("cadNasc").addEventListener("input",cadRenderIdade);
+$("cadNasc").addEventListener("change",cadRenderIdade);
+["cadNome","cadEmail","cadSenha"].forEach(id=>
+  $(id).addEventListener("keydown",ev=>{if(ev.key==="Enter")criarConta();}));
 $("btnReset").onclick=async()=>{ if(!cloudEnabled)return; if(!email())return authMsg("Escreva seu e-mail acima primeiro."); try{await window.__fb.sendPasswordResetEmail(auth,email());authMsg("Enviei um e-mail para redefinir a senha.",true);}catch(e){authMsg(mapErr(e.code));} };
 $("pass").addEventListener("keydown",e=>{if(e.key==="Enter")$("btnLogin").click();});
 async function doLogout(){ closeMenu(); trDiscardRun(); if(cloudEnabled&&auth){try{await window.__fb.signOut(auth);}catch(e){}} }
@@ -4468,7 +4578,25 @@ $("liqAddCustom").onclick=()=>{const v=parseInt($("liqCustom").value)||0;if(v>0)
 $("liqReset").onclick=()=>{store.liquids=store.liquids||{};store.liquids[viewKey]=0;save();renderGoals();};
 
 const goalsOverlay=$("goalsOverlay");
-function computeTMB(g){const peso=parseFloat(g.pesoAtual)||0,alt=parseFloat(g.altura)||0,idade=parseFloat(g.idade)||0;if(peso<=0||alt<=0||idade<=0)return 0;return 10*peso+6.25*alt-5*idade+((g.sexo==="F")?-161:5);}
+/* A idade sai da data de nascimento sempre que ela existe.
+   Idade guardada como número envelhece errado: quem se cadastrou aos 29 seguiria
+   29 para sempre, e a conta de calorias iria ficando torta em silêncio, um ano
+   por vez. Quem não tem data guardada (contas antigas) continua pelo número. */
+function idadeDe(nasc){
+  if(!nasc)return 0;
+  const d=new Date(nasc+"T00:00:00");
+  if(isNaN(d))return 0;
+  const h=new Date();
+  let a=h.getFullYear()-d.getFullYear();
+  const m=h.getMonth()-d.getMonth();
+  if(m<0||(m===0&&h.getDate()<d.getDate()))a--;
+  return a;
+}
+function idadeAtual(g){
+  const porData=idadeDe(g&&g.nasc);
+  return porData>0?porData:(parseFloat(g&&g.idade)||0);
+}
+function computeTMB(g){const peso=parseFloat(g.pesoAtual)||0,alt=parseFloat(g.altura)||0,idade=idadeAtual(g);if(peso<=0||alt<=0||idade<=0)return 0;return 10*peso+6.25*alt-5*idade+((g.sexo==="F")?-161:5);}
 const NEAT_MIG={"1.375":1.3,"1.55":1.4,"1.725":1.55,"1.9":1.7};
 function neatAtiv(v){const f=parseFloat(v)||1.2;const m=NEAT_MIG[String(v)];return m!==undefined?m:f;}
 function computeGETD(g){const tmb=computeTMB(g);const fator=neatAtiv(g.ativ);return tmb>0?tmb*fator:0;}
@@ -4553,7 +4681,14 @@ document.querySelectorAll(".obj-btn").forEach(b=>b.onclick=()=>{
 });
 function openGoals(){
   const g=store.goals||{};
-  $("gSexo").value=g.sexo||"M";$("gIdade").value=g.idade||"";$("gAltura").value=g.altura||"";$("gPesoAtual").value=g.pesoAtual||"";
+  $("gSexo").value=g.sexo||"M";$("gAltura").value=g.altura||"";$("gPesoAtual").value=g.pesoAtual||"";
+  /* Com data de nascimento guardada, a idade é conta, não pergunta: o campo
+     mostra o valor de hoje e não aceita digitação, para não abrir uma segunda
+     verdade sobre a mesma pessoa. Contas antigas, sem data, seguem digitando. */
+  const porData=idadeDe(g.nasc);
+  $("gIdade").value=porData>0?porData:(g.idade||"");
+  $("gIdade").readOnly=porData>0;
+  $("gIdadeNota").textContent=porData>0?"pela sua data de nascimento":"";
   $("gAtiv").value=g.ativ?String(neatAtiv(g.ativ)):"1.4";$("gPesoAlvo").value=g.pesoAlvo||"";$("gMeses").value=g.meses||"";$("gLiquid").value=g.liquidTarget||3000;
   const pa=parseFloat(g.pesoAtual)||0,pv=parseFloat(g.pesoAlvo)||0;
   selectedObj=g.objetivo||(pv&&pa?(pv>pa?"bulking":"cutting"):null);
@@ -4601,7 +4736,12 @@ $("saveGoals").onclick=()=>{
   const prev=store.goals||{};
   const sameplan=parseFloat(prev.pesoAtual)===(parseFloat(g.pesoAtual)||0)&&parseFloat(prev.pesoAlvo)===(parseFloat(g.pesoAlvo)||0)&&parseFloat(prev.meses)===(parseFloat(g.meses)||0)&&prev.objetivo===obj;
   const inicio=(sameplan&&prev.inicio)?prev.inicio:todayKey();
-  store.goals={nome,inicio,objetivo:obj,sexo:g.sexo,idade:parseFloat(g.idade)||0,altura:parseFloat(g.altura)||0,pesoAtual:parseFloat(g.pesoAtual)||0,ativ:parseFloat(g.ativ)||1.2,pesoAlvo:parseFloat(g.pesoAlvo)||0,meses:parseFloat(g.meses)||0,liquidTarget:parseInt(g.liquidTarget)||3000};
+  /* `store.goals` é remontado do zero aqui; sem carregar a data de nascimento
+     junto, ela sumiria no primeiro salvamento e a idade voltaria a ser um
+     número parado no tempo. */
+  const nasc=(store.goals&&store.goals.nasc)||"";
+  const anos=idadeDe(nasc);
+  store.goals={nome,inicio,nasc,objetivo:obj,sexo:g.sexo,idade:anos>0?anos:(parseFloat(g.idade)||0),altura:parseFloat(g.altura)||0,pesoAtual:parseFloat(g.pesoAtual)||0,ativ:parseFloat(g.ativ)||1.2,pesoAlvo:parseFloat(g.pesoAlvo)||0,meses:parseFloat(g.meses)||0,liquidTarget:parseInt(g.liquidTarget)||3000};
   const getd=computeGETD(store.goals);
   if(getd>0){store.getd=Math.round(getd);$("getdInput").value=store.getd;}
   save();render();goalsOverlay.classList.remove("open");

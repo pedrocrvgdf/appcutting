@@ -20,7 +20,7 @@ window.__t={
   get store(){return store}, get trS(){return trS}, get trRestEnd(){return trRestEnd},
   trElapsedMs:()=>trS?trElapsedMs():null, lastExSession, alarmWav, ALARM_VOL, todayKey,
   ALARM_DUR, ALARM_CICLO, restTick, ALARM_SONS, EX_POR_GRUPO,
-  somDoAlarme:()=>somDoAlarme(),
+  somDoAlarme:()=>somDoAlarme(), idadeDe, idadeAtual, computeTMB,
   appNativo:()=>appNativo,
   /* Trocar quem está logado, para alcançar o modo local — onde não há conta e
      portanto não há senha a conferir. */

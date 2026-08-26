@@ -149,6 +149,31 @@ mais.** A direção atual é a que o dono escolheu depois: pastel arredondado.
   `--macro-ink`/`--macro-num` existem porque reaproveitar `--mg` como fundo de
   texto escuro deixou o selo "+25% de carga" ilegível no tema claro.
 
+### Criar conta, e a idade que não envelhece errada
+
+Cadastrar já foi preencher os mesmos campos do "Entrar" e apertar outro botão
+embaixo — e gente de verdade não entendia se tinha entrado ou se cadastrado.
+Hoje `#btnSignup` abre `#cadastroOverlay`, um pedido próprio com nome completo,
+data de nascimento, e-mail e senha.
+
+- **A idade sai da data, sempre** (`idadeDe`/`idadeAtual`). Guardar a idade como
+  número a congela: quem se cadastrou aos 29 seguiria 29 para sempre, e como
+  Mifflin-St Jeor tira 5 kcal por ano, a meta diária ia ficando errada em
+  silêncio, um ano por vez. `store.goals.idade` continua sendo gravado, mas é
+  **derivado** — quem manda é `nasc`.
+- **Contas antigas não têm `nasc`** e seguem pelo número digitado. É por isso
+  que `idadeAtual` tem os dois caminhos, e que o campo de idade no formulário de
+  objetivo só fica travado quando existe data.
+- **`saveGoals` remonta `store.goals` do zero.** Se você mexer nele, carregue
+  `nasc` junto — sem isso a data some no primeiro salvamento e a idade volta a
+  ser número parado. Existe teste para exatamente isso.
+- Data fora de 10–100 anos é recusada no cadastro: quase sempre é ano digitado
+  errado (1092 por 1992), e a conta de calorias sairia absurda sem ninguém
+  perceber. A idade aparece embaixo do campo enquanto se digita.
+- O formato que o campo de data **mostra** vem do idioma do aparelho, não do
+  `lang` da página; o valor é sempre ISO. Não tente "consertar" isso.
+- Coberto em `tests/cadastro.spec.js`.
+
 ### Números na tela são em português
 
 Casa decimal se escreve com **vírgula**. Existe `kgTxt(v)` para isso: arredonda
@@ -233,6 +258,7 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 | `tests/perfil.spec.js` | Som do alarme e o atalho da digital, no app Android e no navegador |
 | `tests/digital.spec.js` | Entrar com a digital: e-mail que confere, e cada caminho de falha voltando para a senha |
 | `tests/conta.spec.js` | Excluir dados exigindo a senha da conta |
+| `tests/cadastro.spec.js` | Pop-up de criar conta, e a idade derivada da data de nascimento |
 | `tests/app-nativo.spec.js` | Caminho web desligado quando o app Android está presente |
 | `tests/service-worker.spec.js` | Cache do app, versão, e a página de diagnóstico |
 | `tests/app.js` | Utilitários: Firebase falso, estado inicial, atalhos de navegação |
