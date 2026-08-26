@@ -237,3 +237,56 @@ test.describe('Os botões parecem botões', () => {
     expect(deslizes, 'resto do layout antigo').toEqual([]);
   });
 });
+
+test.describe('Campo de digitar se distingue do que está atrás', () => {
+
+  /* Campo branco dentro de cartão branco não tem desenho nenhum: é só o texto
+     flutuando, e a pessoa não sabe onde toca para escrever. */
+
+  const contraste = (page, seletor) => page.evaluate(s => {
+    const cor = e => getComputedStyle(e).backgroundColor;
+    /* Sobe até achar quem realmente pinta um fundo: o pai imediato costuma
+       ser transparente, e comparar com transparente não prova nada. */
+    const fundoReal = e => {
+      let p = e.parentElement;
+      while (p) {
+        const c = cor(p), m = c.match(/[\d.]+/g);
+        if (m && (m.length < 4 || Number(m[3]) > 0)) return c;
+        p = p.parentElement;
+      }
+      return null;
+    };
+    return [...document.querySelectorAll(s)]
+      .filter(e => e.offsetParent !== null)
+      .map(e => ({ id: e.id || e.className, campo: cor(e), atras: fundoReal(e) }))
+      .filter(x => x.campo === x.atras);
+  }, seletor);
+
+  test('os campos do pop-up de criar conta não somem no fundo', async ({ page }) => {
+    await page.addInitScript(() => { window.__semLogin = true; });
+    await abrirApp(page, estadoBase());
+    await page.evaluate(() => document.getElementById('btnSignup').click());
+    await page.waitForTimeout(350);
+
+    expect(await contraste(page, '#cadastroOverlay .in'),
+      'campo com a mesma cor do modal é campo invisível').toEqual([]);
+  });
+
+  test('os campos da tela de Alimentação também não', async ({ page }) => {
+    await abrirApp(page, estadoBase());
+    await page.evaluate(() => document.querySelector('#tabbar [data-tab="food"]').click());
+    await page.waitForTimeout(500);
+
+    expect(await contraste(page, '#view-food input:not([type="range"])')).toEqual([]);
+  });
+
+  test('na tela de entrada o campo continua contrastando com o fundo do app', async ({ page }) => {
+    /* Lá o fundo já é verde claro: quem contrasta é o branco. A regra é ter
+       contraste, não ser de uma cor específica. */
+    await page.addInitScript(() => { window.__semLogin = true; });
+    await abrirApp(page, estadoBase());
+    await page.waitForTimeout(300);
+
+    expect(await contraste(page, '#view-login .in')).toEqual([]);
+  });
+});

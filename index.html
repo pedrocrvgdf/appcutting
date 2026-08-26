@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v22";
+window.APP_RELEASE = "tresults-v23";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -281,8 +281,11 @@ window.APP_RELEASE = "tresults-v22";
   }
   .view{display:none}
   .view.on{display:block}
-  .in{width:100%;padding:12px;border:0;border-radius:13px;background:var(--surface);color:var(--ink);font-weight:700;outline:none}
-  .in:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-14)}
+  /* Campo é ilha verde clara, e não branco sobre branco. Os cartões e os
+     modais são `--surface`, então um campo branco dentro deles não tinha
+     desenho nenhum: era só o texto flutuando. Mesmo motivo dos botões de RIR. */
+  .in{width:100%;padding:13px 14px;border:0;border-radius:16px;background:var(--primary-08);color:var(--ink);font-weight:700;outline:none}
+  .in:focus{box-shadow:0 0 0 3px var(--primary-14)}
   label.lbl{display:block;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 5px 2px}
   .dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
   .dot.ok{background:var(--ok)} .dot.saving{background:var(--amber)} .dot.err{background:var(--warn)} .dot.local{background:var(--muted)}
@@ -432,7 +435,7 @@ window.APP_RELEASE = "tresults-v22";
   .macro .v{font-size:17px;font-weight:800;font-family:var(--mono);margin-top:2px}
   .macro .v small{font-size:11px;color:var(--muted);font-weight:600}
   .getd{display:flex;align-items:center;gap:6px;margin-top:14px;font-size:12px;color:var(--muted)}
-  .getd input{width:66px;padding:4px 6px;border:1px solid var(--line);border-radius:8px;text-align:right;font-family:var(--mono);font-weight:700;color:var(--ink);background:var(--surface)}
+  .getd input{width:66px;padding:4px 6px;border:0;border-radius:12px;text-align:right;font-family:var(--mono);font-weight:700;color:var(--ink);background:var(--primary-08)}
   .sec{margin-top:22px}
   .sec-title{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
   .card{background:var(--surface);border:0;border-radius:26px;padding:15px;box-shadow:var(--sombra)}
@@ -549,7 +552,7 @@ window.APP_RELEASE = "tresults-v22";
   .liq-add{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;align-items:stretch}
   .liq-add button{height:44px;padding:0 16px;border-radius:14px;background:var(--surface);border:0;font-weight:800;font-size:13.5px;color:var(--ink);font-family:inherit;box-shadow:var(--sombra-sm)}
   .liq-add button:active{transform:scale(.97);box-shadow:var(--sombra-sm)}
-  .liq-add input{width:76px;height:44px;padding:0 10px;border:0;border-radius:14px;font-size:13.5px;font-weight:800;font-family:var(--mono);text-align:center;background:var(--surface)}
+  .liq-add input{width:76px;height:44px;padding:0 10px;border:0;border-radius:16px;font-size:13.5px;font-weight:800;font-family:var(--mono);text-align:center;background:var(--primary-08)}
   .liq-add input::placeholder{font-family:var(--sans);font-weight:700}
   .liq-add #liqAddCustom{background:var(--primary);color:#fff}
   .liq-add .reset{margin-left:auto;color:var(--muted);border:none;background:transparent;box-shadow:none;font-size:12.5px;letter-spacing:.03em;text-transform:uppercase;font-weight:800}
@@ -689,9 +692,22 @@ window.APP_RELEASE = "tresults-v22";
   .sub-vazio{font-size:13px;color:var(--muted);padding:8px 2px;line-height:1.5}
 
   /* Confirmação da idade lida da data: quem digita o ano errado percebe aqui,
-     e não meses depois com as calorias tortas. */
-  .cad-idade{font-size:12.5px;font-weight:600;color:var(--primary);margin-top:6px;min-height:16px}
-  .cad-idade.ruim{color:var(--warn)}
+     e não meses depois com as calorias tortas.
+
+     Ela vive na linha do rótulo, e não solta embaixo do campo: ali era um
+     texto órfão que não pertencia a nada. Como selo, lê-se como resposta à
+     data que acabou de ser digitada. */
+  .lbl-linha{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:18px}
+  .lbl-linha .lbl{margin:0}
+  .cad-idade{flex:none;font-size:11.5px;font-weight:700;line-height:1;
+    padding:5px 10px;border-radius:999px;background:var(--selo-bg);color:var(--selo-ink);
+    opacity:0;transform:translateY(-2px);transition:opacity .18s ease,transform .18s ease}
+  .cad-idade.on{opacity:1;transform:none}
+  .cad-idade.ruim{background:var(--warn);color:#fff}
+  @media (prefers-reduced-motion:reduce){.cad-idade{transition:none}}
+  /* Nota do campo travado. Aqui não é selo: é a explicação de por que o campo
+     não aceita digitação — sem ela, ele só pareceria quebrado. */
+  .campo-nota{flex:none;font-size:11px;font-weight:600;color:var(--muted);text-transform:none;letter-spacing:0}
   .how-sub{font-size:12px;color:var(--muted);margin-bottom:10px}
   .how-imgwrap{position:relative;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:10px}
   .how-imgwrap img{width:100%;display:block;aspect-ratio:4/3;object-fit:contain}
@@ -729,7 +745,7 @@ window.APP_RELEASE = "tresults-v22";
   .wt-row .wt-unit{font-size:12px;color:var(--muted)}
   .wt-row .wt-del{color:var(--warn);font-weight:700;font-size:19px;line-height:1;padding:2px 8px;background:none;border:none}
   .wt-add{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
-  .wt-add input{padding:11px;border:0;border-radius:12px;font-size:13.5px;font-weight:700;font-family:inherit;background:var(--surface)}
+  .wt-add input{padding:11px;border:0;border-radius:16px;font-size:13.5px;font-weight:700;font-family:inherit;background:var(--primary-08)}
   .wt-add .wt-date{flex:1 1 132px}
   .wt-add .wt-w{flex:2 1 110px}
   .wt-add button{padding:11px 18px;border:0;border-radius:12px;background:var(--primary);color:#fff;font-weight:800;font-size:13.5px;flex:0 0 auto;box-shadow:var(--sombra-sm)}
@@ -964,7 +980,9 @@ window.APP_RELEASE = "tresults-v22";
        font-weight:600;padding:0 1px}
 
   /* ============ v2.1: login, perfil, progresso ============ */
-  .login-fields .in{padding:14px;border-radius:14px;border:1.5px solid var(--line)}
+  /* Na tela de entrada os campos vivem sobre o fundo do app, que já é verde
+     claro: aqui quem contrasta é o branco. Contorno saiu junto com o cartoon. */
+  .login-fields .in{padding:14px;border-radius:16px;border:0;background:var(--surface);box-shadow:var(--sombra-sm)}
   .login-fields .field{margin-bottom:10px}
   .login-or{display:flex;align-items:center;gap:12px;margin:16px 0 12px}
   .login-or span{flex:1;height:1px;background:var(--line)}
@@ -1111,9 +1129,11 @@ window.APP_RELEASE = "tresults-v22";
       <input class="in" id="cadNome" type="text" autocomplete="name" placeholder="Como está no seu documento">
     </div>
     <div class="field" style="margin-top:10px">
-      <label class="lbl" for="cadNasc">Data de nascimento</label>
+      <div class="lbl-linha">
+        <label class="lbl" for="cadNasc">Data de nascimento</label>
+        <span class="cad-idade" id="cadIdade"></span>
+      </div>
       <input class="in" id="cadNasc" type="date" autocomplete="bday">
-      <div class="cad-idade" id="cadIdade"></div>
     </div>
     <div class="field" style="margin-top:10px">
       <label class="lbl" for="cadEmail">E-mail</label>
@@ -1830,7 +1850,7 @@ window.APP_RELEASE = "tresults-v22";
       <div class="seg" id="gSexoSeg"><button data-v="M" class="on">Masculino</button><button data-v="F">Feminino</button></div>
       <select id="gSexo" style="display:none"><option value="M">Masculino</option><option value="F">Feminino</option></select>
       <div class="row" style="margin-top:14px">
-        <div class="field"><label class="lbl" id="gIdadeLbl">Idade</label><input class="in num" id="gIdade" type="number" inputmode="numeric"><div class="cad-idade" id="gIdadeNota"></div></div>
+        <div class="field"><div class="lbl-linha"><label class="lbl" id="gIdadeLbl">Idade</label><span class="campo-nota" id="gIdadeNota"></span></div><input class="in num" id="gIdade" type="number" inputmode="numeric"></div>
         <div class="field"><label class="lbl">Altura (cm)</label><input class="in num" id="gAltura" type="number" inputmode="decimal"></div>
         <div class="field"><label class="lbl">Peso (kg)</label><input class="in num" id="gPesoAtual" type="number" inputmode="decimal"></div>
       </div>
@@ -3984,8 +4004,10 @@ function cadRenderIdade(){
   const el=$("cadIdade"),v=$("cadNasc").value;
   if(!v){el.textContent="";el.className="cad-idade";return;}
   const a=idadeDe(v);
-  if(a<10||a>100){el.textContent="Confira a data — deu "+a+" anos.";el.className="cad-idade ruim";}
-  else {el.textContent=a+" anos";el.className="cad-idade";}
+  /* Fora da faixa o selo fica vermelho e diz a idade que saiu: é o número
+     absurdo que faz a pessoa reler o ano que digitou. */
+  el.textContent=a+" anos";
+  el.className="cad-idade on"+((a<10||a>100)?" ruim":"");
 }
 
 function abrirCadastro(){
