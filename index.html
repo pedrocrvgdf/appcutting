@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v18";
+window.APP_RELEASE = "tresults-v19";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -251,6 +251,33 @@ window.APP_RELEASE = "tresults-v18";
   @media (prefers-reduced-motion:reduce){
     #restDone.open{animation:none}
     .rd-ring{animation:none}
+  }
+
+  /* Aviso de descanso concluído para quem está OLHANDO o app.
+     A tela cheia existe para alcançar quem está fora dela — com o celular no
+     bolso ou em outro app. Quem já está com o treino na frente não precisa ser
+     interrompido e obrigado a apertar "pronto" para voltar ao que já via. */
+  #restPop{position:fixed;left:12px;right:12px;z-index:290;
+    bottom:calc(12px + env(safe-area-inset-bottom));display:none;
+    background:var(--primary);color:#fff;border-radius:24px;padding:15px 16px;
+    box-shadow:0 14px 40px rgba(14,124,107,.38);
+    align-items:center;gap:13px;max-width:520px;margin:0 auto}
+  #restPop.open{display:flex;animation:rpSobe .3s cubic-bezier(.2,.9,.3,1)}
+  #restPop.sair{animation:rpDesce .26s ease forwards}
+  @keyframes rpSobe{from{opacity:0;transform:translateY(120%)}to{opacity:1;transform:none}}
+  @keyframes rpDesce{to{opacity:0;transform:translateY(120%)}}
+  .rp-ico{flex:none;width:42px;height:42px;border-radius:15px;background:rgba(255,255,255,.18);
+    display:flex;align-items:center;justify-content:center}
+  .rp-ico svg{width:23px;height:23px;stroke:#fff;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+  .rp-tx{flex:1;min-width:0}
+  .rp-t{font-size:15.5px;font-weight:700;line-height:1.2}
+  .rp-s{font-size:12.5px;opacity:.85;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rp-ok{flex:none;padding:11px 18px;border-radius:15px;background:#fff;color:var(--primary);
+    font-weight:700;font-size:14.5px}
+  .rp-ok:active{transform:scale(.96)}
+  @media (prefers-reduced-motion:reduce){
+    #restPop.open,#restPop.sair{animation:none}
+    #restPop.sair{display:none}
   }
   .view{display:none}
   .view.on{display:block}
@@ -634,6 +661,29 @@ window.APP_RELEASE = "tresults-v18";
   .mmfig .mcap{font-size:10px;color:var(--muted);font-weight:800;letter-spacing:.07em;text-transform:uppercase;margin-top:3px}
   .howlink{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:999px;border:1px solid var(--primary-14);background:var(--primary-08);color:var(--primary);font-size:12.5px;font-weight:700;margin-bottom:12px}
   .howlink:active{transform:scale(.97)}
+  /* Os dois atalhos dividem a linha e quebram juntos quando não cabem. */
+  .tr-links{display:flex;flex-wrap:wrap;gap:8px}
+  .tr-links .howlink{margin-bottom:12px}
+
+  /* Aviso de que o exercício da vez não é o prescrito. Ele existe para a pessoa
+     não achar, semanas depois olhando o histórico, que trocou o treino. */
+  .tr-trocado{display:none;align-items:center;gap:7px;margin:0 0 10px;
+    background:var(--selo-bg);color:var(--selo-ink);border-radius:14px;
+    padding:8px 12px;font-size:12.5px;font-weight:600;line-height:1.35}
+  .tr-trocado.on{display:flex}
+  .tr-trocado b{font-weight:700}
+  .tr-trocado button{margin-left:auto;flex:none;color:var(--selo-ink);background:transparent;
+    border:0;font-weight:700;font-size:12.5px;text-decoration:underline;padding:2px 0}
+
+  /* Lista de substitutos */
+  .sub-lista{display:flex;flex-direction:column;gap:8px;margin:12px 0 6px;max-height:46vh;overflow-y:auto}
+  .sub-op{display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+    background:var(--bg);border:0;border-radius:16px;padding:13px 14px;
+    font-size:14.5px;font-weight:600;color:var(--ink)}
+  .sub-op:active{transform:scale(.985)}
+  .sub-op.atual{background:var(--primary-08);color:var(--primary);font-weight:700}
+  .sub-op .tag{margin-left:auto;flex:none;font-size:11px;font-weight:700;color:var(--muted)}
+  .sub-vazio{font-size:13px;color:var(--muted);padding:8px 2px;line-height:1.5}
   .how-sub{font-size:12px;color:var(--muted);margin-bottom:10px}
   .how-imgwrap{position:relative;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:10px}
   .how-imgwrap img{width:100%;display:block;aspect-ratio:4/3;object-fit:contain}
@@ -1004,6 +1054,16 @@ window.APP_RELEASE = "tresults-v18";
     <button class="rd-go" id="rdGo">Voltar ao treino</button>
     <div class="rd-hint">Toque em qualquer lugar para silenciar</div>
   </div>
+</div>
+
+<!-- Mesmo aviso, para quem já está com o app aberto: não toma a tela. -->
+<div id="restPop" aria-hidden="true">
+  <span class="rp-ico"><svg viewBox="0 0 24 24"><path d="M12 7v5l3 2"/><circle cx="12" cy="12" r="9"/></svg></span>
+  <span class="rp-tx">
+    <span class="rp-t">Descanso concluído</span>
+    <span class="rp-s" id="rpSub"></span>
+  </span>
+  <button class="rp-ok" id="rpOk">Ok</button>
 </div>
 
 <!-- ==================== LOGIN ==================== -->
@@ -1442,6 +1502,22 @@ window.APP_RELEASE = "tresults-v18";
 
 <!-- COMO FAZER (demonstração de exercício) -->
 <!-- Sessão inteira, aberta a partir do feed do Início -->
+<!-- ==================== TROCAR EXERCÍCIO ====================
+     Vale só para a sessão de hoje; o protocolo salvo não muda. -->
+<div class="overlay" id="trocaOverlay" style="z-index:107">
+  <div class="modal" style="max-width:440px">
+    <h3 style="margin-bottom:2px">Trocar exercício</h3>
+    <div class="how-sub" id="trocaSub"></div>
+    <div class="field" style="margin-top:14px">
+      <label class="lbl" for="trocaNome">Outro exercício</label>
+      <input class="in" id="trocaNome" type="text" placeholder="Escreva o nome" autocomplete="off">
+    </div>
+    <div class="sub-lista" id="trocaLista"></div>
+    <button class="btn" id="trocaOk">Trocar por hoje</button>
+    <button class="btn secondary" id="trocaFechar">Cancelar</button>
+  </div>
+</div>
+
 <div class="overlay" id="sessaoOverlay" style="z-index:106">
   <div class="modal" style="max-width:440px">
     <h3 id="ssTitulo" style="margin-bottom:2px">Sessão</h3>
@@ -1497,7 +1573,11 @@ window.APP_RELEASE = "tresults-v18";
     <div class="tr-meta"><span id="trProg"></span><span class="tr-timer num" id="trTimer">00:00</span></div>
     <div class="tr-ex" id="trExName"></div>
     <div class="tr-plan" id="trPlan"></div>
-    <button class="howlink" id="trHow">🎬 Como fazer este exercício</button>
+    <div class="tr-trocado" id="trTrocado"></div>
+    <div class="tr-links">
+      <button class="howlink" id="trHow">🎬 Como fazer este exercício</button>
+      <button class="howlink" id="trTrocar">🔁 Trocar exercício</button>
+    </div>
     <div id="trSets"></div>
     <button class="btn secondary" id="trRest" style="margin-top:12px"></button>
     <p class="tr-hint">RIR = quantas repetições você <b>ainda aguentaria</b> fazer com postura correta. <b>0</b> = falha total · <b>1</b> = faria só mais 1 · <b>2</b> = faria mais 2.</p>
@@ -2313,6 +2393,26 @@ function maybeTIntro(){
 $("tIntroSug").onclick=()=>{$("tIntroOverlay").classList.remove("open");openTSug();};
 $("tIntroProto").onclick=()=>{$("tIntroOverlay").classList.remove("open");openTProtocol();};
 $("tIntroOverlay").onclick=e=>{if(e.target===$("tIntroOverlay"))$("tIntroOverlay").classList.remove("open");};
+/* ---- Substitutos por grupo muscular ----
+   Servem à troca de exercício DURANTE o treino: aparelho ocupado, fila grande,
+   equipamento quebrado. São alternativas que treinam o mesmo grupo, para a
+   troca não virar outro treino. Não é uma lista fechada — dá para escrever
+   qualquer nome. */
+const EX_POR_GRUPO={
+  peito:["Supino reto","Supino inclinado com halter","Supino declinado","Crucifixo","Crossover","Peck deck","Flexão de braço","Supino máquina"],
+  costas:["Puxada","Puxada frente","Remada curvada","Remada baixa","Remada unilateral","Remada cavalinho","Barra fixa","Pulldown"],
+  ombro:["Desenvolvimento com halter","Desenvolvimento máquina","Elevação lateral","Elevação frontal","Crucifixo inverso","Remada alta","Arnold press"],
+  biceps:["Rosca direta","Rosca alternada","Rosca martelo","Rosca scott","Rosca concentrada","Rosca no cabo"],
+  triceps:["Tríceps corda","Tríceps testa","Tríceps francês","Tríceps banco","Mergulho","Tríceps barra"],
+  antebraco:["Rosca inversa","Rosca de punho","Farmer walk"],
+  quadriceps:["Agachamento","Agachamento livre","Leg press","Cadeira extensora","Hack machine","Afundo","Búlgaro","Agachamento smith"],
+  posterior:["Terra romeno","Mesa flexora","Cadeira flexora","Stiff","Bom dia","Flexora em pé"],
+  gluteo:["Elevação pélvica","Cadeira abdutora","Glúteo no cabo","Coice","Afundo","Búlgaro"],
+  adutor:["Cadeira adutora","Adutor no cabo","Sumô"],
+  panturrilha:["Panturrilha em pé","Panturrilha sentado","Panturrilha no leg press"],
+  abdomen:["Abdominal","Prancha","Elevação de pernas","Abdominal infra","Abdominal na roda","Prancha lateral"]
+};
+
 /* ---- sugestões de treino (adaptadas ao objetivo) ---- */
 const T_SUG=[
  {id:"ab",nome:"Full body A/B",freq:"2–4x por semana",desc:"Para quem está começando ou tem pouco tempo: corpo inteiro em cada sessão, alternando A e B.",
@@ -2850,7 +2950,11 @@ function trRestore(){
   try{s=JSON.parse(localStorage.getItem(RUNKEY)||"null");}catch(e){}
   if(!s||!s.w||!(s.w.ex||[]).length){try{localStorage.removeItem(RUNKEY)}catch(e){} return false;}
   if(Date.now()-(s.at||s.start||0)>RUN_MAX){try{localStorage.removeItem(RUNKEY)}catch(e){} return false;}
-  trS={w:s.w,start:s.start||Date.now(),idx:Math.min(s.idx||0,s.w.ex.length-1),away:s.away||0,hiddenAt:0};
+  /* Restaurar significa que a página foi descartada — a pessoa esteve fora do
+     app. Se havia descanso correndo, o aviso ao voltar tem que ser a tela
+     cheia, e não o pop-up de quem estava olhando. */
+  trS={w:s.w,start:s.start||Date.now(),idx:Math.min(s.idx||0,s.w.ex.length-1),away:s.away||0,hiddenAt:0,
+       saiuNoDescanso:!!s.restEnd};
   const old=s.logs||[];
   trS.logs=trS.w.ex.map((e,i)=>{const cur=old[i]||[];return Array.from({length:e.s},(_,j)=>cur[j]||{kg:"",rep:"",rir:null});});
   if(s.hiddenAt)trS.away+=Math.max(0,Date.now()-s.hiddenAt); // tempo fora do app não é treino
@@ -2906,13 +3010,50 @@ function restFinish(soar){
     // o alarme agendado já soou sozinho; sem agendamento válido, toca agora
     const ctxOk=beepCtx&&beepCtx.state==="running";
     if(!agendado||!ctxOk)alarmNow();
-    abrirRestDone();        // toma a tela: som sozinho se perde no barulho
+    /* Quem está olhando o app recebe um aviso que não tapa nada; quem esteve
+       fora dele durante o descanso recebe a tela cheia, que é o que alcança
+       alguém com o celular no bolso. */
+    if(descansouOlhando())abrirRestPop();
+    else abrirRestDone();
     /* Nada de notificar daqui: se o app está em segundo plano este código não
        roda. Quem avisa nesse caso é o push do servidor. */
     pushCancelar();          // já avisamos na tela; o push viraria aviso repetido
   }
   trPersist();
   setTimeout(()=>{if(!trRestInt&&trS)restLabel();},2800);
+}
+
+/**
+ * A pessoa passou o descanso inteiro com o app na frente?
+ *
+ * Não basta olhar `visibilityState` na hora: com o app em segundo plano o
+ * JavaScript congela, então `restFinish` só roda quando a pessoa volta — e aí
+ * a página está visível de novo, como se ela nunca tivesse saído. Quem sabe a
+ * verdade é a marca deixada pelo `visibilitychange` durante o descanso.
+ */
+function descansouOlhando(){
+  return !!trS&&!trS.saiuNoDescanso&&document.visibilityState==="visible";
+}
+
+/* Aviso discreto, para quem já está com o treino na tela. Toca e vibra igual —
+   o que muda é só não tapar o que a pessoa já estava vendo. */
+let restPopT=null;
+function abrirRestPop(){
+  const p=$("restPop");if(!p||!trS)return;
+  const e=trS.w.ex[trS.idx];
+  const feitas=(trS.logs[trS.idx]||[]).filter(l=>(l.kg||0)>0||(l.rep||0)>0).length;
+  $("rpSub").textContent=`${e.n} · série ${Math.min(feitas+1,e.s)} de ${e.s}`;
+  p.classList.remove("sair");p.classList.add("open");
+  clearTimeout(restPopT);
+  restPopT=setTimeout(fecharRestPop,ALARM_DUR*1000);
+}
+function fecharRestPop(){
+  const p=$("restPop");
+  clearTimeout(restPopT);
+  alarmStop();              // todo caminho de saída silencia e devolve o áudio
+  if(!p||!p.classList.contains("open"))return;
+  p.classList.add("sair");
+  setTimeout(()=>{p.classList.remove("open","sair");},280);
 }
 
 /* Tela que toma conta quando o tempo bate. Som sozinho se perde no barulho da
@@ -2943,11 +3084,14 @@ function restTick(){
 }
 $("restDone").onclick=fecharRestDone;
 $("rdGo").onclick=e=>{e.stopPropagation();fecharRestDone();};
+$("restPop").onclick=fecharRestPop;
+$("rpOk").onclick=e=>{e.stopPropagation();fecharRestPop();};
 $("trRest").onclick=()=>{
   if(!trS)return;
   const b=$("trRest");
   if(trRestInt){stopRest();descansoCancelar();restLabel();trPersist();return;} // toque durante o descanso = pular
   beepInit(); // gesto do usuário libera o áudio do alarme
+  trS.saiuNoDescanso=false;   // começa limpo: quem sair marca no visibilitychange
   const secs=(trS.w.ex[trS.idx].rest||90);
   trRestEnd=Date.now()+secs*1000; // relógio real: não para em segundo plano
   descansoIniciar(secs,trS.w.ex[trS.idx].n);
@@ -2959,7 +3103,13 @@ $("trRest").onclick=()=>{
 window.addEventListener("pagehide",()=>{if(trS){if(!trS.hiddenAt)trS.hiddenAt=Date.now();trPersist();}});
 document.addEventListener("visibilitychange",()=>{
   if(document.hidden){
-    if(trS){trS.hiddenAt=Date.now();trPersist();}
+    if(trS){
+      trS.hiddenAt=Date.now();
+      /* Saiu com o descanso correndo: quando voltar, o aviso precisa ser a tela
+         cheia, não o pop-up — ela pode ter deixado o celular no bolso. */
+      if(trRestInt)trS.saiuNoDescanso=true;
+      trPersist();
+    }
   }else{
     if(trS&&trS.hiddenAt){
       const fora=Date.now()-trS.hiddenAt;
@@ -3021,6 +3171,14 @@ function renderTr(){
   $("trProg").textContent=`Exercício ${trS.idx+1} de ${w.ex.length}`;
   $("trExName").textContent=e.n;
   $("trPlan").textContent=`${e.s} séries · descanso ${fmtSec(e.rest||90)} · busque a falha entre 6–12 reps`;
+  const av=$("trTrocado");
+  av.classList.toggle("on",!!e.orig);
+  if(e.orig)av.innerHTML=`<span>No lugar de <b>${esc(e.orig)}</b>, só hoje</span><button id="trDesfazer">Desfazer</button>`;
+  if(e.orig)$("trDesfazer").onclick=()=>{
+    trSaveInputs();e.n=e.orig;delete e.orig;renderTr();trPersist();
+  };
+  /* A referência da última vez segue o exercício que está sendo feito: comparar
+     a carga de hoje no leg press com a do agachamento não diria nada. */
   trPrevRef=lastExSession(e.n);
   $("trSets").innerHTML=logs.map((l,i)=>{
     const p=trPrevRef&&trPrevRef.sets[i];
@@ -3045,6 +3203,58 @@ function renderTr(){
   $("trNext").textContent=trS.idx===w.ex.length-1?"Finalizar treino ✓":"Próximo exercício ›";
   $("trPrev").style.display=trS.idx>0?"flex":"none";
 }
+/* ---- Trocar o exercício da vez ----
+
+   Aparelho ocupado, fila grande, equipamento quebrado: a pessoa faz outro que
+   treina o mesmo grupo. A troca vale para ESTA sessão e não toca no protocolo
+   salvo — `trS.w` é cópia profunda do treino (ver startTRun), então mexer aqui
+   não reescreve o que ficou combinado.
+
+   O nome prescrito fica guardado em `orig` para o cartão dizer o que foi
+   trocado: sem isso, semanas depois, o histórico pareceria dizer que o treino
+   mudou. Séries e descanso continuam os do prescrito — trocar de aparelho não
+   é trocar de plano. */
+function abrirTroca(){
+  if(!trS)return;
+  const e=trS.w.ex[trS.idx];
+  const prescrito=e.orig||e.n;
+  $("trocaSub").innerHTML=`Prescrito: <b>${esc(prescrito)}</b>. Vale só para hoje — seu treino salvo continua igual.`;
+  $("trocaNome").value=e.orig?e.n:"";
+
+  const opcoes=(EX_POR_GRUPO[e.g]||[]).filter(n=>norm(n)!==norm(prescrito));
+  $("trocaLista").innerHTML=
+    `<button class="sub-op ${e.orig?"":"atual"}" data-sub="${esc(prescrito)}">${esc(prescrito)}<span class="tag">prescrito</span></button>`+
+    (opcoes.length
+      ? opcoes.map(n=>`<button class="sub-op ${e.orig&&norm(e.n)===norm(n)?"atual":""}" data-sub="${esc(n)}">${esc(n)}</button>`).join("")
+      : '<div class="sub-vazio">Não tenho substitutos guardados para este grupo — escreva o nome do que você vai fazer.</div>');
+
+  $("trocaLista").querySelectorAll("[data-sub]").forEach(b=>b.onclick=()=>{
+    $("trocaNome").value=b.dataset.sub;
+    $("trocaLista").querySelectorAll("[data-sub]").forEach(x=>x.classList.toggle("atual",x===b));
+  });
+  $("trocaOverlay").classList.add("open");
+}
+function aplicarTroca(){
+  if(!trS)return;
+  const e=trS.w.ex[trS.idx];
+  const novo=$("trocaNome").value.trim();
+  if(!novo)return appAlert("Escreva ou escolha o exercício que você vai fazer.","Falta o nome");
+
+  trSaveInputs();                       // o que já foi digitado não se perde na troca
+  const prescrito=e.orig||e.n;
+  if(norm(novo)===norm(prescrito)){ delete e.orig; e.n=prescrito; }  // voltou ao original
+  else { if(!e.orig)e.orig=prescrito; e.n=novo; }
+
+  $("trocaOverlay").classList.remove("open");
+  renderTr();                           // a referência da última vez passa a ser a do novo
+  trPersist();
+}
+$("trTrocar").onclick=abrirTroca;
+$("trocaOk").onclick=aplicarTroca;
+$("trocaFechar").onclick=()=>$("trocaOverlay").classList.remove("open");
+$("trocaOverlay").onclick=ev=>{if(ev.target===$("trocaOverlay"))$("trocaOverlay").classList.remove("open");};
+$("trocaNome").addEventListener("keydown",ev=>{if(ev.key==="Enter")aplicarTroca();});
+
 $("trPrev").onclick=()=>{trSaveInputs();if(trS.idx>0){trS.idx--;renderTr();trPersist();}};
 $("trNext").onclick=()=>{
   trSaveInputs();

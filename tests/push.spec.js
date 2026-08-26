@@ -128,7 +128,9 @@ test.describe('Aviso com o app fechado', () => {
     // e o alarme na tela continua funcionando, que é o aviso principal
     await page.evaluate(() => __t.forcarFimDoDescanso());
     await page.waitForTimeout(400);
-    expect(await page.evaluate(() => document.getElementById('restDone').classList.contains('open')))
+    expect(await page.evaluate(() =>
+      document.getElementById('restDone').classList.contains('open') ||
+      document.getElementById('restPop').classList.contains('open')))
       .toBe(true);
   });
 });
