@@ -41,7 +41,7 @@ const goals = page => page.evaluate(() =>
 
 test.describe('O pop-up de criar conta', () => {
 
-  test('"Criar conta grátis" abre um pedido próprio, não reusa os campos de entrar', async ({ page }) => {
+  test('"Criar conta" abre um pedido próprio, não reusa os campos de entrar', async ({ page }) => {
     await deslogado(page);
     const erros = await abrirApp(page, estadoBase());
     await abrirPopup(page);
