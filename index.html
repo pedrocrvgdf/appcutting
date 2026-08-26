@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v20";
+window.APP_RELEASE = "tresults-v24";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -281,8 +281,11 @@ window.APP_RELEASE = "tresults-v20";
   }
   .view{display:none}
   .view.on{display:block}
-  .in{width:100%;padding:12px;border:0;border-radius:13px;background:var(--surface);color:var(--ink);font-weight:700;outline:none}
-  .in:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-14)}
+  /* Campo é ilha verde clara, e não branco sobre branco. Os cartões e os
+     modais são `--surface`, então um campo branco dentro deles não tinha
+     desenho nenhum: era só o texto flutuando. Mesmo motivo dos botões de RIR. */
+  .in{width:100%;padding:13px 14px;border:0;border-radius:16px;background:var(--primary-08);color:var(--ink);font-weight:700;outline:none}
+  .in:focus{box-shadow:0 0 0 3px var(--primary-14)}
   label.lbl{display:block;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 5px 2px}
   .dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
   .dot.ok{background:var(--ok)} .dot.saving{background:var(--amber)} .dot.err{background:var(--warn)} .dot.local{background:var(--muted)}
@@ -432,7 +435,7 @@ window.APP_RELEASE = "tresults-v20";
   .macro .v{font-size:17px;font-weight:800;font-family:var(--mono);margin-top:2px}
   .macro .v small{font-size:11px;color:var(--muted);font-weight:600}
   .getd{display:flex;align-items:center;gap:6px;margin-top:14px;font-size:12px;color:var(--muted)}
-  .getd input{width:66px;padding:4px 6px;border:1px solid var(--line);border-radius:8px;text-align:right;font-family:var(--mono);font-weight:700;color:var(--ink);background:var(--surface)}
+  .getd input{width:66px;padding:4px 6px;border:0;border-radius:12px;text-align:right;font-family:var(--mono);font-weight:700;color:var(--ink);background:var(--primary-08)}
   .sec{margin-top:22px}
   .sec-title{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
   .card{background:var(--surface);border:0;border-radius:26px;padding:15px;box-shadow:var(--sombra)}
@@ -549,7 +552,7 @@ window.APP_RELEASE = "tresults-v20";
   .liq-add{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;align-items:stretch}
   .liq-add button{height:44px;padding:0 16px;border-radius:14px;background:var(--surface);border:0;font-weight:800;font-size:13.5px;color:var(--ink);font-family:inherit;box-shadow:var(--sombra-sm)}
   .liq-add button:active{transform:scale(.97);box-shadow:var(--sombra-sm)}
-  .liq-add input{width:76px;height:44px;padding:0 10px;border:0;border-radius:14px;font-size:13.5px;font-weight:800;font-family:var(--mono);text-align:center;background:var(--surface)}
+  .liq-add input{width:76px;height:44px;padding:0 10px;border:0;border-radius:16px;font-size:13.5px;font-weight:800;font-family:var(--mono);text-align:center;background:var(--primary-08)}
   .liq-add input::placeholder{font-family:var(--sans);font-weight:700}
   .liq-add #liqAddCustom{background:var(--primary);color:#fff}
   .liq-add .reset{margin-left:auto;color:var(--muted);border:none;background:transparent;box-shadow:none;font-size:12.5px;letter-spacing:.03em;text-transform:uppercase;font-weight:800}
@@ -687,6 +690,24 @@ window.APP_RELEASE = "tresults-v20";
   .sub-op.atual{background:var(--primary-08);color:var(--primary);font-weight:700}
   .sub-op .tag{margin-left:auto;flex:none;font-size:11px;font-weight:700;color:var(--muted)}
   .sub-vazio{font-size:13px;color:var(--muted);padding:8px 2px;line-height:1.5}
+
+  /* Confirmação da idade lida da data: quem digita o ano errado percebe aqui,
+     e não meses depois com as calorias tortas.
+
+     Ela vive na linha do rótulo, e não solta embaixo do campo: ali era um
+     texto órfão que não pertencia a nada. Como selo, lê-se como resposta à
+     data que acabou de ser digitada. */
+  .lbl-linha{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:18px}
+  .lbl-linha .lbl{margin:0}
+  .cad-idade{flex:none;font-size:11.5px;font-weight:700;line-height:1;
+    padding:5px 10px;border-radius:999px;background:var(--selo-bg);color:var(--selo-ink);
+    opacity:0;transform:translateY(-2px);transition:opacity .18s ease,transform .18s ease}
+  .cad-idade.on{opacity:1;transform:none}
+  .cad-idade.ruim{background:var(--warn);color:#fff}
+  @media (prefers-reduced-motion:reduce){.cad-idade{transition:none}}
+  /* Nota do campo travado. Aqui não é selo: é a explicação de por que o campo
+     não aceita digitação — sem ela, ele só pareceria quebrado. */
+  .campo-nota{flex:none;font-size:11px;font-weight:600;color:var(--muted);text-transform:none;letter-spacing:0}
   .how-sub{font-size:12px;color:var(--muted);margin-bottom:10px}
   .how-imgwrap{position:relative;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:10px}
   .how-imgwrap img{width:100%;display:block;aspect-ratio:4/3;object-fit:contain}
@@ -724,7 +745,7 @@ window.APP_RELEASE = "tresults-v20";
   .wt-row .wt-unit{font-size:12px;color:var(--muted)}
   .wt-row .wt-del{color:var(--warn);font-weight:700;font-size:19px;line-height:1;padding:2px 8px;background:none;border:none}
   .wt-add{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
-  .wt-add input{padding:11px;border:0;border-radius:12px;font-size:13.5px;font-weight:700;font-family:inherit;background:var(--surface)}
+  .wt-add input{padding:11px;border:0;border-radius:16px;font-size:13.5px;font-weight:700;font-family:inherit;background:var(--primary-08)}
   .wt-add .wt-date{flex:1 1 132px}
   .wt-add .wt-w{flex:2 1 110px}
   .wt-add button{padding:11px 18px;border:0;border-radius:12px;background:var(--primary);color:#fff;font-weight:800;font-size:13.5px;flex:0 0 auto;box-shadow:var(--sombra-sm)}
@@ -959,11 +980,10 @@ window.APP_RELEASE = "tresults-v20";
        font-weight:600;padding:0 1px}
 
   /* ============ v2.1: login, perfil, progresso ============ */
-  .login-fields .in{padding:14px;border-radius:14px;border:1.5px solid var(--line)}
+  /* Na tela de entrada os campos vivem sobre o fundo do app, que já é verde
+     claro: aqui quem contrasta é o branco. Contorno saiu junto com o cartoon. */
+  .login-fields .in{padding:14px;border-radius:16px;border:0;background:var(--surface);box-shadow:var(--sombra-sm)}
   .login-fields .field{margin-bottom:10px}
-  .login-or{display:flex;align-items:center;gap:12px;margin:16px 0 12px}
-  .login-or span{flex:1;height:1px;background:var(--line)}
-  .login-or em{font-style:normal;font-size:12px;font-weight:700;color:var(--muted)}
   .btn-outline{width:100%;padding:14px;border-radius:18px;background:var(--surface);border:0;box-shadow:var(--sombra-sm);color:var(--primary);font-weight:800;font-size:15px}
   .btn-outline:active{background:var(--primary-08)}
   .login-brand .mark{border-radius:20px;width:64px;height:64px}
@@ -1085,11 +1105,44 @@ window.APP_RELEASE = "tresults-v20";
       <button class="btn-outline" id="btnDigital" style="margin-top:8px;display:none">
         <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-3px;margin-right:7px"><path d="M3.5 8.5a10 10 0 0 1 17 0M6 11.5a6 6 0 0 1 12 0v2.5M9 12a3 3 0 0 1 6 0v4M12 12.5V18"/></svg>Entrar com a digital</button>
       <div class="login-minor"><button class="link" id="btnReset">Esqueci a senha</button></div>
-      <div class="login-or"><span></span><em>primeira vez aqui?</em><span></span></div>
-      <button class="btn-outline" id="btnSignup">Criar conta grátis</button>
+      <button class="btn-outline" id="btnSignup" style="margin-top:4px">Criar conta</button>
       <div class="auth-msg" id="authMsg"></div>
     </div>
     <div class="login-foot" id="loginFoot">Ao continuar você concorda com os Termos de uso e a Política de privacidade.</div>
+  </div>
+</div>
+
+<!-- ==================== CRIAR CONTA ====================
+     Antes, criar conta era preencher os mesmos campos do "Entrar" e apertar
+     outro botão — e as pessoas não entendiam que já tinham digitado tudo.
+     Aqui o cadastro é um pedido próprio, com começo e fim. -->
+<div class="overlay" id="cadastroOverlay" style="z-index:108">
+  <div class="modal" style="max-width:440px">
+    <h3 style="margin-bottom:2px">Criar sua conta</h3>
+
+    <div class="field" style="margin-top:14px">
+      <label class="lbl" for="cadNome">Nome completo</label>
+      <input class="in" id="cadNome" type="text" autocomplete="name" placeholder="Como está no seu documento">
+    </div>
+    <div class="field" style="margin-top:10px">
+      <div class="lbl-linha">
+        <label class="lbl" for="cadNasc">Data de nascimento</label>
+        <span class="cad-idade" id="cadIdade"></span>
+      </div>
+      <input class="in" id="cadNasc" type="date" autocomplete="bday">
+    </div>
+    <div class="field" style="margin-top:10px">
+      <label class="lbl" for="cadEmail">E-mail</label>
+      <input class="in" id="cadEmail" type="email" inputmode="email" autocomplete="email" placeholder="seu@email.com">
+    </div>
+    <div class="field" style="margin-top:10px">
+      <label class="lbl" for="cadSenha">Senha</label>
+      <input class="in" id="cadSenha" type="password" autocomplete="new-password" placeholder="mínimo 6 caracteres">
+    </div>
+
+    <div class="auth-msg" id="cadMsg"></div>
+    <button class="btn" id="cadCriar" style="margin-top:12px">Criar conta</button>
+    <button class="btn secondary" id="cadFechar">Já tenho conta</button>
   </div>
 </div>
 
@@ -1793,7 +1846,7 @@ window.APP_RELEASE = "tresults-v20";
       <div class="seg" id="gSexoSeg"><button data-v="M" class="on">Masculino</button><button data-v="F">Feminino</button></div>
       <select id="gSexo" style="display:none"><option value="M">Masculino</option><option value="F">Feminino</option></select>
       <div class="row" style="margin-top:14px">
-        <div class="field"><label class="lbl">Idade</label><input class="in num" id="gIdade" type="number" inputmode="numeric"></div>
+        <div class="field"><div class="lbl-linha"><label class="lbl" id="gIdadeLbl">Idade</label><span class="campo-nota" id="gIdadeNota"></span></div><input class="in num" id="gIdade" type="number" inputmode="numeric"></div>
         <div class="field"><label class="lbl">Altura (cm)</label><input class="in num" id="gAltura" type="number" inputmode="decimal"></div>
         <div class="field"><label class="lbl">Peso (kg)</label><input class="in num" id="gPesoAtual" type="number" inputmode="decimal"></div>
       </div>
@@ -3934,7 +3987,81 @@ async function entrarComDigital(){
 }
 $("btnDigital").onclick=()=>entrarComDigital();
 $("email").addEventListener("input",renderDigitalLogin);
-$("btnSignup").onclick=async()=>{ if(!cloudEnabled)return; try{await window.__fb.createUserWithEmailAndPassword(auth,email(),pass());authMsg("Conta criada!",true);}catch(e){authMsg(mapErr(e.code));} };
+/* ---- Criar conta ----
+
+   O cadastro é um pedido próprio, e não os mesmos campos do "Entrar" com outro
+   botão embaixo: gente de verdade preenchia e-mail e senha, apertava "Criar
+   conta" e não entendia se tinha entrado ou se cadastrado.
+
+   Ele pede também nome e data de nascimento porque são o que falta para o app
+   calcular as calorias sem perguntar depois. */
+
+function cadRenderIdade(){
+  const el=$("cadIdade"),v=$("cadNasc").value;
+  if(!v){el.textContent="";el.className="cad-idade";return;}
+  const a=idadeDe(v);
+  /* Fora da faixa o selo fica vermelho e diz a idade que saiu: é o número
+     absurdo que faz a pessoa reler o ano que digitou. */
+  el.textContent=a+" anos";
+  el.className="cad-idade on"+((a<10||a>100)?" ruim":"");
+}
+
+function abrirCadastro(){
+  $("cadNome").value="";$("cadNasc").value="";
+  $("cadEmail").value=email();      // aproveita o que já foi escrito na entrada
+  $("cadSenha").value="";
+  $("cadMsg").textContent="";$("cadMsg").className="auth-msg";
+  cadRenderIdade();
+  $("cadastroOverlay").classList.add("open");
+  setTimeout(()=>$("cadNome").focus(),220);
+}
+function fecharCadastro(){$("cadastroOverlay").classList.remove("open");}
+const cadErro=m=>{$("cadMsg").textContent=m;$("cadMsg").className="auth-msg err";};
+
+async function criarConta(){
+  if(!cloudEnabled)return;
+  const nome=$("cadNome").value.trim();
+  const nasc=$("cadNasc").value;
+  const mail=$("cadEmail").value.trim();
+  const senha=$("cadSenha").value;
+
+  if(!nome)return cadErro("Escreva seu nome completo.");
+  if(!nasc)return cadErro("Informe sua data de nascimento.");
+  const anos=idadeDe(nasc);
+  /* Fora dessa faixa é quase sempre ano digitado errado, e a conta de calorias
+     sairia torta sem ninguém perceber. */
+  if(anos<10||anos>100)return cadErro("Confira a data de nascimento: deu "+anos+" anos.");
+  if(!mail)return cadErro("Informe seu e-mail.");
+  if((senha||"").length<6)return cadErro("A senha precisa ter pelo menos 6 caracteres.");
+
+  $("cadCriar").disabled=true;
+  try{
+    await window.__fb.createUserWithEmailAndPassword(auth,mail,senha);
+    /* Grava antes de a navegação acontecer: o onAuthStateChanged dispara em
+       seguida e já precisa encontrar o nome, senão manda para a tela que
+       pergunta o nome de novo. */
+    store.goals=store.goals||{};
+    store.goals.nome=nome;
+    store.goals.nasc=nasc;
+    store.goals.idade=anos;   // acompanha a data; recalculado a cada leitura
+    save();fillUser();
+    fecharCadastro();
+    authMsg("Conta criada!",true);
+  }catch(e){
+    cadErro(mapErr(e&&e.code));
+  }finally{
+    $("cadCriar").disabled=false;
+  }
+}
+
+$("btnSignup").onclick=abrirCadastro;
+$("cadCriar").onclick=criarConta;
+$("cadFechar").onclick=fecharCadastro;
+$("cadastroOverlay").onclick=ev=>{if(ev.target===$("cadastroOverlay"))fecharCadastro();};
+$("cadNasc").addEventListener("input",cadRenderIdade);
+$("cadNasc").addEventListener("change",cadRenderIdade);
+["cadNome","cadEmail","cadSenha"].forEach(id=>
+  $(id).addEventListener("keydown",ev=>{if(ev.key==="Enter")criarConta();}));
 $("btnReset").onclick=async()=>{ if(!cloudEnabled)return; if(!email())return authMsg("Escreva seu e-mail acima primeiro."); try{await window.__fb.sendPasswordResetEmail(auth,email());authMsg("Enviei um e-mail para redefinir a senha.",true);}catch(e){authMsg(mapErr(e.code));} };
 $("pass").addEventListener("keydown",e=>{if(e.key==="Enter")$("btnLogin").click();});
 async function doLogout(){ closeMenu(); trDiscardRun(); if(cloudEnabled&&auth){try{await window.__fb.signOut(auth);}catch(e){}} }
@@ -4468,7 +4595,25 @@ $("liqAddCustom").onclick=()=>{const v=parseInt($("liqCustom").value)||0;if(v>0)
 $("liqReset").onclick=()=>{store.liquids=store.liquids||{};store.liquids[viewKey]=0;save();renderGoals();};
 
 const goalsOverlay=$("goalsOverlay");
-function computeTMB(g){const peso=parseFloat(g.pesoAtual)||0,alt=parseFloat(g.altura)||0,idade=parseFloat(g.idade)||0;if(peso<=0||alt<=0||idade<=0)return 0;return 10*peso+6.25*alt-5*idade+((g.sexo==="F")?-161:5);}
+/* A idade sai da data de nascimento sempre que ela existe.
+   Idade guardada como número envelhece errado: quem se cadastrou aos 29 seguiria
+   29 para sempre, e a conta de calorias iria ficando torta em silêncio, um ano
+   por vez. Quem não tem data guardada (contas antigas) continua pelo número. */
+function idadeDe(nasc){
+  if(!nasc)return 0;
+  const d=new Date(nasc+"T00:00:00");
+  if(isNaN(d))return 0;
+  const h=new Date();
+  let a=h.getFullYear()-d.getFullYear();
+  const m=h.getMonth()-d.getMonth();
+  if(m<0||(m===0&&h.getDate()<d.getDate()))a--;
+  return a;
+}
+function idadeAtual(g){
+  const porData=idadeDe(g&&g.nasc);
+  return porData>0?porData:(parseFloat(g&&g.idade)||0);
+}
+function computeTMB(g){const peso=parseFloat(g.pesoAtual)||0,alt=parseFloat(g.altura)||0,idade=idadeAtual(g);if(peso<=0||alt<=0||idade<=0)return 0;return 10*peso+6.25*alt-5*idade+((g.sexo==="F")?-161:5);}
 const NEAT_MIG={"1.375":1.3,"1.55":1.4,"1.725":1.55,"1.9":1.7};
 function neatAtiv(v){const f=parseFloat(v)||1.2;const m=NEAT_MIG[String(v)];return m!==undefined?m:f;}
 function computeGETD(g){const tmb=computeTMB(g);const fator=neatAtiv(g.ativ);return tmb>0?tmb*fator:0;}
@@ -4553,7 +4698,14 @@ document.querySelectorAll(".obj-btn").forEach(b=>b.onclick=()=>{
 });
 function openGoals(){
   const g=store.goals||{};
-  $("gSexo").value=g.sexo||"M";$("gIdade").value=g.idade||"";$("gAltura").value=g.altura||"";$("gPesoAtual").value=g.pesoAtual||"";
+  $("gSexo").value=g.sexo||"M";$("gAltura").value=g.altura||"";$("gPesoAtual").value=g.pesoAtual||"";
+  /* Com data de nascimento guardada, a idade é conta, não pergunta: o campo
+     mostra o valor de hoje e não aceita digitação, para não abrir uma segunda
+     verdade sobre a mesma pessoa. Contas antigas, sem data, seguem digitando. */
+  const porData=idadeDe(g.nasc);
+  $("gIdade").value=porData>0?porData:(g.idade||"");
+  $("gIdade").readOnly=porData>0;
+  $("gIdadeNota").textContent=porData>0?"pela sua data de nascimento":"";
   $("gAtiv").value=g.ativ?String(neatAtiv(g.ativ)):"1.4";$("gPesoAlvo").value=g.pesoAlvo||"";$("gMeses").value=g.meses||"";$("gLiquid").value=g.liquidTarget||3000;
   const pa=parseFloat(g.pesoAtual)||0,pv=parseFloat(g.pesoAlvo)||0;
   selectedObj=g.objetivo||(pv&&pa?(pv>pa?"bulking":"cutting"):null);
@@ -4601,7 +4753,12 @@ $("saveGoals").onclick=()=>{
   const prev=store.goals||{};
   const sameplan=parseFloat(prev.pesoAtual)===(parseFloat(g.pesoAtual)||0)&&parseFloat(prev.pesoAlvo)===(parseFloat(g.pesoAlvo)||0)&&parseFloat(prev.meses)===(parseFloat(g.meses)||0)&&prev.objetivo===obj;
   const inicio=(sameplan&&prev.inicio)?prev.inicio:todayKey();
-  store.goals={nome,inicio,objetivo:obj,sexo:g.sexo,idade:parseFloat(g.idade)||0,altura:parseFloat(g.altura)||0,pesoAtual:parseFloat(g.pesoAtual)||0,ativ:parseFloat(g.ativ)||1.2,pesoAlvo:parseFloat(g.pesoAlvo)||0,meses:parseFloat(g.meses)||0,liquidTarget:parseInt(g.liquidTarget)||3000};
+  /* `store.goals` é remontado do zero aqui; sem carregar a data de nascimento
+     junto, ela sumiria no primeiro salvamento e a idade voltaria a ser um
+     número parado no tempo. */
+  const nasc=(store.goals&&store.goals.nasc)||"";
+  const anos=idadeDe(nasc);
+  store.goals={nome,inicio,nasc,objetivo:obj,sexo:g.sexo,idade:anos>0?anos:(parseFloat(g.idade)||0),altura:parseFloat(g.altura)||0,pesoAtual:parseFloat(g.pesoAtual)||0,ativ:parseFloat(g.ativ)||1.2,pesoAlvo:parseFloat(g.pesoAlvo)||0,meses:parseFloat(g.meses)||0,liquidTarget:parseInt(g.liquidTarget)||3000};
   const getd=computeGETD(store.goals);
   if(getd>0){store.getd=Math.round(getd);$("getdInput").value=store.getd;}
   save();render();goalsOverlay.classList.remove("open");
