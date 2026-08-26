@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v19";
+window.APP_RELEASE = "tresults-v20";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -465,7 +465,7 @@ window.APP_RELEASE = "tresults-v19";
     transition:transform .08s ease,box-shadow .08s ease}
   /* O botão afunda dentro da própria sombra ao ser tocado: é o retorno físico
      que a direção cartoon promete, e some junto com a sombra quando desativado. */
-  .btn:active{transform:translate(3px,3px);box-shadow:var(--sombra-sm)}
+  .btn:active{transform:scale(.97);box-shadow:var(--sombra-sm)}
   .btn:disabled{opacity:.45;box-shadow:var(--sombra-sm);transform:none}
   .flash{margin-top:10px;font-size:12.5px;color:var(--primary);font-weight:600;font-family:var(--mono);min-height:16px;text-align:center}
   .items{display:flex;flex-direction:column;gap:8px}
@@ -602,8 +602,11 @@ window.APP_RELEASE = "tresults-v19";
   .tr-set .tsr2{display:flex;align-items:center;gap:10px;margin-top:10px}
   .tr-set .rirl{font-size:10.5px;font-weight:800;color:var(--muted);letter-spacing:.06em;flex:none}
   .rirseg{display:flex;gap:6px;flex:1}
-  .rirseg button{flex:1;height:44px;border-radius:12px;border:0;background:var(--surface);font-weight:800;font-size:14px;font-family:var(--mono);color:var(--ink);transition:transform .08s,background .15s,color .15s,box-shadow .08s}
-  .rirseg button:active{transform:translate(2px,2px)}
+  /* A ilha verde clara existe para o número parecer botão. Antes o fundo era
+     var(--surface) — branco sobre o cartão branco — e os quatro valores liam
+     como texto solto, não como coisa que se toca. */
+  .rirseg button{flex:1;height:44px;border-radius:15px;border:0;background:var(--primary-08);font-weight:800;font-size:14px;font-family:var(--mono);color:var(--primary);transition:transform .08s,background .15s,color .15s,box-shadow .08s}
+  .rirseg button:active{transform:scale(.94)}
   .rirseg button.on{background:var(--primary);color:#fff;box-shadow:var(--sombra-sm)}
   .tr-hint{font-size:11.5px;color:var(--muted);line-height:1.55;margin:10px 2px 0}
   /* referência da última sessão, série a série: quanto levantei da última vez */
@@ -700,7 +703,7 @@ window.APP_RELEASE = "tresults-v19";
      entre os cartões; em coral, é o primeiro lugar onde o olho cai. */
   #trRest{position:relative;overflow:hidden;background:var(--primary);color:#fff;
     transition:transform .08s ease,box-shadow .08s ease}
-  #trRest:active{transform:translate(3px,3px);box-shadow:var(--sombra-sm)}
+  #trRest:active{transform:scale(.97);box-shadow:var(--sombra-sm)}
   #trRest .rfill{position:absolute;inset:0;width:0%;background:rgba(255,255,255,.22);transition:width .95s linear;z-index:0}
   #trRest .rtxt{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:8px}
   #trRest.resting{background:var(--surface);color:var(--primary);animation:restPulse 1.6s ease infinite}
@@ -778,7 +781,7 @@ window.APP_RELEASE = "tresults-v19";
   #tabbar button.on{color:var(--primary);font-weight:800}
   #tabbar .fab{width:60px;height:60px;border:0;border-radius:24px;background:var(--primary);margin-top:-32px;display:flex;align-items:center;justify-content:center;box-shadow:var(--sombra);color:#fff;min-width:58px;padding:0;transition:transform .08s ease,box-shadow .08s ease}
   #tabbar .fab svg{width:26px;height:26px;stroke:#fff;stroke-width:3}
-  #tabbar .fab:active{transform:translate(3px,3px);box-shadow:var(--sombra-sm)}
+  #tabbar .fab:active{transform:scale(.97);box-shadow:var(--sombra-sm)}
   .ringwrap{display:flex;align-items:center;gap:18px;margin-top:12px}
   .ringstats{flex:1;display:flex;flex-direction:column;gap:10px;font-size:13px;min-width:0}
   .ringstats>div{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
@@ -803,7 +806,7 @@ window.APP_RELEASE = "tresults-v19";
   .fd-resumo{display:flex;align-items:center;gap:14px;width:100%;text-align:left;
     background:var(--surface);border:0;border-radius:22px;
     padding:14px;box-shadow:var(--sombra);margin-bottom:12px}
-  .fd-resumo:active{transform:translate(3px,3px);box-shadow:var(--sombra-sm)}
+  .fd-resumo:active{transform:scale(.97);box-shadow:var(--sombra-sm)}
   .fd-anel{position:relative;width:76px;height:76px;flex:none}
   .fd-anel svg{width:76px;height:76px}
   .fd-anel-n{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;

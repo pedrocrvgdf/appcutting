@@ -203,3 +203,37 @@ for (const largura of [390, 320]) {
     });
   });
 }
+
+test.describe('Os botões parecem botões', () => {
+
+  test('os números de RIR têm ilha própria, e não fundo do cartão', async ({ page }) => {
+    /* Eles ficavam brancos sobre o cartão branco: liam como texto solto, e a
+       pessoa não sabia que dava para tocar. */
+    const { iniciarTreino } = require('./app');
+    await abrirApp(page, estadoBase());
+    await iniciarTreino(page);
+
+    const v = await page.evaluate(() => {
+      const b = document.querySelector('#trSets [data-rir="1"]');
+      const cartao = b.closest('.tr-set') || b.parentElement;
+      const cor = e => getComputedStyle(e).backgroundColor;
+      const opaco = c => {
+        const m = c.match(/[\d.]+/g).map(Number);
+        return m.length < 4 || m[3] > 0;
+      };
+      return { botao: cor(b), fundo: cor(cartao), temFundo: opaco(cor(b)) };
+    });
+
+    expect(v.temFundo, 'sem fundo não há ilha nenhuma').toBe(true);
+    expect(v.botao, 'a ilha precisa se destacar do cartão atrás dela').not.toBe(v.fundo);
+  });
+
+  test('nenhum botão desliza na diagonal ao ser apertado', async ({ page }) => {
+    /* Afundar contra um contorno era do layout cartoon. Sem contorno, o botão
+       encolhe — deslizar deixa a interface parecendo de duas épocas. */
+    const html = require('fs').readFileSync(
+      require('path').join(require('./app').RAIZ, 'index.html'), 'utf8');
+    const deslizes = html.match(/transform:translate\(\d+px,\s*\d+px\)/g) || [];
+    expect(deslizes, 'resto do layout antigo').toEqual([]);
+  });
+});
