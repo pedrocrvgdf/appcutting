@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v24";
+window.APP_RELEASE = "tresults-v25";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -2049,6 +2049,87 @@ const FOODS = [
 const KEY="cutting.v1";
 const DEVICE=Math.random().toString(36).slice(2);
 const norm=s=>s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+
+/* ---- Busca de alimentos ----
+   Antes era `nome.includes(frase)`: "ovos" n\u00e3o achava "Ovo cozido", "peito
+   frango" n\u00e3o achava "Frango grelhado (peito)", e uma letra trocada zerava a
+   lista. Aqui a frase vira palavras, cada palavra precisa aparecer no nome (em
+   qualquer ordem, por come\u00e7o de palavra, no singular ou no plural, tolerando
+   uma letra errada nas maiores), e o resultado sai ordenado por afinidade em
+   vez de pela ordem em que o banco foi digitado. */
+
+/* Como se fala na academia \u2192 como est\u00e1 no banco. S\u00f3 o que muda de nome de
+   regi\u00e3o para regi\u00e3o; n\u00e3o \u00e9 dicion\u00e1rio. */
+const ALIM_SIN={aipim:"mandioca",macaxeira:"mandioca",jerimum:"abobora",mexerica:"tangerina",
+  bergamota:"tangerina",refri:"refrigerante",sobrecoxa:"coxa"};
+
+/* Raiz de uma palavra: tira plural. "ovos"\u2192"ovo", "paes"\u2192"pao", "limoes"\u2192"limao". */
+function alimRaiz(t){
+  t=norm(t);
+  if(t.length<=3)return t;
+  if(t.endsWith("oes")||t.endsWith("aes"))return t.slice(0,-3)+"ao";
+  if(t.endsWith("s"))return t.slice(0,-1);
+  return t;
+}
+const alimPalavras=s=>norm(s).split(/[^a-z0-9]+/).filter(Boolean);
+
+/* Um erro de digita\u00e7\u00e3o: letra trocada, faltando, sobrando, ou duas vizinhas
+   invertidas ("frnago") \u2014 que \u00e9 o erro mais comum no teclado do celular. S\u00f3
+   vale para palavras maiores: em "ovo" uma letra \u00e9 a palavra inteira. */
+function alimPerto(a,b){
+  if(Math.min(a.length,b.length)<4||Math.abs(a.length-b.length)>1)return false;
+  if(a===b)return true;
+  if(a.length===b.length){
+    const d=[];for(let i=0;i<a.length;i++)if(a[i]!==b[i])d.push(i);
+    if(d.length===1)return true;
+    return d.length===2&&d[1]===d[0]+1&&a[d[0]]===b[d[1]]&&a[d[1]]===b[d[0]];
+  }
+  const [c,l]=a.length<b.length?[a,b]:[b,a];
+  let i=0,j=0,pulou=false;
+  while(i<c.length&&j<l.length){
+    if(c[i]===l[j]){i++;j++;}
+    else{if(pulou)return false;pulou=true;j++;}
+  }
+  return true;
+}
+
+/** Quanto o nome responde \u00e0 pergunta. 0 = n\u00e3o responde. */
+function alimPontos(nome,qTokens,qNorm){
+  const n=norm(nome),nTokens=alimPalavras(nome).map(alimRaiz);
+  if(n===qNorm)return 100;
+  let pts=0,ordem=0;
+  for(const qt of qTokens){
+    let idx=nTokens.findIndex((nt,i)=>i>=ordem&&nt.startsWith(qt));
+    if(idx>-1){pts+=30;ordem=idx+1;continue;}                     // come\u00e7o de palavra, na sequ\u00eancia
+    idx=nTokens.findIndex(nt=>nt.startsWith(qt));
+    if(idx>-1){pts+=22;continue;}                                  // come\u00e7o de palavra, fora de ordem
+    if(qt.length>=4&&nTokens.some(nt=>nt.includes(qt))){pts+=14;continue;}   // dentro da palavra
+    if(nTokens.some(nt=>alimPerto(nt,qt))){pts+=10;continue;}      // uma letra errada
+    return 0;                                                      // uma palavra sem casa \u00e9 resposta errada
+  }
+  if(n.startsWith(qNorm))pts+=25;
+  return pts+Math.max(0,12-nTokens.length);   // nome mais curto responde melhor \u00e0 mesma pergunta
+}
+
+/** Os alimentos de `lista` que respondem a `frase`, do mais afim ao menos. */
+function buscaAlimentos(frase,lista,max=8){
+  const qNorm=norm(frase).trim();
+  const qTokens=alimPalavras(frase).map(t=>ALIM_SIN[t]||t).map(alimRaiz);
+  if(!qTokens.length)return [];
+  const vistos=new Set(),out=[];
+  lista.forEach((f,i)=>{
+    const chave=norm(f.n);
+    if(vistos.has(chave))return;                                   // o banco tem nome repetido
+    const pts=alimPontos(f.n,qTokens,qNorm);
+    if(!pts)return;
+    vistos.add(chave);
+    out.push({f,pts,i});
+  });
+  /* Empate resolve pela ordem da lista: os alimentos que a pessoa criou vêm
+     antes do banco (ver localList), e é assim que devem aparecer. */
+  out.sort((a,b)=>b.pts-a.pts||a.i-b.i);
+  return out.slice(0,max).map(x=>x.f);
+}
 const todayKey=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");};
 let viewKey=todayKey(), realToday=todayKey();
 const dateFromKey=k=>{const[y,m,d]=k.split("-").map(Number);return new Date(y,m-1,d);};
@@ -4154,10 +4235,18 @@ function bindRows(){
 const search=$("search"),drop=$("drop");
 let hlIndex=-1,currentResults=[],offResults=[];
 function localList(){return [...(store.custom||[]),...FOODS];}
+/* Quando o banco local não responde, a busca na internet começa sozinha —
+   depois de a pessoa parar de digitar, para não disparar uma consulta por
+   letra. A linha "Buscar na internet" continua ali para quem quiser forçar. */
+let offAutoT=null;
 function renderDrop(){
   const raw=search.value.trim(),q=norm(raw);
+  clearTimeout(offAutoT);
   if(!q){closeDrop();return;}
-  currentResults=localList().filter(f=>norm(f.n).includes(q)).slice(0,8);hlIndex=-1;
+  currentResults=buscaAlimentos(raw,localList(),8);hlIndex=-1;
+  if(!currentResults.length&&raw.length>=3){
+    offAutoT=setTimeout(()=>{ if(search.value.trim()===raw&&!manualMode&&!picked)offSearch(raw); },700);
+  }
   let html=currentResults.map((f,idx)=>{
     const isCustom=(store.custom||[]).includes(f);
     const meta=f.fixed?`${f.k} kcal · P${f.p} C${f.c} G${f.g} · porção`:`${f.k} kcal · P${f.p} C${f.c} G${f.g} /100g`;
@@ -4188,14 +4277,35 @@ function offName(p){
   return (typeof n==="string")?n.trim():"";
 }
 function mapOff(p){
+  /* Muito produto brasileiro só traz a energia em kJ (energy_100g). Exigir o
+     campo em kcal jogava fora justamente os rótulos daqui. */
   let k=offNut(p,"energy-kcal_100g");
+  if(k==null||isNaN(k)||k<=0){
+    const kj=offNut(p,"energy-kj_100g")??offNut(p,"energy_100g");
+    if(kj!=null&&!isNaN(kj)&&kj>0)k=kj/4.184;
+  }
   if(k==null||isNaN(k)||k<=0)return null;
   let name=offName(p);
   if(!name)return null;
   const brand=(typeof p.brands==="string"&&p.brands)?("· "+p.brands.split(",")[0].trim()):"";
   const qty=p.quantity?("("+p.quantity+")"):"";
   name=[name,brand,qty].filter(Boolean).join(" ").trim();
-  return {n:name,k:r0(k),p:r1(offNut(p,"proteins_100g")||0),c:r1(offNut(p,"carbohydrates_100g")||0),g:r1(offNut(p,"fat_100g")||0)};
+  const paises=[].concat(p.countries_tags||[]).join(",");
+  return {n:name,k:r0(k),p:r1(offNut(p,"proteins_100g")||0),c:r1(offNut(p,"carbohydrates_100g")||0),g:r1(offNut(p,"fat_100g")||0),
+    br:/en:brazil/.test(paises)};
+}
+/* Do que veio da internet, o que responde à pergunta e é daqui vem primeiro;
+   o resto vem depois, sem repetir nome. */
+function ordenarOff(hits,q){
+  const qTokens=alimPalavras(q).map(alimRaiz),qNorm=norm(q).trim();
+  const vistos=new Set(),out=[];
+  hits.forEach((h,i)=>{
+    const f=mapOff(h);if(!f)return;
+    const chave=norm(f.n);if(vistos.has(chave))return;vistos.add(chave);
+    out.push({f,pts:alimPontos(f.n,qTokens,qNorm)+(f.br?40:0),i});
+  });
+  out.sort((a,b)=>b.pts-a.pts||a.i-b.i);
+  return out.map(x=>x.f);
 }
 function fetchJSONone(u,ms){
   return new Promise((resolve,reject)=>{
@@ -4211,21 +4321,36 @@ const offCache=new Map();
 async function offFetch(q){
   if(offCache.has(q))return offCache.get(q);
   const enc=encodeURIComponent(q);
-  const FIELDS="product_name,product_name_pt,brands,quantity,nutriments";
+  const FIELDS="product_name,product_name_pt,brands,quantity,nutriments,countries_tags";
   // corrida em paralelo: responde quem chegar primeiro com resultados
-  const A=`https://search.openfoodfacts.org/search?q=${enc}&page_size=24&fields=${FIELDS}`;
+  const A=`https://search.openfoodfacts.org/search?q=${enc}&langs=pt,main&page_size=40&fields=${FIELDS}`;
   const B=`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${enc}&search_simple=1&action=process&json=1&page_size=24&cc=br&lc=pt&fields=${FIELDS}`;
   const C="https://api.allorigins.win/raw?url="+encodeURIComponent(B);
-  const delayed=(u,ms,d)=>new Promise((res,rej)=>setTimeout(()=>fetchJSONone(u,ms).then(res,rej),d));
-  const tasks=[fetchJSONone(A,9000),fetchJSONone(B,9000),delayed(C,9000,3500)];
   const hitsOf=d=>(d&&(d.hits||d.products))||[];
   const hits=await new Promise((resolve,reject)=>{
-    let pend=tasks.length,sawEmpty=false;
-    tasks.forEach(t=>t.then(d=>{
-      const h=hitsOf(d);
-      if(h.length)resolve(h);
-      else{sawEmpty=true;if(--pend===0)resolve([]);}
-    }).catch(()=>{if(--pend===0)(sawEmpty?resolve([]):reject(new Error("all failed")));}));
+    let feito=false,pend=0,vazio=false,cTentado=false;
+    const fim=h=>{if(!feito){feito=true;resolve(h);}};
+    /* O proxy (C) é reserva, não corrida: entra se os diretos demoram 3,5 s ou
+       assim que os dois falham — sem esperar o relógio com a pessoa olhando
+       "Buscando…". E não entra se já houve resposta: seria mandar o que a
+       pessoa digitou a um terceiro sem necessidade. */
+    const abrirC=()=>{if(feito||cTentado)return;cTentado=true;acompanhar(fetchJSONone(C,9000));};
+    function acompanhar(p){
+      pend++;
+      p.then(d=>{
+        const h=hitsOf(d);
+        if(h.length)return fim(h);
+        vazio=true;
+        if(--pend===0)fim([]);      // resposta vazia é resposta: o proxy traria a mesma
+      }).catch(()=>{
+        if(--pend!==0)return;
+        if(!cTentado&&!vazio)return abrirC();
+        vazio?fim([]):(feito||reject(new Error("all failed")));
+      });
+    }
+    acompanhar(fetchJSONone(A,9000));
+    acompanhar(fetchJSONone(B,9000));
+    setTimeout(abrirC,3500);
   });
   if(hits.length)offCache.set(q,hits);
   return hits;
@@ -4234,7 +4359,8 @@ async function offSearch(q){
   drop.innerHTML=`<div class="opt empty">Buscando "${esc(q)}" na internet…</div>`;
   try{
     const hits=await offFetch(q);
-    offResults=hits.map(mapOff).filter(Boolean).slice(0,15);
+    if(search.value.trim()!==q)return;          // a pessoa já digitou outra coisa
+    offResults=ordenarOff(hits,q).slice(0,15);
     if(offResults.length===0){drop.innerHTML=`<div class="opt empty">Nada encontrado com dados de calorias. Tente outro nome ou use "Inserir manualmente".</div>`;return;}
     drop.innerHTML=offResults.map((f,idx)=>`<div class="opt" data-offidx="${idx}"><span class="n">${esc(f.n)}</span><span class="m">${f.k} kcal · P${f.p} C${f.c} G${f.g} /100g 🌐</span></div>`).join("");
     drop.querySelectorAll("[data-offidx]").forEach(o=>o.onclick=e=>{e.stopPropagation();selectOnline(offResults[+o.dataset.offidx]);});
@@ -4857,7 +4983,7 @@ pmSearch.addEventListener("input",()=>{
   if(pmManual)return;
   const q=norm(pmSearch.value.trim());pmPicked=null;
   if(!q){pmDrop.classList.remove("open");pmDrop.innerHTML="";return;}
-  const res=localList().filter(f=>norm(f.n).includes(q)).slice(0,8);
+  const res=buscaAlimentos(pmSearch.value,localList(),8);
   pmDrop.innerHTML=res.length?res.map((f,i)=>`<div class="opt" data-i="${i}"><span class="n">${esc(f.n)}</span><span class="m">${f.k} kcal ${f.fixed?"· porção":"/100g"}</span></div>`).join(""):`<div class="opt empty">Sem resultado — use "Inserir manual"</div>`;
   pmDrop.querySelectorAll(".opt[data-i]").forEach(o=>o.onclick=()=>{pmPicked=res[+o.dataset.i];pmSearch.value=pmPicked.n;pmDrop.classList.remove("open");$("pmGrams").focus();});
   pmDrop.classList.add("open");

@@ -174,6 +174,43 @@ data de nascimento, e-mail e senha.
   `lang` da página; o valor é sempre ISO. Não tente "consertar" isso.
 - Coberto em `tests/cadastro.spec.js`.
 
+### A busca de alimentos
+
+O dono reclamou que "o repertório de pesquisa não achava nada". Havia duas
+causas, e nenhuma era o tamanho do banco.
+
+- **O casamento local é `buscaAlimentos(frase, lista)`**, não `includes`. A
+  frase vira palavras; cada palavra precisa aparecer no nome, em qualquer
+  ordem, por começo de palavra, no singular ou no plural (`alimRaiz`), tolerando
+  um erro de digitação nas maiores (`alimPerto`, que aceita vizinhas
+  invertidas — "frnago"). O resultado sai ordenado por afinidade
+  (`alimPontos`), não pela ordem em que o banco foi digitado, e nome repetido
+  aparece uma vez. **Uma palavra sem casa é resposta errada**: "frango xyzabc"
+  devolve vazio, não "Frango".
+- `ALIM_SIN` guarda apelidos regionais (aipim → mandioca). É só isso; não vire
+  dicionário.
+- **A busca do protocolo de refeições (`#pmSearch`) usa a mesma função.** Eram
+  duas cópias do `includes`; consertar uma e esquecer a outra é como o defeito
+  volta.
+- **A internet entra sozinha quando o banco não responde**, 700 ms depois de a
+  pessoa parar de digitar (`offAutoT`). A linha "Buscar na internet" continua
+  para quem quiser forçar. Resposta que chega para uma frase que a pessoa já
+  trocou é descartada.
+- **Open Food Facts:** produto que só traz a energia em kJ (`energy_100g`)
+  entra, convertido (÷ 4,184) — exigir `energy-kcal_100g` jogava fora
+  justamente os rótulos brasileiros. Produto do Brasil (`countries_tags`) vem
+  antes (`ordenarOff`). O proxy (`api.allorigins.win`) é **reserva**, não
+  corrida: entra se os diretos demoram 3,5 s ou assim que os dois falham, e
+  não entra se já houve resposta — seria mandar o que a pessoa digitou a um
+  terceiro sem necessidade.
+- **Não invente valores nutricionais.** O banco local não foi ampliado nesta
+  rodada porque não havia tabela TACO alcançável para importar; números
+  chutados num app de dieta são pior que "não achei". Se um dia importar,
+  registre a fonte.
+- O serviço não é alcançável do ambiente de sessão (o proxy bloqueia): os
+  testes respondem no lugar dele, com o formato real das duas APIs (`hits` /
+  `products`). Coberto em `tests/alimentos.spec.js`.
+
 ### Números na tela são em português
 
 Casa decimal se escreve com **vírgula**. Existe `kgTxt(v)` para isso: arredonda
@@ -259,6 +296,7 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 | `tests/digital.spec.js` | Entrar com a digital: e-mail que confere, e cada caminho de falha voltando para a senha |
 | `tests/conta.spec.js` | Excluir dados exigindo a senha da conta |
 | `tests/cadastro.spec.js` | Pop-up de criar conta, e a idade derivada da data de nascimento |
+| `tests/alimentos.spec.js` | Busca de alimentos: plural, ordem, erro de digitação, afinidade; internet automática, kJ, Brasil primeiro |
 | `tests/app-nativo.spec.js` | Caminho web desligado quando o app Android está presente |
 | `tests/service-worker.spec.js` | Cache do app, versão, e a página de diagnóstico |
 | `tests/app.js` | Utilitários: Firebase falso, estado inicial, atalhos de navegação |
