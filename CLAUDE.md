@@ -297,6 +297,7 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 | `tests/conta.spec.js` | Excluir dados exigindo a senha da conta |
 | `tests/cadastro.spec.js` | Pop-up de criar conta, e a idade derivada da data de nascimento |
 | `tests/alimentos.spec.js` | Busca de alimentos: plural, ordem, erro de digitação, afinidade; internet automática, kJ, Brasil primeiro |
+| `tests/cardio.spec.js` | Registro manual: distância opcional na caminhada, inclinação da esteira, digitação com vírgula |
 | `tests/app-nativo.spec.js` | Caminho web desligado quando o app Android está presente |
 | `tests/service-worker.spec.js` | Cache do app, versão, e a página de diagnóstico |
 | `tests/app.js` | Utilitários: Firebase falso, estado inicial, atalhos de navegação |
@@ -375,6 +376,44 @@ digitado.
 - A referência da última vez (`lastExSession`) segue o exercício **novo**:
   comparar a carga do leg press com a do agachamento não diria nada.
 - Coberto em `tests/treino.spec.js`.
+
+### Registro manual de cardio: distância e inclinação
+
+O "treino avulso" calcula por dois caminhos, e quem escolhe é a atividade:
+
+- **Por distância** (`dist`), quando a pessoa sabe quantos quilômetros fez. A
+  velocidade cai numa faixa (caminhada, trote, corrida) e cada faixa tem um
+  custo líquido em kcal por kg por km.
+- **Por MET** (`met`), quando só há duração, graduada pela intensidade.
+
+Três cuidados:
+
+- **Na caminhada a distância é opcional** (`distOpc`). Quem andou 40 minutos no
+  bairro sem medir nada precisa continuar registrando: tornar o campo
+  obrigatório tiraria do app algo que já funcionava. Com km preenchido, a conta
+  passa para o caminho da distância e o seletor de intensidade some — campo
+  visível que não entra na conta é campo que mente.
+- **A inclinação (`inc`) existe só na esteira.** Na rua ninguém sabe a rampa, e
+  pedir o número seria pedir um chute. O acréscimo é
+  `peso × metros_de_subida × coeficiente`, com **0,009 kcal/kg/m andando** e
+  **0,0045 correndo** — os dois saem das equações metabólicas do ACSM (termo de
+  rampa de 1,8 e 0,9 ml de O₂ por kg a cada metro-minuto, a 5 kcal por litro de
+  O₂). Correr aproveita melhor a rampa, por isso custa menos por metro subido.
+- **Com inclinação 0, a conta precisa dar exatamente o número de antes.** Se
+  mudar, o histórico de quem já registrou deixa de ser comparável com o de
+  amanhã, e a pessoa vê uma "melhora" que só existe porque a fórmula mudou.
+  Existe teste fixando esse valor.
+
+**Os campos decimais do cardio são `type="text"` com `inputmode="decimal"`, de
+propósito.** No teclado numérico brasileiro a tecla decimal é a vírgula, e um
+`<input type="number">` **descarta a vírgula antes de o JavaScript enxergar**:
+quem digitasse "7,5" gravaria 75. Num app que calcula caloria, isso é número
+errado entrando calado. A leitura passa por `numBR()`, que aceita vírgula e
+ponto, e um filtro impede letra no campo.
+
+> **Isto ainda não foi corrigido no resto do app.** Peso, macros, quantidade em
+> gramas e a carga das séries continuam em `type="number"` e sofrem do mesmo
+> defeito. Quando for mexer num desses campos, troque para texto e use `numBR`.
 
 ### Aviso com o app fechado (Web Push)
 

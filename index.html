@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v25";
+window.APP_RELEASE = "tresults-v26";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -441,6 +441,10 @@ window.APP_RELEASE = "tresults-v25";
   .card{background:var(--surface);border:0;border-radius:26px;padding:15px;box-shadow:var(--sombra)}
   .field{position:relative}
   .row{display:flex;gap:10px}.row>*{flex:1}
+  /* A linha do treino avulso chega a três campos (distância, duração e
+     inclinação ou intensidade). Espremer os três num celular de 320px corta o
+     rótulo; melhor deixar o terceiro descer para a linha de baixo. */
+  .row.row-ta{flex-wrap:wrap}.row.row-ta>*{flex:1 1 116px;min-width:116px}
   .drop{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:30;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);max-height:260px;overflow:auto;display:none}
   .drop.open{display:block}
   .opt{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:11px 12px;border-bottom:1px solid var(--line);cursor:pointer}
@@ -1521,12 +1525,13 @@ window.APP_RELEASE = "tresults-v25";
         <div class="field"><label class="lbl" for="taAct">Atividade</label>
           <select class="in" id="taAct"></select>
         </div>
-        <div class="row" style="margin-top:10px">
-          <div class="field" id="taKmWrap" style="display:none"><label class="lbl" for="taKm">Distância (km)</label><input class="in num" id="taKm" type="number" step="0.1" inputmode="decimal" placeholder="5"></div>
+        <div class="row row-ta" style="margin-top:10px">
+          <div class="field" id="taKmWrap" style="display:none"><label class="lbl" for="taKm">Distância (km)</label><input class="in num" id="taKm" type="text" inputmode="decimal" placeholder="5"></div>
           <div class="field"><label class="lbl" for="taMin">Duração (min)</label><input class="in num" id="taMin" type="number" inputmode="numeric" value="60"></div>
           <div class="field" id="taIntWrap"><label class="lbl" for="taInt">Intensidade</label>
             <select class="in" id="taInt"><option value="0.85">Leve</option><option value="1" selected>Moderada</option><option value="1.2">Intensa</option></select>
           </div>
+          <div class="field" id="taIncWrap" style="display:none"><label class="lbl" for="taInc">Inclinação (%)</label><input class="in num" id="taInc" type="text" inputmode="decimal" placeholder="0"></div>
         </div>
         <div class="monthline" id="taPreview" style="margin-top:10px;text-align:left"></div>
         <button class="btn" id="taAdd">Adicionar treino ao dia</button>
@@ -2312,7 +2317,7 @@ function renderInicio(){
       <button class="fd-top" data-fdtoggle="${esc(w.id)}">
         <span class="fd-ico">${forca?FD_ICO_FORCA:FD_ICO_CARDIO}</span>
         <span class="fd-nome"><span class="n">${esc(w.name)}</span>
-          <span class="h">${forca?`${w.ex.length} exercícios · ${series} séries`:(w.km?`${kgTxt(w.km)} km`:"registro manual")}</span></span>
+          <span class="h">${forca?`${w.ex.length} exercícios · ${series} séries`:(w.km?`${kgTxt(w.km)} km${w.inc?` · ${kgTxt(w.inc)}% de inclinação`:""}`:"registro manual")}</span></span>
         <svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
       </button>
       <div class="fd-stats">
@@ -2439,9 +2444,12 @@ $("goFood").onclick=()=>showView("food");
 $("goTreino").onclick=()=>showView("treino");
 
 /* ---------- TREINO ---------- */
+/* dist: a distância é obrigatória — sem ela não há conta.
+   distOpc: a distância é aceita, mas quem não mediu registra só pela duração.
+   inc: a atividade aceita inclinação (só a esteira sabe a própria rampa). */
 const T_ACTS=[
- {n:"Esteira",dist:true,fac:0.95},{n:"Aeróbico ao ar livre",dist:true,fac:1},
- {n:"Musculação",met:5},{n:"Caminhada",met:3.5},
+ {n:"Esteira",dist:true,fac:0.95,inc:true},{n:"Aeróbico ao ar livre",dist:true,fac:1},
+ {n:"Musculação",met:5},{n:"Caminhada",met:3.5,distOpc:true},
  {n:"Bicicleta",met:6.8},{n:"Natação",met:7},{n:"Futebol",met:8},{n:"HIIT / Cross",met:9},
  {n:"Lutas",met:7.5},{n:"Dança",met:5.5},{n:"Elíptico",met:5},{n:"Escada",met:8.8},{n:"Yoga / alongamento",met:2.8}
 ];
@@ -2455,39 +2463,79 @@ function metKcal(met,min){return met*3.5*userWeight()/200*min;}
 function netKcal(met,min){return Math.max(0,met-1)*3.5*userWeight()/200*min;} // líquido: acima do repouso (o GETD já cobre o repouso)
 function tToday(){const k=todayKey();store.tdays=store.tdays||{};if(!store.tdays[k])store.tdays[k]=[];return store.tdays[k];}
 const paceFmt=minPerKm=>{const m=Math.floor(minPerKm),sec=Math.round((minPerKm-m)*60);return m+":"+String(sec).padStart(2,"0");};
+
+/* Subir custa energia além de avançar, e a esteira é o único lugar onde o
+   aparelho sabe a própria rampa. Os coeficientes vêm das equações metabólicas
+   do ACSM: o termo de inclinação é 1,8 ml de O₂ por kg a cada metro-minuto
+   andando e 0,9 correndo. Integrado ao longo de 1 km, isso dá 1,8 e 0,9 ml de
+   O₂ por kg a cada metro de subida; a 5 kcal por litro de O₂, 0,009 e 0,0045
+   kcal por kg por metro. Correr aproveita melhor a rampa, por isso custa menos
+   por metro subido. Com inclinação 0 a conta é exatamente a de antes — o
+   histórico de quem já registrou continua comparável. */
+const SUBIDA_ANDANDO=0.009, SUBIDA_CORRENDO=0.0045;
+const INC_MAX=30;
+
+/* No teclado numérico brasileiro a tecla decimal é a vírgula, e um
+   <input type="number"> a descarta antes de o JavaScript enxergar: quem
+   digitasse "7,5" gravaria 75. Num app que calcula caloria, isso é número
+   errado entrando calado. Por isso os campos de distância e inclinação são
+   texto com teclado decimal, e a leitura normaliza a vírgula. */
+const numBR=v=>parseFloat(String(v==null?"":v).replace(",","."))||0;
+
 function taCalc(){
   const a=T_ACTS[parseInt($("taAct").value)||0],min=parseFloat($("taMin").value)||0,w=userWeight();
-  if(a.dist){
-    const km=parseFloat($("taKm").value)||0;
+  const km=numBR($("taKm").value);
+  /* Na caminhada a distância é opcional: quem andou 40 minutos sem medir
+     continua registrando pelo MET, como sempre registrou. */
+  const porDist=!!(a.dist||(a.distOpc&&km>0));
+  if(porDist){
     if(km<=0||min<=0)return {name:a.n,min,km,kcal:0,ok:false};
     const speed=km/(min/60);
-    let cost,label; // custos líquidos (kcal/kg/km acima do repouso)
-    if(speed<6.5){cost=0.32;label="caminhada";}
-    else if(speed<8){cost=0.60;label="trote leve";}
-    else if(speed<11){cost=0.90;label="corrida moderada";}
-    else{cost=0.95;label="corrida intensa";}
-    const kcal=Math.round(w*km*cost*(a.fac||1));
-    return {name:a.n,min,km,speed,pace:min/km,label,kcal,ok:true,dist:true};
+    let cost,label,subida; // custos líquidos (kcal/kg/km acima do repouso)
+    if(speed<6.5){cost=0.32;label="caminhada";subida=SUBIDA_ANDANDO;}
+    else if(speed<8){cost=0.60;label="trote leve";subida=SUBIDA_CORRENDO;}
+    else if(speed<11){cost=0.90;label="corrida moderada";subida=SUBIDA_CORRENDO;}
+    else{cost=0.95;label="corrida intensa";subida=SUBIDA_CORRENDO;}
+    const inc=a.inc?Math.min(INC_MAX,Math.max(0,numBR($("taInc").value))):0;
+    const metros=km*1000*(inc/100);
+    const kcal=Math.round(w*km*cost*(a.fac||1)+w*metros*subida);
+    return {name:a.n,min,km,speed,pace:min/km,label,inc,metros,kcal,ok:true,dist:true};
   }
   const f=parseFloat($("taInt").value)||1;
   return {name:a.n,min,kcal:Math.round(netKcal(a.met*f,min)),ok:min>0};
 }
 function taPreview(){
   const a=T_ACTS[parseInt($("taAct").value)||0];
-  $("taKmWrap").style.display=a.dist?"block":"none";
-  $("taIntWrap").style.display=a.dist?"none":"block";
+  const km=numBR($("taKm").value);
+  const porDist=!!(a.dist||(a.distOpc&&km>0));
+  $("taKmWrap").style.display=(a.dist||a.distOpc)?"block":"none";
+  /* a intensidade some quando a distância manda: campo visível que não entra
+     na conta é campo que mente */
+  $("taIntWrap").style.display=porDist?"none":"block";
+  $("taIncWrap").style.display=a.inc?"block":"none";
+  /* O aviso de "opcional" vai no campo, e não no rótulo: rótulo comprido corta
+     em tela estreita, e o placeholder some assim que a pessoa digita. */
+  $("taKm").placeholder=a.distOpc?"opcional":"5";
   const c=taCalc();
-  if(a.dist){
-    $("taPreview").innerHTML=c.ok?`<b>${r1(c.km)} km</b> em ${r0(c.min)} min → <b>${r1(c.speed)} km/h</b> (pace ${paceFmt(c.pace)}/km) · ${c.label}<br>Estimativa: <b>${r0(c.kcal)} kcal</b> (peso ${r1(userWeight())} kg)`:"Informe a distância (km) e a duração.";
+  if(porDist){
+    const rampa=c.inc>0?` · <b>${kgTxt(c.inc)}%</b> de inclinação (${r0(c.metros)} m de subida)`:"";
+    $("taPreview").innerHTML=c.ok?`<b>${kgTxt(c.km)} km</b> em ${r0(c.min)} min → <b>${kgTxt(c.speed)} km/h</b> (pace ${paceFmt(c.pace)}/km) · ${c.label}${rampa}<br>Estimativa: <b>${r0(c.kcal)} kcal</b> (peso ${kgTxt(userWeight())} kg)`:"Informe a distância (km) e a duração.";
   }else{
-    $("taPreview").innerHTML=c.ok?`Estimativa: <b>${r0(c.kcal)} kcal</b> (${esc(c.name)}, ${r0(c.min)} min, peso ${r1(userWeight())} kg)`:"Informe a duração.";
+    const dica=a.distOpc?"<br>Preencha a distância e a conta passa a sair pelo seu ritmo.":"";
+    $("taPreview").innerHTML=c.ok?`Estimativa: <b>${r0(c.kcal)} kcal</b> (${esc(c.name)}, ${r0(c.min)} min, peso ${kgTxt(userWeight())} kg)${dica}`:"Informe a duração.";
   }
 }
-["taAct","taMin","taInt","taKm"].forEach(id=>{$(id).addEventListener("input",taPreview);$(id).addEventListener("change",taPreview);});
+/* Sendo campo de texto, ele aceitaria letra. O filtro roda antes da prévia,
+   que registra o ouvinte depois e por isso já lê o valor limpo. */
+["taKm","taInc"].forEach(id=>$(id).addEventListener("input",()=>{
+  const c=$(id),limpo=c.value.replace(/[^0-9.,]/g,"");
+  if(limpo!==c.value)c.value=limpo;
+}));
+["taAct","taMin","taInt","taKm","taInc"].forEach(id=>{$(id).addEventListener("input",taPreview);$(id).addEventListener("change",taPreview);});
 $("taAdd").onclick=()=>{
   const c=taCalc();if(!c.ok||c.kcal<=0)return;
   const entry={id:uid(),name:c.name,min:c.min,kcal:c.kcal};
-  if(c.dist){entry.km=c.km;entry.intens=c.label+" · "+r1(c.speed)+" km/h";}
+  if(c.dist){entry.km=c.km;entry.intens=c.label+" · "+kgTxt(c.speed)+" km/h";if(c.inc>0)entry.inc=c.inc;}
   tToday().push(entry);
   save();renderTreino();render();renderInicio();showCongrats("Treino registrado");
 };
@@ -2504,7 +2552,7 @@ function renderTreino(){
   // treinos de hoje
   const td=((store.tdays||{})[todayKey()])||[];
   $("tCount").textContent=td.length+(td.length===1?" treino":" treinos");
-  $("tTodayList").innerHTML=td.length?td.map(w=>`<div class="proto-meal-row"><div><div class="n">${esc(w.name)}</div><div class="m">${r0(w.min)} min${w.km?` · ${r1(w.km)} km`:""} · ${r0(w.kcal)} kcal${w.intens?` · ${w.intens}`:""}${w.rir!=null?` · RIR médio ${w.rir}`:""}${w.vol?` · ${r0(w.vol)} kg movimentados`:""}</div></div><div class="acts"><button class="del" data-tdel="${w.id}">Excluir</button></div></div>`).join(""):'<div class="proto-empty">Nenhum treino registrado hoje.</div>';
+  $("tTodayList").innerHTML=td.length?td.map(w=>`<div class="proto-meal-row"><div><div class="n">${esc(w.name)}</div><div class="m">${r0(w.min)} min${w.km?` · ${kgTxt(w.km)} km`:""}${w.inc?` · ${kgTxt(w.inc)}% de inclinação`:""} · ${r0(w.kcal)} kcal${w.intens?` · ${w.intens}`:""}${w.rir!=null?` · RIR médio ${w.rir}`:""}${w.vol?` · ${r0(w.vol)} kg movimentados`:""}</div></div><div class="acts"><button class="del" data-tdel="${w.id}">Excluir</button></div></div>`).join(""):'<div class="proto-empty">Nenhum treino registrado hoje.</div>';
   $("tTodayList").querySelectorAll("[data-tdel]").forEach(b=>b.onclick=()=>{
     store.tdays[todayKey()]=tToday().filter(x=>x.id!==b.dataset.tdel);save();renderTreino();render();renderInicio();
   });
