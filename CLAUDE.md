@@ -174,6 +174,43 @@ data de nascimento, e-mail e senha.
   `lang` da página; o valor é sempre ISO. Não tente "consertar" isso.
 - Coberto em `tests/cadastro.spec.js`.
 
+### A busca de alimentos
+
+O dono reclamou que "o repertório de pesquisa não achava nada". Havia duas
+causas, e nenhuma era o tamanho do banco.
+
+- **O casamento local é `buscaAlimentos(frase, lista)`**, não `includes`. A
+  frase vira palavras; cada palavra precisa aparecer no nome, em qualquer
+  ordem, por começo de palavra, no singular ou no plural (`alimRaiz`), tolerando
+  um erro de digitação nas maiores (`alimPerto`, que aceita vizinhas
+  invertidas — "frnago"). O resultado sai ordenado por afinidade
+  (`alimPontos`), não pela ordem em que o banco foi digitado, e nome repetido
+  aparece uma vez. **Uma palavra sem casa é resposta errada**: "frango xyzabc"
+  devolve vazio, não "Frango".
+- `ALIM_SIN` guarda apelidos regionais (aipim → mandioca). É só isso; não vire
+  dicionário.
+- **A busca do protocolo de refeições (`#pmSearch`) usa a mesma função.** Eram
+  duas cópias do `includes`; consertar uma e esquecer a outra é como o defeito
+  volta.
+- **A internet entra sozinha quando o banco não responde**, 700 ms depois de a
+  pessoa parar de digitar (`offAutoT`). A linha "Buscar na internet" continua
+  para quem quiser forçar. Resposta que chega para uma frase que a pessoa já
+  trocou é descartada.
+- **Open Food Facts:** produto que só traz a energia em kJ (`energy_100g`)
+  entra, convertido (÷ 4,184) — exigir `energy-kcal_100g` jogava fora
+  justamente os rótulos brasileiros. Produto do Brasil (`countries_tags`) vem
+  antes (`ordenarOff`). O proxy (`api.allorigins.win`) é **reserva**, não
+  corrida: entra se os diretos demoram 3,5 s ou assim que os dois falham, e
+  não entra se já houve resposta — seria mandar o que a pessoa digitou a um
+  terceiro sem necessidade.
+- **Não invente valores nutricionais.** O banco local não foi ampliado nesta
+  rodada porque não havia tabela TACO alcançável para importar; números
+  chutados num app de dieta são pior que "não achei". Se um dia importar,
+  registre a fonte.
+- O serviço não é alcançável do ambiente de sessão (o proxy bloqueia): os
+  testes respondem no lugar dele, com o formato real das duas APIs (`hits` /
+  `products`). Coberto em `tests/alimentos.spec.js`.
+
 ### Números na tela são em português
 
 Casa decimal se escreve com **vírgula**. Existe `kgTxt(v)` para isso: arredonda
@@ -182,6 +219,34 @@ para uma casa e troca o ponto pela vírgula, **sem forçar decimal** — 5 km sa
 use-o para contas, nunca direto no HTML. Já apareceram com ponto o peso das
 séries, a diferença de carga e a distância do cardio; hoje há teste para os três
 (`tests/feed.spec.js`).
+
+### O histórico de líquidos
+
+O total sozinho não respondia à pergunta de quem abre o app no meio da tarde:
+"eu já lancei a garrafa do almoço?". Por isso cada lançamento vira uma linha com
+horário, embaixo do anel de água (`renderLiqHist`).
+
+- **`store.liquids[dia]` continua sendo o total que manda.** É ele que alimenta
+  o anel e é ele que já existe no aparelho de quem usa o app. O
+  `store.liqLog[dia]` é anotação de **quando**, e por isso pode estar
+  incompleto: quem já usava o app tem total e nenhum log. A diferença aparece
+  como a linha **"Lançado antes de existir histórico"**, em vez de a lista e o
+  anel se desmentirem na tela. Se você trocar a ordem dessa conta, some essa
+  garantia — existe teste que soma as linhas e compara com o anel.
+- **Horário não se inventa.** `addLiquid` só grava `t` quando o dia visto é
+  hoje; lançar água num dia passado com a hora de agora seria escrever mentira
+  no histórico. Linha sem horário mostra `--:--`. O mesmo vale para o `t` dos
+  itens de refeição.
+- **Bebida lançada como refeição entra na lista** (item com `unit:"ml"`), porque
+  para quem bebeu é a mesma coisa — mas **não é apagável daqui**: apagar ali
+  mexeria nas calorias do dia, e quem tira comida é a lista de comida. Ela
+  aparece com o nome e a refeição de origem.
+- **Excluir uma linha desconta do total**, senão o anel passaria a discordar da
+  lista.
+- **"Zerar" agora pergunta antes** (`appConfirm`): antes ele zerava um número, e
+  agora apaga o histórico do dia junto.
+- A lista sai da mais recente para a mais antiga: quem confere quer ver o
+  último lançamento, não o primeiro da manhã.
 
 ### A aba Início e o feed
 
@@ -259,6 +324,9 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 | `tests/digital.spec.js` | Entrar com a digital: e-mail que confere, e cada caminho de falha voltando para a senha |
 | `tests/conta.spec.js` | Excluir dados exigindo a senha da conta |
 | `tests/cadastro.spec.js` | Pop-up de criar conta, e a idade derivada da data de nascimento |
+| `tests/alimentos.spec.js` | Busca de alimentos: plural, ordem, erro de digitação, afinidade; internet automática, kJ, Brasil primeiro |
+| `tests/cardio.spec.js` | Registro manual: distância opcional na caminhada, inclinação da esteira, digitação com vírgula |
+| `tests/liquidos.spec.js` | Histórico de ingestão: horário, origem, exclusão, total antigo sem histórico, zerar com confirmação |
 | `tests/app-nativo.spec.js` | Caminho web desligado quando o app Android está presente |
 | `tests/service-worker.spec.js` | Cache do app, versão, e a página de diagnóstico |
 | `tests/app.js` | Utilitários: Firebase falso, estado inicial, atalhos de navegação |
@@ -337,6 +405,44 @@ digitado.
 - A referência da última vez (`lastExSession`) segue o exercício **novo**:
   comparar a carga do leg press com a do agachamento não diria nada.
 - Coberto em `tests/treino.spec.js`.
+
+### Registro manual de cardio: distância e inclinação
+
+O "treino avulso" calcula por dois caminhos, e quem escolhe é a atividade:
+
+- **Por distância** (`dist`), quando a pessoa sabe quantos quilômetros fez. A
+  velocidade cai numa faixa (caminhada, trote, corrida) e cada faixa tem um
+  custo líquido em kcal por kg por km.
+- **Por MET** (`met`), quando só há duração, graduada pela intensidade.
+
+Três cuidados:
+
+- **Na caminhada a distância é opcional** (`distOpc`). Quem andou 40 minutos no
+  bairro sem medir nada precisa continuar registrando: tornar o campo
+  obrigatório tiraria do app algo que já funcionava. Com km preenchido, a conta
+  passa para o caminho da distância e o seletor de intensidade some — campo
+  visível que não entra na conta é campo que mente.
+- **A inclinação (`inc`) existe só na esteira.** Na rua ninguém sabe a rampa, e
+  pedir o número seria pedir um chute. O acréscimo é
+  `peso × metros_de_subida × coeficiente`, com **0,009 kcal/kg/m andando** e
+  **0,0045 correndo** — os dois saem das equações metabólicas do ACSM (termo de
+  rampa de 1,8 e 0,9 ml de O₂ por kg a cada metro-minuto, a 5 kcal por litro de
+  O₂). Correr aproveita melhor a rampa, por isso custa menos por metro subido.
+- **Com inclinação 0, a conta precisa dar exatamente o número de antes.** Se
+  mudar, o histórico de quem já registrou deixa de ser comparável com o de
+  amanhã, e a pessoa vê uma "melhora" que só existe porque a fórmula mudou.
+  Existe teste fixando esse valor.
+
+**Os campos decimais do cardio são `type="text"` com `inputmode="decimal"`, de
+propósito.** No teclado numérico brasileiro a tecla decimal é a vírgula, e um
+`<input type="number">` **descarta a vírgula antes de o JavaScript enxergar**:
+quem digitasse "7,5" gravaria 75. Num app que calcula caloria, isso é número
+errado entrando calado. A leitura passa por `numBR()`, que aceita vírgula e
+ponto, e um filtro impede letra no campo.
+
+> **Isto ainda não foi corrigido no resto do app.** Peso, macros, quantidade em
+> gramas e a carga das séries continuam em `type="number"` e sofrem do mesmo
+> defeito. Quando for mexer num desses campos, troque para texto e use `numBR`.
 
 ### Aviso com o app fechado (Web Push)
 
