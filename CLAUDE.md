@@ -247,6 +247,17 @@ horário, embaixo do anel de água (`renderLiqHist`).
   agora apaga o histórico do dia junto.
 - A lista sai da mais recente para a mais antiga: quem confere quer ver o
   último lançamento, não o primeiro da manhã.
+- **A lista mostra três lançamentos e rola no dedo para o resto**
+  (`limitarLiqHist`). A altura sai da posição da **quarta linha**, não de um
+  número fixo em pixels: linha com origem ("Almoço") ocupa duas alturas de
+  texto, e altura chutada cortaria a terceira ao meio nos dias em que houver
+  bebida de refeição no topo.
+- **A barra de rolagem fica escondida** (`scrollbar-width:none` e o
+  pseudo-elemento do WebKit), porque quem rola é o dedo. Por isso existe o
+  **esmaecido** no rodapé da lista: sem barra, uma lista cortada parece uma
+  lista inteira. Ele some ao chegar no fim — prometer conteúdo que acabou é o
+  mesmo defeito ao contrário. Se você tirar o esmaecido, tire também a rolagem,
+  ou ninguém descobre que há mais.
 
 ### A aba Início e o feed
 

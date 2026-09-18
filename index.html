@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v27";
+window.APP_RELEASE = "tresults-v28";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -567,6 +567,20 @@ window.APP_RELEASE = "tresults-v27";
      não só o total. Divisor entre linhas é o caso em que --line existe. */
   .liq-hist{margin-top:16px}
   .liq-hist .lh-tit{font-size:11.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+  /* A lista mostra três lançamentos e rola no dedo para o resto. A barra de
+     rolagem fica escondida (pedido do dono), então quem avisa que há mais
+     embaixo é o esmaecido — sem ele, uma lista cortada parece uma lista
+     inteira. Ele some ao chegar no fim, senão prometeria conteúdo que acabou. */
+  .liq-hist .lh-cx{position:relative}
+  .liq-hist .lh-lista{overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;
+    scrollbar-width:none;-ms-overflow-style:none}
+  .liq-hist .lh-lista::-webkit-scrollbar{width:0;height:0;display:none}
+  /* 26px: alto o bastante para se notar, baixo o bastante para não lavar a
+     terceira linha — ela é para ser lida, não adivinhada. */
+  .liq-hist .lh-cx.tem-mais::after{content:"";position:absolute;left:0;right:0;bottom:0;height:26px;
+    pointer-events:none;background:linear-gradient(to bottom,transparent,var(--surface));
+    opacity:1;transition:opacity .2s ease}
+  .liq-hist .lh-cx.no-fim::after{opacity:0}
   .liq-hist .lh-row{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
   .liq-hist .lh-row:last-child{border-bottom:0}
   .liq-hist .lh-h{font-family:var(--mono);font-size:12.5px;font-weight:700;color:var(--muted);min-width:42px}
@@ -4837,6 +4851,7 @@ function renderLiqHist(){
   if(!linhas.length&&!semHist){
     html+='<div class="lh-vazio">Nada registrado neste dia. O que você adicionar aparece aqui com o horário.</div>';
   }else{
+    html+='<div class="lh-cx"><div class="lh-lista">';
     html+=linhas.map(x=>`<div class="lh-row">
       <span class="lh-h">${x.t?hhmm(new Date(x.t)):"--:--"}</span>
       <span class="lh-n">${esc(x.nome)}${x.de?`<small>${esc(x.de)}</small>`:""}</span>
@@ -4848,9 +4863,35 @@ function renderLiqHist(){
       <span class="lh-n">Lançado antes de existir histórico<small>o total continua contando</small></span>
       <span class="lh-ml">${r0(semHist)} ml</span>
     </div>`;
+    html+='</div></div>';
   }
   el.innerHTML=html;
   el.querySelectorAll("[data-liqdel]").forEach(b=>b.onclick=()=>removerLiquido(b.dataset.liqdel));
+  limitarLiqHist();
+}
+
+/* Três linhas visíveis, o resto no dedo.
+   A altura sai da posição da quarta linha, e não de um número fixo em pixels:
+   uma linha com origem ("Almoço") é mais alta que uma de água, então altura
+   chutada cortaria a terceira ao meio em parte dos dias. */
+const LIQ_VISIVEIS=3;
+function limitarLiqHist(){
+  const cx=document.querySelector("#liqHist .lh-cx");
+  if(!cx)return;
+  const lista=cx.querySelector(".lh-lista"),linhas=lista.querySelectorAll(".lh-row");
+  lista.style.maxHeight="";
+  cx.classList.remove("tem-mais","no-fim");
+  if(linhas.length<=LIQ_VISIVEIS)return;
+  const alt=linhas[LIQ_VISIVEIS].offsetTop-linhas[0].offsetTop;
+  if(alt<=0)return;
+  lista.style.maxHeight=alt+"px";
+  cx.classList.add("tem-mais");
+  const conferirFim=()=>{
+    const fim=lista.scrollTop+lista.clientHeight>=lista.scrollHeight-2;
+    cx.classList.toggle("no-fim",fim);
+  };
+  lista.addEventListener("scroll",conferirFim,{passive:true});
+  conferirFim();
 }
 
 document.querySelectorAll("[data-add]").forEach(b=>b.onclick=()=>addLiquid(parseInt(b.dataset.add)));
