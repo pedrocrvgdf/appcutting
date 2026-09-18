@@ -220,6 +220,34 @@ use-o para contas, nunca direto no HTML. Já apareceram com ponto o peso das
 séries, a diferença de carga e a distância do cardio; hoje há teste para os três
 (`tests/feed.spec.js`).
 
+### O histórico de líquidos
+
+O total sozinho não respondia à pergunta de quem abre o app no meio da tarde:
+"eu já lancei a garrafa do almoço?". Por isso cada lançamento vira uma linha com
+horário, embaixo do anel de água (`renderLiqHist`).
+
+- **`store.liquids[dia]` continua sendo o total que manda.** É ele que alimenta
+  o anel e é ele que já existe no aparelho de quem usa o app. O
+  `store.liqLog[dia]` é anotação de **quando**, e por isso pode estar
+  incompleto: quem já usava o app tem total e nenhum log. A diferença aparece
+  como a linha **"Lançado antes de existir histórico"**, em vez de a lista e o
+  anel se desmentirem na tela. Se você trocar a ordem dessa conta, some essa
+  garantia — existe teste que soma as linhas e compara com o anel.
+- **Horário não se inventa.** `addLiquid` só grava `t` quando o dia visto é
+  hoje; lançar água num dia passado com a hora de agora seria escrever mentira
+  no histórico. Linha sem horário mostra `--:--`. O mesmo vale para o `t` dos
+  itens de refeição.
+- **Bebida lançada como refeição entra na lista** (item com `unit:"ml"`), porque
+  para quem bebeu é a mesma coisa — mas **não é apagável daqui**: apagar ali
+  mexeria nas calorias do dia, e quem tira comida é a lista de comida. Ela
+  aparece com o nome e a refeição de origem.
+- **Excluir uma linha desconta do total**, senão o anel passaria a discordar da
+  lista.
+- **"Zerar" agora pergunta antes** (`appConfirm`): antes ele zerava um número, e
+  agora apaga o histórico do dia junto.
+- A lista sai da mais recente para a mais antiga: quem confere quer ver o
+  último lançamento, não o primeiro da manhã.
+
 ### A aba Início e o feed
 
 O Início é a tela de entrada (`showView("inicio")`). Ele reúne três coisas:
@@ -298,6 +326,7 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 | `tests/cadastro.spec.js` | Pop-up de criar conta, e a idade derivada da data de nascimento |
 | `tests/alimentos.spec.js` | Busca de alimentos: plural, ordem, erro de digitação, afinidade; internet automática, kJ, Brasil primeiro |
 | `tests/cardio.spec.js` | Registro manual: distância opcional na caminhada, inclinação da esteira, digitação com vírgula |
+| `tests/liquidos.spec.js` | Histórico de ingestão: horário, origem, exclusão, total antigo sem histórico, zerar com confirmação |
 | `tests/app-nativo.spec.js` | Caminho web desligado quando o app Android está presente |
 | `tests/service-worker.spec.js` | Cache do app, versão, e a página de diagnóstico |
 | `tests/app.js` | Utilitários: Firebase falso, estado inicial, atalhos de navegação |

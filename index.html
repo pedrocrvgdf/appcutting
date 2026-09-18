@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v26";
+window.APP_RELEASE = "tresults-v27";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -563,6 +563,19 @@ window.APP_RELEASE = "tresults-v26";
   .liq-add .reset:active{transform:none;box-shadow:none}
   .liq-hint{margin-top:12px;font-size:12px;line-height:1.55;color:var(--muted)}
   .liq-hint b{color:var(--ink);font-weight:700}
+  /* Histórico de ingestão: quem não lembra se já registrou precisa ver a lista,
+     não só o total. Divisor entre linhas é o caso em que --line existe. */
+  .liq-hist{margin-top:16px}
+  .liq-hist .lh-tit{font-size:11.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+  .liq-hist .lh-row{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
+  .liq-hist .lh-row:last-child{border-bottom:0}
+  .liq-hist .lh-h{font-family:var(--mono);font-size:12.5px;font-weight:700;color:var(--muted);min-width:42px}
+  .liq-hist .lh-n{flex:1;min-width:0;font-size:13.5px;font-weight:700;color:var(--ink);overflow-wrap:anywhere}
+  .liq-hist .lh-n small{display:block;font-size:11.5px;font-weight:600;color:var(--muted)}
+  .liq-hist .lh-ml{font-family:var(--mono);font-size:13.5px;font-weight:800;color:var(--ink);white-space:nowrap}
+  .liq-hist .lh-x{border:0;background:transparent;color:var(--muted);font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;padding:6px 0 6px 4px;font-family:inherit}
+  .liq-hist .lh-x:active{transform:scale(.97)}
+  .liq-hist .lh-vazio{font-size:12.5px;line-height:1.55;color:var(--muted)}
   #liqRing .dv{fill:var(--water)}
   .ins-card{background:var(--bg);border:0;border-radius:16px;padding:14px;margin-bottom:12px}
   .ins-empty{font-size:13px;color:var(--muted);padding:6px 2px;line-height:1.5}
@@ -1308,6 +1321,7 @@ window.APP_RELEASE = "tresults-v26";
           <button id="liqReset" class="reset">zerar</button>
         </div>
         <div class="liq-hint">Bebidas lançadas em <b>ml</b> já entram aqui automaticamente. Os botões acima são para água e líquidos avulsos.</div>
+        <div class="liq-hist" id="liqHist"></div>
       </div>
     </div>
   </section>
@@ -4482,6 +4496,9 @@ $("addBtn").onclick=()=>{
     }
   }
   item.meal=$("mealSel").value;
+  /* O horário serve ao histórico de líquidos. Num dia passado não há horário a
+     registrar, e inventar um seria pior que não ter. */
+  if(viewKey===todayKey())item.t=Date.now();
   dayItems().push(item);save();render();
   flash(`${item.status==="agendado"?"Agendado":"Adicionado"}: ${r0(item.kcal)} kcal · P${r1(item.p)} C${r1(item.c)} G${r1(item.g)}`);
   resetForm();
@@ -4749,6 +4766,7 @@ function renderGoals(){
   const liqT=parseFloat(g.liquidTarget)||3000;
   const liq=((store.liquids&&store.liquids[viewKey])||0)+liquidFromFood(viewKey);
   renderLiqRing(liq,liqT);
+  renderLiqHist();
 }
 function renderLiqRing(liq,liqT){
   const el=$("liqRing");if(!el)return;
@@ -4763,10 +4781,87 @@ function renderLiqRing(liq,liqT){
   const rest=Math.max(0,liqT-liq);
   $("liqSum").innerHTML=`<span class="lq-label">Você bebeu hoje</span><span class="lq-big num">${r0(liq)} <small>ml</small></span><span class="lq-meta">de ${r0(liqT)} ml da meta</span><span class="lq-rest">${rest>0?`Faltam <b>${r0(rest)} ml</b>`:`Meta batida! 🎉`}</span>`;
 }
-function addLiquid(ml){store.liquids=store.liquids||{};const k=viewKey;store.liquids[k]=Math.max(0,(store.liquids[k]||0)+ml);save();renderGoals();}
+/* ---- histórico de ingestão de líquidos ----
+   O total sozinho não responde à pergunta de quem abre o app no meio da tarde:
+   "eu já lancei a garrafa do almoço?". Por isso cada lançamento vira uma linha
+   com horário.
+
+   `store.liquids[dia]` continua sendo o total que manda — é ele que alimenta o
+   anel e é ele que já existe no aparelho de quem usa o app. O `store.liqLog`
+   é anotação de **quando**, e por isso pode estar incompleto em dados
+   antigos: a diferença entre os dois aparece como uma linha própria, em vez
+   de fazer a lista e o total se desmentirem na cara da pessoa. */
+function addLiquid(ml,nome){
+  store.liquids=store.liquids||{};store.liqLog=store.liqLog||{};
+  const k=viewKey;
+  store.liquids[k]=Math.max(0,(store.liquids[k]||0)+ml);
+  if(ml>0){
+    if(!store.liqLog[k])store.liqLog[k]=[];
+    const e={id:uid(),ml};
+    /* Horário só existe quando o dia visto é hoje. Lançar num dia passado com
+       a hora de agora seria inventar um horário, e horário inventado num
+       histórico é pior que histórico sem horário. */
+    if(k===todayKey())e.t=Date.now();
+    if(nome)e.nome=nome;
+    store.liqLog[k].push(e);
+  }
+  save();renderGoals();
+}
+
+function removerLiquido(id){
+  const k=viewKey,lista=(store.liqLog||{})[k]||[];
+  const i=lista.findIndex(x=>x.id===id);
+  if(i<0)return;
+  const ml=lista[i].ml||0;
+  lista.splice(i,1);
+  store.liquids=store.liquids||{};
+  store.liquids[k]=Math.max(0,(store.liquids[k]||0)-ml);
+  save();renderGoals();
+}
+
+function renderLiqHist(){
+  const el=$("liqHist");if(!el)return;
+  const k=viewKey;
+  const avulsos=((store.liqLog||{})[k]||[]).map(x=>({id:x.id,ml:x.ml||0,t:x.t,nome:x.nome||"Água",apagavel:true}));
+  /* Bebida lançada como refeição entra na lista, porque para quem bebeu é a
+     mesma coisa. Mas não é apagável daqui: apagar ali mexeria nas calorias do
+     dia, e quem tira comida é a lista de comida. */
+  const daComida=((store.days||{})[k]||[]).filter(i=>i.status==="consumido"&&i.unit==="ml")
+    .map(i=>({id:i.id,ml:i.grams||0,t:i.t,nome:i.name,de:mealLabel(i.meal),apagavel:false}));
+  const linhas=avulsos.concat(daComida).sort((a,b)=>(b.t||0)-(a.t||0));
+
+  const somaAvulsos=avulsos.reduce((a,x)=>a+x.ml,0);
+  const semHist=Math.max(0,Math.round(((store.liquids&&store.liquids[k])||0)-somaAvulsos));
+
+  let html='<div class="lh-tit">Histórico do dia</div>';
+  if(!linhas.length&&!semHist){
+    html+='<div class="lh-vazio">Nada registrado neste dia. O que você adicionar aparece aqui com o horário.</div>';
+  }else{
+    html+=linhas.map(x=>`<div class="lh-row">
+      <span class="lh-h">${x.t?hhmm(new Date(x.t)):"--:--"}</span>
+      <span class="lh-n">${esc(x.nome)}${x.de?`<small>${esc(x.de)}</small>`:""}</span>
+      <span class="lh-ml">${r0(x.ml)} ml</span>
+      ${x.apagavel?`<button class="lh-x" data-liqdel="${esc(x.id)}">Excluir</button>`:""}
+    </div>`).join("");
+    if(semHist)html+=`<div class="lh-row">
+      <span class="lh-h">--:--</span>
+      <span class="lh-n">Lançado antes de existir histórico<small>o total continua contando</small></span>
+      <span class="lh-ml">${r0(semHist)} ml</span>
+    </div>`;
+  }
+  el.innerHTML=html;
+  el.querySelectorAll("[data-liqdel]").forEach(b=>b.onclick=()=>removerLiquido(b.dataset.liqdel));
+}
+
 document.querySelectorAll("[data-add]").forEach(b=>b.onclick=()=>addLiquid(parseInt(b.dataset.add)));
 $("liqAddCustom").onclick=()=>{const v=parseInt($("liqCustom").value)||0;if(v>0){addLiquid(v);$("liqCustom").value="";}};
-$("liqReset").onclick=()=>{store.liquids=store.liquids||{};store.liquids[viewKey]=0;save();renderGoals();};
+/* Zerar agora apaga o histórico do dia junto, e isso não se desfaz. */
+$("liqReset").onclick=async()=>{
+  if(!(await appConfirm("Zerar a água do dia? O histórico de horários deste dia também é apagado.",{okText:"Zerar",cancelText:"Voltar"})))return;
+  store.liquids=store.liquids||{};store.liqLog=store.liqLog||{};
+  store.liquids[viewKey]=0;store.liqLog[viewKey]=[];
+  save();renderGoals();
+};
 
 const goalsOverlay=$("goalsOverlay");
 /* A idade sai da data de nascimento sempre que ela existe.
@@ -4992,7 +5087,9 @@ function renderProtoCards(){
 }
 function consumeProto(id){
   const m=(store.protocol||[]).find(x=>x.id===id);if(!m)return;
-  (m.items||[]).forEach(it=>{dayItems().push({id:uid(),name:it.n,grams:it.grams!=null?it.grams:null,unit:it.unit||null,base:null,kcal:it.k,p:it.p,c:it.c,g:it.g,status:"consumido",meal:m.meal});});
+  /* mesmo horário para a refeição inteira: ela foi consumida de uma vez */
+  const agora=viewKey===todayKey()?Date.now():undefined;
+  (m.items||[]).forEach(it=>{dayItems().push({id:uid(),name:it.n,grams:it.grams!=null?it.grams:null,unit:it.unit||null,base:null,kcal:it.k,p:it.p,c:it.c,g:it.g,status:"consumido",meal:m.meal,t:agora});});
   save();render();showCongrats("Refeição consumida");
 }
 let congratsT;
