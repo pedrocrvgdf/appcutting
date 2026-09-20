@@ -258,6 +258,179 @@ test.describe('Digitação com vírgula', () => {
   });
 });
 
+test.describe('Ganho de elevação acumulado', () => {
+  /* Pedido do dono: "é o ganho de elevação acumulado, às vezes no Strava chega
+     a 1.100 m". Na rua ninguém sabe a própria inclinação média — o relógio dá
+     o ganho pronto, em metros. A esteira continua falando em %, porque é o que
+     o painel dela mostra, mas passa a aceitar metros também.
+
+     A conta é a mesma dos dois lados, porque o que custa energia são os METROS
+     subidos: kcal = peso × metros × coeficiente. A % existe só para converter. */
+
+  const unidadeVisivel = page => page.evaluate(() => {
+    const s = document.getElementById('taIncSeg');
+    return {
+      seletorVisivel: getComputedStyle(s).display !== 'none',
+      unidade: (s.querySelector('button.on') || {}).dataset?.u || null,
+      rotulo: document.getElementById('taIncLbl').textContent.trim(),
+      campoVisivel: getComputedStyle(document.getElementById('taIncWrap')).display !== 'none',
+    };
+  });
+
+  test('no ar livre o campo é ganho em metros, sem escolha de unidade', async ({ page }) => {
+    /* Oferecer "%" na rua seria pedir um número que a pessoa não tem. */
+    await abrirApp(page, estadoBase());
+    await irAvulso(page);
+    await preencher(page, { atividade: 'Aeróbico ao ar livre' });
+    const u = await unidadeVisivel(page);
+    expect(u.campoVisivel).toBe(true);
+    expect(u.seletorVisivel).toBe(false);
+    expect(u.unidade).toBe('m');
+    expect(u.rotulo).toBe('Ganho de elevação (m)');
+  });
+
+  test('na esteira dá para escolher entre % e metros, começando em %', async ({ page }) => {
+    await abrirApp(page, estadoBase());
+    await irAvulso(page);
+    await preencher(page, { atividade: 'Esteira' });
+    let u = await unidadeVisivel(page);
+    expect(u.seletorVisivel).toBe(true);
+    expect(u.unidade).toBe('pct');
+    expect(u.rotulo).toBe('Inclinação (%)');
+
+    await page.evaluate(() => document.querySelector('#taIncSeg [data-u="m"]').click());
+    await page.waitForTimeout(200);
+    u = await unidadeVisivel(page);
+    expect(u.unidade).toBe('m');
+    expect(u.rotulo).toBe('Ganho de elevação (m)');
+  });
+
+  test('1.100 m de ganho em 20 km: a conta sai pelos metros', async ({ page }) => {
+    /* 20 km em 2h30 = 8 km/h -> faixa de corrida, coeficiente 0,0045.
+       plano: 80 kg × 20 km × 0,90 × 1,0 = 1440
+       subida: 80 kg × 1100 m × 0,0045  =  396
+       total 1836 */
+    await abrirApp(page, estadoBase());
+    await irAvulso(page);
+    await preencher(page, { atividade: 'Aeróbico ao ar livre', km: 20, min: 150, inc: 1100 });
+    expect(await kcalDaPrevia(page)).toBe(1836);
+  });
+
+  test('o ganho aparece na prévia com a inclinação média, para o dedo errado se denunciar', async ({ page }) => {
+    await abrirApp(page, estadoBase());
+    await irAvulso(page);
+    await preencher(page, { atividade: 'Aeróbico ao ar livre', km: 20, min: 150, inc: 1100 });
+    const t = await previa(page);
+    expect(t).toMatch(/1100 m<?\/?b?> ?de ganho|1100 m de ganho/);
+    expect(t, '1100 m em 20 km são 5,5%').toMatch(/5,5% de inclinação média/);
+
+    /* mesmos 1.100 m em 2 km seriam 55%: absurdo que se anuncia sozinho */
+    await preencher(page, { km: 2 });
+    expect(await previa(page)).toMatch(/55% de inclinação média/);
+  });
+
+  test('ganho 0 devolve exatamente o número sem elevação', async ({ page }) => {
+    /* A invariante que protege o histórico já gravado. */
+    await abrirApp(page, estadoBase());
+    await irAvulso(page);
+    await preencher(page, { atividade: 'Aeróbico ao ar livre', km: 20, min: 150, inc: 0 });
+    expect(await kcalDaPrevia(page)).toBe(1440);   // 80 × 20 × 0,90
+  });
+
+  test('andando, o mesmo ganho custa o dobro do que correndo', async ({ page }) => {
+    /* 0,009 contra 0,0045, que é o que separa as duas equações do ACSM. */
+    await abrirApp(page, estadoBase());
+    await irAvulso(page);
+    await preencher(page, { atividade: 'Aeróbico ao ar livre', km: 10, min: 150, inc: 0 });
+    const andandoPlano = await kcalDaPrevia(page);          // 4 km/h
+    await preencher(page, { inc: 500 });
+    const andandoRampa = await kcalDaPrevia(page);
+
+    await preencher(page, { km: 20, min: 120, inc: 0 });    // 10 km/h
+    const correndoPlano = await kcalDaPrevia(page);
+    await preencher(page, { inc: 500 });
+    const correndoRampa = await kcalDaPrevia(page);
+
+    expect(andandoRampa - andandoPlano).toBe(360);          // 80 × 500 × 0,009
+    expect(correndoRampa - correndoPlano).toBe(180);        // 80 × 500 × 0,0045
+  });
+
+  test('ganho absurdo é limitado, em vez de virar caloria absurda', async ({ page }) => {
+    await abrirApp(page, estadoBase());
+    await irAvulso(page);
+    await preencher(page, { atividade: 'Aeróbico ao ar livre', km: 20, min: 150, inc: 999999 });
+    /* teto de 10.000 m: 80 × 10000 × 0,0045 = 3600 em cima dos 1440 */
+    expect(await kcalDaPrevia(page)).toBe(5040);
+  });
+
+  test('o registro guarda o ganho, e a lista de hoje o mostra em metros', async ({ page }) => {
+    await abrirApp(page, estadoBase());
+    await irAvulso(page);
+    await preencher(page, { atividade: 'Aeróbico ao ar livre', km: 20, min: 150, inc: 1100 });
+    await page.evaluate(() => document.getElementById('taAdd').click());
+    await page.waitForTimeout(300);
+
+    const w = await page.evaluate(() => {
+      const d = Object.values(__t.store.tdays).flat();
+      return d[d.length - 1];
+    });
+    expect(w.ganho).toBe(1100);
+    expect(w.inc, 'a inclinação média é conferência de tela, não dado registrado').toBeUndefined();
+
+    const linha = await page.evaluate(() => document.getElementById('tTodayList').textContent);
+    expect(linha).toMatch(/1100 m de ganho/);
+  });
+
+  test('o feed do Início mostra o ganho junto da distância', async ({ page }) => {
+    await abrirApp(page, estadoBase());
+    await irAvulso(page);
+    await preencher(page, { atividade: 'Aeróbico ao ar livre', km: 20, min: 150, inc: 1100 });
+    await page.evaluate(() => document.getElementById('taAdd').click());
+    await page.waitForTimeout(300);
+    await page.evaluate(() => document.querySelector('#tabbar [data-tab="inicio"]').click());
+    await page.waitForTimeout(400);
+    const feed = await page.evaluate(() => document.getElementById('fdFeed').textContent);
+    expect(feed).toMatch(/20 km/);
+    expect(feed).toMatch(/1100 m de ganho/);
+  });
+
+  test('trocar a unidade limpa o campo, em vez de converter por baixo do pano', async ({ page }) => {
+    /* 7,5 em % e 7,5 em metros são coisas diferentes. Converter sozinho
+       gravaria um número que a pessoa não escolheu. */
+    await abrirApp(page, estadoBase());
+    await irAvulso(page);
+    await preencher(page, { atividade: 'Esteira', km: 5, min: 60, inc: 7.5 });
+    expect(await kcalDaPrevia(page)).toBe(392);
+
+    await page.evaluate(() => document.querySelector('#taIncSeg [data-u="m"]').click());
+    await page.waitForTimeout(200);
+    expect(await page.evaluate(() => document.getElementById('taInc').value)).toBe('');
+    expect(await kcalDaPrevia(page), 'campo vazio volta ao valor sem elevação').toBe(122);
+  });
+
+  test('na esteira em metros, a conta bate com a mesma subida em %', async ({ page }) => {
+    /* 5 km a 7,5% são 375 m. Pelos dois caminhos o gasto tem de ser o mesmo. */
+    await abrirApp(page, estadoBase());
+    await irAvulso(page);
+    await preencher(page, { atividade: 'Esteira', km: 5, min: 60, inc: 7.5 });
+    const porcento = await kcalDaPrevia(page);
+
+    await page.evaluate(() => document.querySelector('#taIncSeg [data-u="m"]').click());
+    await page.waitForTimeout(200);
+    await preencher(page, { inc: 375 });
+    expect(await kcalDaPrevia(page)).toBe(porcento);
+  });
+
+  test('bicicleta e musculação não ganham campo de elevação', async ({ page }) => {
+    await abrirApp(page, estadoBase());
+    await irAvulso(page);
+    for (const a of ['Bicicleta', 'Musculação', 'Natação']) {
+      await preencher(page, { atividade: a });
+      expect(await visivel(page, 'taIncWrap'), `${a} não sobe rampa medida`).toBe(false);
+    }
+  });
+});
+
 test('a linha do formulário não estoura em tela de 320px', async ({ page }) => {
   /* Três campos lado a lado cortavam o rótulo; a linha passa a quebrar. */
   await page.setViewportSize({ width: 320, height: 720 });

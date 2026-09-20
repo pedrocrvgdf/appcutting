@@ -336,7 +336,7 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 | `tests/conta.spec.js` | Excluir dados exigindo a senha da conta |
 | `tests/cadastro.spec.js` | Pop-up de criar conta, e a idade derivada da data de nascimento |
 | `tests/alimentos.spec.js` | Busca de alimentos: plural, ordem, erro de digitação, afinidade; internet automática, kJ, Brasil primeiro |
-| `tests/cardio.spec.js` | Registro manual: distância opcional na caminhada, inclinação da esteira, digitação com vírgula |
+| `tests/cardio.spec.js` | Registro manual: distância opcional na caminhada, inclinação da esteira, ganho de elevação em metros, digitação com vírgula |
 | `tests/liquidos.spec.js` | Histórico de ingestão: horário, origem, exclusão, total antigo sem histórico, zerar com confirmação |
 | `tests/app-nativo.spec.js` | Caminho web desligado quando o app Android está presente |
 | `tests/service-worker.spec.js` | Cache do app, versão, e a página de diagnóstico |
@@ -433,16 +433,48 @@ Três cuidados:
   obrigatório tiraria do app algo que já funcionava. Com km preenchido, a conta
   passa para o caminho da distância e o seletor de intensidade some — campo
   visível que não entra na conta é campo que mente.
-- **A inclinação (`inc`) existe só na esteira.** Na rua ninguém sabe a rampa, e
-  pedir o número seria pedir um chute. O acréscimo é
-  `peso × metros_de_subida × coeficiente`, com **0,009 kcal/kg/m andando** e
-  **0,0045 correndo** — os dois saem das equações metabólicas do ACSM (termo de
-  rampa de 1,8 e 0,9 ml de O₂ por kg a cada metro-minuto, a 5 kcal por litro de
-  O₂). Correr aproveita melhor a rampa, por isso custa menos por metro subido.
-- **Com inclinação 0, a conta precisa dar exatamente o número de antes.** Se
+- **O que custa energia são os METROS SUBIDOS, não a inclinação.** O acréscimo é
+  `peso × metros × coeficiente`, com **0,009 kcal/kg/m andando** e **0,0045
+  correndo**. Eles saem das equações metabólicas do ACSM — o termo de rampa é
+  1,8 e 0,9 ml de O₂ por kg a cada metro-minuto, e integrado ao longo de 1 km a
+  **velocidade cancela**, sobrando 1,8 e 0,9 ml por metro vertical; a 5 kcal por
+  litro de O₂, dá 0,009 e 0,0045. É esse cancelamento que permite calcular só
+  com os metros, sem saber o ritmo da subida.
+- **Duas conferências que não usam o ACSM**, para o número não depender de uma
+  fonte só:
+  - Física: subir 1 m com 1 kg custa 9,81 J. Com 0,009 a eficiência implícita
+    fica em 26%, o valor clássico da caminhada em subida.
+  - Minetti (2002), custo em rampa extrema: a +45% a caminhada custa 15,7 J/kg
+    por metro percorrido, o que dá 38 J por metro **vertical**, ou 0,0091
+    kcal/kg/m. Bate com o ACSM.
+- **Ressalva registrada:** nos dados do Minetti, em rampa extrema, correr custa
+  por metro vertical quase o mesmo que andar, e não metade. O 0,9 do ACSM vale
+  na faixa em que foi validado — rampa de esteira e inclinação média de rua.
+  Acima de uns 25–30% o coeficiente de corrida subestima. Não foi mudado porque
+  quase nenhum treino real cai nessa faixa e trocar a conta quebraria a
+  comparação com o histórico já gravado.
+- **Duas unidades para a mesma subida, e cada aparelho fala uma.** A esteira
+  mostra **inclinação em %**; o relógio e o Strava mostram **ganho acumulado em
+  metros**, que chega a 1.100 m num treino de montanha. Por isso:
+  - Esteira (`inc` + `ganho`): alternador %/m, começando em %.
+  - Ar livre (`ganho` só): metros. Oferecer "%" na rua seria pedir um número
+    que a pessoa não tem.
+  - Trocar a unidade **limpa o campo**. 7,5 em % e 7,5 em metros são coisas
+    diferentes, e converter por baixo do pano gravaria um número que a pessoa
+    não escolheu.
+- **A inclinação média mostrada no ar livre é conferência de tela, não dado.**
+  Ela não entra na conta e não é gravada: serve para 1.100 m em 2 km aparecerem
+  como 55% e o dedo errado se denunciar sozinho. Teto de sanidade do ganho:
+  `GANHO_MAX` 10.000 m.
+- **Com elevação 0, a conta precisa dar exatamente o número de antes.** Se
   mudar, o histórico de quem já registrou deixa de ser comparável com o de
   amanhã, e a pessoa vê uma "melhora" que só existe porque a fórmula mudou.
-  Existe teste fixando esse valor.
+  Existe teste fixando esse valor, nas duas unidades.
+- **A descida não é descontada.** Num percurso de volta ao ponto de partida, o
+  app cobra o plano pelo trecho de descida, que na verdade custa menos que o
+  plano. É a simplificação que toda ferramenta do mercado faz, e ela
+  superestima de leve. Mudar isso exigiria o perfil do percurso, que o app não
+  tem.
 
 **Os campos decimais do cardio são `type="text"` com `inputmode="decimal"`, de
 propósito.** No teclado numérico brasileiro a tecla decimal é a vírgula, e um
