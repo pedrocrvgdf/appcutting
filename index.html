@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v30";
+window.APP_RELEASE = "tresults-v31";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -2539,7 +2539,49 @@ const paceFmt=minPerKm=>{const m=Math.floor(minPerKm),sec=Math.round((minPerKm-m
    juntos, ou nenhum.
 
    Com elevação 0 a conta é exatamente a de antes — existe teste fixando isso. */
-const SUBIDA=0.0057;
+/* Minetti, Moia, Roi, Susta e Ferretti (2002), "Energy cost of walking and
+   running at extreme uphill and downhill slopes", Journal of Applied Physiology
+   93(3):1039-1046 — https://pubmed.ncbi.nlm.nih.gov/12183501/
+
+   É a fonte de maior acurácia e respaldo para gradiente: medição primária em
+   laboratório, revisada por pares, cobrindo rampas de -45% a +45%. As equações
+   do ACSM, que o app usava antes, são regressões de prescrição, com erro
+   assumido maior e validade limitada a rampa de esteira.
+
+   Custo líquido da caminhada, em J por kg por METRO PERCORRIDO, com i = rampa
+   em fração: */
+const MINETTI_CW=i=>280.5*i**5-58.7*i**4-76.8*i**3+51.9*i**2+19.6*i+2.5;
+/* Acima de 45% é extrapolação: o coeficiente para de crescer em vez de
+   inventar número fora do que foi medido. */
+const MINETTI_MAX=0.45;
+
+/* O acréscimo por METRO VERTICAL sai da diferença para o plano, dividida pela
+   subida que cada metro percorrido rende, e convertida para kcal:
+
+     coef(i) = [Cw(i) - Cw(0)] / sen(atan(i)) / 4184
+
+   Ele CRESCE com a rampa — 0,0053 a 5%, 0,0058 a 10%, 0,0072 a 30% — porque
+   subir íngreme desperdiça menos movimento horizontal. Uma constante única
+   errava até 35% nas pontas.
+
+   Não depende da VELOCIDADE, e isso é de propósito. O app já teve coeficiente
+   que mudava de faixa junto com o custo plano, e acelerar num percurso com
+   subida BAIXAVA a estimativa: 5 km a 10% davam 482 kcal a 6,494 km/h e 408 a
+   6,508. Existe teste varrendo as faixas e exigindo que acelerar nunca reduza.
+
+   Correr e andar custam praticamente o mesmo por metro vertical nesta faixa
+   (0,00576 contra 0,00569 a 10%, pelo Cr do mesmo artigo), então usar a
+   caminhada para os dois erra ~1% e mantém a conta livre de velocidade.
+
+   ARMADILHA PARA QUEM MEXER AQUI: o custo de PLANO não é desta fonte. O
+   Minetti dá 0,60 kcal/kg/km para caminhada no plano e o app usa 0,32, sem
+   procedência anotada. A auditoria dessa diferença foi feita e o dono decidiu
+   não mexer agora. Quem "corrigir" o plano precisa revisar a rampa junto. */
+function subidaCoef(i){
+  const g=Math.min(Math.max(i||0,0),MINETTI_MAX);
+  if(g<=0)return 0;
+  return (MINETTI_CW(g)-MINETTI_CW(0))/Math.sin(Math.atan(g))/4184;
+}
 const INC_MAX=30;
 /* Acima disso a inclinação média é quase certamente dedo errado, e a prévia
    avisa em vez de calar. Corrida de quilômetro vertical fica perto de 30%, e
@@ -2597,7 +2639,8 @@ function taCalc(){
          absurdo se denuncia sozinho na prévia. Ela não entra na conta. */
       inc=km>0?metros/(km*10):0;
     }
-    const kcal=Math.round(w*km*cost*(a.fac||1)+w*metros*SUBIDA);
+    /* o coeficiente sai da rampa, não da velocidade */
+    const kcal=Math.round(w*km*cost*(a.fac||1)+w*metros*subidaCoef(inc/100));
     return {name:a.n,min,km,speed,pace:min/km,label,inc,metros,ganho,unid,kcal,ok:true,dist:true};
   }
   const f=parseFloat($("taInt").value)||1;
