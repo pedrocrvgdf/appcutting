@@ -132,15 +132,18 @@ test.describe('Inclinação da esteira', () => {
     await abrirApp(page, estadoBase());
     await irAvulso(page);
     await preencher(page, { atividade: 'Esteira', km: 5, min: 60, inc: 6 });
-    /* 5 km a 6% = 300 m de subida; 80 kg × 300 m × 0,009 = 216 kcal em cima */
-    expect(await kcalDaPrevia(page)).toBe(338);
+    /* 5 km a 6% = 300 m de subida; 80 kg × 300 m × 0,0057 = 136,8 em cima de 121,6 */
+    expect(await kcalDaPrevia(page)).toBe(258);
     await preencher(page, { inc: 12 });
-    expect(await kcalDaPrevia(page)).toBe(554);
+    expect(await kcalDaPrevia(page)).toBe(395);
   });
 
-  test('correr aproveita melhor a rampa do que andar', async ({ page }) => {
-    /* Coeficientes diferentes do ACSM: 0,009 andando e 0,0045 correndo por kg
-       e por metro subido. Mesma subida, acréscimo menor correndo. */
+  test('a mesma subida custa o mesmo, andando ou correndo', async ({ page }) => {
+    /* Já foram dois coeficientes, 0,009 andando e 0,0045 correndo, tirados de
+       duas regressões separadas do ACSM. Rodando o polinômio de Minetti (2002)
+       e convertendo para metro VERTICAL, os dois modos custam praticamente o
+       mesmo na rampa que este app vê: 0,00576 e 0,00569 a 10%, 0,00655 e
+       0,00659 a 20%. A razão 2 para 1 era artefato de ajuste, não fisiologia. */
     await abrirApp(page, estadoBase());
     await irAvulso(page);
     await preencher(page, { atividade: 'Esteira', km: 5, min: 60, inc: 0 });
@@ -153,8 +156,37 @@ test.describe('Inclinação da esteira', () => {
     await preencher(page, { inc: 6 });
     const correndoRampa = await kcalDaPrevia(page);
 
-    expect(andandoRampa - andandoPlano).toBe(216);
-    expect(correndoRampa - correndoPlano).toBe(108);
+    const dAndando = andandoRampa - andandoPlano;
+    const dCorrendo = correndoRampa - correndoPlano;
+    /* 121,6 -> 122 e 258,4 -> 258: a diferença vista é 136, porque o
+       arredondamento é dos totais, não do acréscimo (136,8). */
+    expect(dAndando).toBe(136);
+    expect(Math.abs(dAndando - dCorrendo), 'só a diferença de arredondamento').toBeLessThanOrEqual(1);
+  });
+
+  test('acelerar nunca baixa a estimativa de um treino com subida', async ({ page }) => {
+    /* O defeito que o coeficiente único conserta. Com 0,009 abaixo de 6,5 km/h
+       e 0,0045 acima, a troca de faixa derrubava mais caloria da subida do que
+       o custo plano ganhava: 5 km a 10% davam 482 kcal a 6,494 km/h e 408 a
+       6,508. Ir mais rápido rendia menos. Num app de progressão, isso é o
+       contrário do que o número deve dizer. */
+    await abrirApp(page, estadoBase());
+    await irAvulso(page);
+    await preencher(page, { atividade: 'Esteira', km: 5, min: 46.2, inc: 10 });
+    const devagar = await kcalDaPrevia(page);            // 6,494 km/h
+    await preencher(page, { min: 46.1 });
+    const rapido = await kcalDaPrevia(page);             // 6,508 km/h
+    expect(rapido).toBeGreaterThanOrEqual(devagar);
+
+    /* varre a travessia inteira das quatro faixas, com subida forte */
+    await preencher(page, { km: 10, inc: 25, min: 120 });
+    let anterior = await kcalDaPrevia(page);
+    for (const min of [110, 100, 90, 80, 75, 70, 60, 54, 50, 45, 40]) {
+      await preencher(page, { min });
+      const agora = await kcalDaPrevia(page);
+      expect(agora, `caiu ao acelerar para ${(600 / min).toFixed(1)} km/h`).toBeGreaterThanOrEqual(anterior);
+      anterior = agora;
+    }
   });
 
   test('a prévia mostra a inclinação e os metros de subida', async ({ page }) => {
@@ -228,7 +260,7 @@ test.describe('Digitação com vírgula', () => {
     await preencher(page, { atividade: 'Esteira', km: 5, min: 60 });
     await digitar(page, 'taInc', '7,5');
     expect(await previa(page)).toMatch(/7,5% de inclinação/);
-    expect(await kcalDaPrevia(page)).toBe(392);   // 121,6 + 80 × 375 m × 0,009
+    expect(await kcalDaPrevia(page)).toBe(293);   // 121,6 + 80 × 375 m × 0,0057
   });
 
   test('distância digitada com vírgula vale 5,4 km e não 54', async ({ page }) => {
@@ -246,7 +278,7 @@ test.describe('Digitação com vírgula', () => {
     await irAvulso(page);
     await preencher(page, { atividade: 'Esteira', km: 5, min: 60 });
     await digitar(page, 'taInc', '7.5');
-    expect(await kcalDaPrevia(page)).toBe(392);
+    expect(await kcalDaPrevia(page)).toBe(293);
   });
 
   test('letra digitada não entra no campo', async ({ page }) => {
@@ -308,12 +340,12 @@ test.describe('Ganho de elevação acumulado', () => {
   test('1.100 m de ganho em 20 km: a conta sai pelos metros', async ({ page }) => {
     /* 20 km em 2h30 = 8 km/h -> faixa de corrida, coeficiente 0,0045.
        plano: 80 kg × 20 km × 0,90 × 1,0 = 1440
-       subida: 80 kg × 1100 m × 0,0045  =  396
-       total 1836 */
+       subida: 80 kg × 1100 m × 0,0057  =  501,6
+       total 1942 */
     await abrirApp(page, estadoBase());
     await irAvulso(page);
     await preencher(page, { atividade: 'Aeróbico ao ar livre', km: 20, min: 150, inc: 1100 });
-    expect(await kcalDaPrevia(page)).toBe(1836);
+    expect(await kcalDaPrevia(page)).toBe(1942);
   });
 
   test('o ganho aparece na prévia com a inclinação média, para o dedo errado se denunciar', async ({ page }) => {
@@ -337,8 +369,10 @@ test.describe('Ganho de elevação acumulado', () => {
     expect(await kcalDaPrevia(page)).toBe(1440);   // 80 × 20 × 0,90
   });
 
-  test('andando, o mesmo ganho custa o dobro do que correndo', async ({ page }) => {
-    /* 0,009 contra 0,0045, que é o que separa as duas equações do ACSM. */
+  test('o mesmo ganho custa o mesmo, andando ou correndo', async ({ page }) => {
+    /* Um coeficiente só. Quem sobe 500 m gastou os mesmos 500 m de subida,
+       tenha levado duas horas e meia ou uma. O que muda com o ritmo é o custo
+       da DISTÂNCIA, não o da subida. */
     await abrirApp(page, estadoBase());
     await irAvulso(page);
     await preencher(page, { atividade: 'Aeróbico ao ar livre', km: 10, min: 150, inc: 0 });
@@ -351,16 +385,16 @@ test.describe('Ganho de elevação acumulado', () => {
     await preencher(page, { inc: 500 });
     const correndoRampa = await kcalDaPrevia(page);
 
-    expect(andandoRampa - andandoPlano).toBe(360);          // 80 × 500 × 0,009
-    expect(correndoRampa - correndoPlano).toBe(180);        // 80 × 500 × 0,0045
+    expect(andandoRampa - andandoPlano).toBe(228);          // 80 × 500 × 0,0057
+    expect(correndoRampa - correndoPlano).toBe(228);
   });
 
   test('ganho absurdo é limitado, em vez de virar caloria absurda', async ({ page }) => {
     await abrirApp(page, estadoBase());
     await irAvulso(page);
     await preencher(page, { atividade: 'Aeróbico ao ar livre', km: 20, min: 150, inc: 999999 });
-    /* teto de 10.000 m: 80 × 10000 × 0,0045 = 3600 em cima dos 1440 */
-    expect(await kcalDaPrevia(page)).toBe(5040);
+    /* teto de 10.000 m: 80 × 10000 × 0,0057 = 4560 em cima dos 1440 */
+    expect(await kcalDaPrevia(page)).toBe(6000);
   });
 
   test('o registro guarda o ganho, e a lista de hoje o mostra em metros', async ({ page }) => {
@@ -400,7 +434,7 @@ test.describe('Ganho de elevação acumulado', () => {
     await abrirApp(page, estadoBase());
     await irAvulso(page);
     await preencher(page, { atividade: 'Esteira', km: 5, min: 60, inc: 7.5 });
-    expect(await kcalDaPrevia(page)).toBe(392);
+    expect(await kcalDaPrevia(page)).toBe(293);
 
     await page.evaluate(() => document.querySelector('#taIncSeg [data-u="m"]').click());
     await page.waitForTimeout(200);
@@ -419,6 +453,48 @@ test.describe('Ganho de elevação acumulado', () => {
     await page.waitForTimeout(200);
     await preencher(page, { inc: 375 });
     expect(await kcalDaPrevia(page)).toBe(porcento);
+  });
+
+  test('trocar de atividade limpa o campo, porque ele muda de significado', async ({ page }) => {
+    /* O defeito que estava no ar: o alternador de unidade limpava, a troca de
+       atividade não. Digitar 1.100 m de ganho no ar livre e trocar para
+       Esteira mantinha "1100" no campo, que virava inclinação, era cortado
+       pelo teto de 30% e inventava 1.500 m de subida — com a tela inteira
+       parecendo plausível. */
+    await abrirApp(page, estadoBase());
+    await irAvulso(page);
+    await preencher(page, { atividade: 'Aeróbico ao ar livre', km: 5, min: 60, inc: 1100 });
+    expect(await kcalDaPrevia(page)).toBeGreaterThan(500);
+
+    await preencher(page, { atividade: 'Esteira' });
+    expect(await page.evaluate(() => document.getElementById('taInc').value)).toBe('');
+    expect(await kcalDaPrevia(page), 'sem elevação informada, é o número do plano').toBe(122);
+  });
+
+  test('a troca volta a unidade para %, e não deixa a escolha antiga colada', async ({ page }) => {
+    await abrirApp(page, estadoBase());
+    await irAvulso(page);
+    await preencher(page, { atividade: 'Esteira' });
+    await page.evaluate(() => document.querySelector('#taIncSeg [data-u="m"]').click());
+    await page.waitForTimeout(200);
+    await preencher(page, { atividade: 'Bicicleta' });
+    await preencher(page, { atividade: 'Esteira' });
+    expect(await page.evaluate(() =>
+      document.getElementById('taIncLbl').textContent.trim())).toBe('Inclinação (%)');
+  });
+
+  test('inclinação média impossível é sinalizada, não limitada em silêncio', async ({ page }) => {
+    /* Limitar mudaria o número sem a pessoa saber, que é o mesmo defeito por
+       outro lado. O app mostra e avisa. */
+    await abrirApp(page, estadoBase());
+    await irAvulso(page);
+    await preencher(page, { atividade: 'Aeróbico ao ar livre', km: 20, min: 150, inc: 1100 });
+    expect(await page.evaluate(() => !!document.querySelector('#taPreview .ta-alerta')),
+      '5,5% é plausível, não avisa nada').toBe(false);
+
+    await preencher(page, { km: 2 });                    // 1100 m em 2 km = 55%
+    expect(await page.evaluate(() => !!document.querySelector('#taPreview .ta-alerta'))).toBe(true);
+    expect(await previa(page)).toMatch(/55% de inclinação média — confira/);
   });
 
   test('bicicleta e musculação não ganham campo de elevação', async ({ page }) => {

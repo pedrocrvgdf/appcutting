@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v29";
+window.APP_RELEASE = "tresults-v30";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -448,6 +448,7 @@ window.APP_RELEASE = "tresults-v29";
   /* O alternador %/m mora na linha do rótulo, num campo estreito: o tamanho
      padrão do .unitseg empurraria o rótulo para fora. */
   #taIncSeg button{padding:0 9px;font-size:12px;line-height:21px}
+  .ta-alerta{color:var(--warn);font-weight:700}
   .drop{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:30;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);max-height:260px;overflow:auto;display:none}
   .drop.open{display:block}
   .opt{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:11px 12px;border-bottom:1px solid var(--line);cursor:pointer}
@@ -2501,34 +2502,49 @@ function tToday(){const k=todayKey();store.tdays=store.tdays||{};if(!store.tdays
 const paceFmt=minPerKm=>{const m=Math.floor(minPerKm),sec=Math.round((minPerKm-m)*60);return m+":"+String(sec).padStart(2,"0");};
 
 /* Subir custa energia além de avançar, e o que manda são os METROS SUBIDOS.
-   Os coeficientes vêm das equações metabólicas do ACSM:
 
-     caminhada  VO2 = 0,1·S + 1,8·S·G + 3,5
-     corrida    VO2 = 0,2·S + 0,9·S·G + 3,5      (S em m/min, G em fração)
+   UM COEFICIENTE SÓ, IGUAL PARA ANDAR E CORRER. Já foram dois, 0,009 andando e
+   0,0045 correndo, tirados do termo de rampa do ACSM (1,8 e 0,9 ml de O₂ por
+   kg a cada metro-minuto). Os dois números estavam errados de duas maneiras:
 
-   O termo de rampa integrado ao longo de 1 km dá 1,8 e 0,9 ml de O₂ por kg a
-   cada metro de subida — a velocidade cancela, e é por isso que a conta pode
-   ser feita só com os metros, sem saber o ritmo da subida. A 5 kcal por litro
-   de O₂, isso vira 0,009 e 0,0045 kcal por kg por metro.
+   1. A razão 2 para 1 não existe na rampa que este app vê. Rodando o polinômio
+      de Minetti (2002) — Cw e Cr em J/kg por metro percorrido — e convertendo
+      para metro VERTICAL, o custo dá, em kcal/kg/m:
 
-   Duas conferências independentes, que não usam a equação do ACSM:
-   - Física: subir 1 m com 1 kg custa 9,81 J de trabalho. Com 0,009 kcal/kg/m
-     a eficiência implícita fica em 26%, que é o valor clássico da caminhada em
-     subida.
-   - Minetti (2002), custo em rampa extrema: a +45% o custo líquido da
-     caminhada é 15,7 J/kg por metro percorrido, o que dá 38 J por metro
-     VERTICAL, ou 0,0091 kcal/kg/m. Bate com o 0,009 do ACSM.
+          rampa      andando   correndo
+            5%       0,00526   0,00519
+           10%       0,00576   0,00569
+           15%       0,00619   0,00615
+           20%       0,00655   0,00659
 
-   RESSALVA HONESTA: nos dados do Minetti, em rampa extrema, correr custa por
-   metro vertical praticamente o mesmo que andar (0,0091), e não metade. O 0,9
-   do ACSM vale na faixa em que ele foi validado, que é a rampa de esteira e a
-   inclinação média de rua. Acima de uns 25–30% o coeficiente de corrida aqui
-   subestima. Não mudei por isso: quase nenhum treino real fica nessa faixa, e
-   trocar a conta quebraria a comparação com o histórico já gravado.
+      São iguais. A diferença 2:1 do ACSM é artefato de duas regressões
+      ajustadas em separado, não fato sobre subir. O elástico do tendão devolve
+      o que guardou DENTRO da passada; numa subida sustentada o centro de massa
+      nunca torna a descer, então não há o que devolver.
+
+   2. Coeficiente que muda com a velocidade criava INVERSÃO: como a faixa de
+      6,5 km/h troca 0,009 por 0,0045 no mesmo ponto em que o custo plano sobe
+      de 0,32 para 0,60, acelerar num percurso com subida BAIXAVA a estimativa.
+      Medido: esteira, 80 kg, 5 km a 10%, 482 kcal a 6,494 km/h e 408 a 6,508.
+      Ir mais rápido rendia 74 kcal a menos. Com um coeficiente só, some.
+
+   0,0057 é o centro da faixa do Minetti entre 5% e 20%, que é onde cai
+   praticamente todo treino real. O erro máximo dentro dessa faixa fica em
+   torno de 10%.
+
+   ARMADILHA PARA QUEM MEXER AQUI: o custo de PLANO não é do ACSM. O ACSM dá
+   0,50 kcal/kg/km para caminhada e este app usa 0,32, sem procedência anotada.
+   Se um dia alguém "corrigir" o plano para 0,50 sem revisar a rampa, a
+   caminhada em morro passa a superestimar. Os dois números têm de ser revistos
+   juntos, ou nenhum.
 
    Com elevação 0 a conta é exatamente a de antes — existe teste fixando isso. */
-const SUBIDA_ANDANDO=0.009, SUBIDA_CORRENDO=0.0045;
+const SUBIDA=0.0057;
 const INC_MAX=30;
+/* Acima disso a inclinação média é quase certamente dedo errado, e a prévia
+   avisa em vez de calar. Corrida de quilômetro vertical fica perto de 30%, e
+   45% é mais íngreme que qualquer prova. */
+const INC_ALERTA=45;
 /* Teto de sanidade do ganho acumulado. O Everest tem 8.848 m; ultramaratona de
    montanha raramente passa de 5.000. Acima de 10.000 é dedo errado, não treino. */
 const GANHO_MAX=10000;
@@ -2559,11 +2575,11 @@ function taCalc(){
   if(porDist){
     if(km<=0||min<=0)return {name:a.n,min,km,kcal:0,ok:false};
     const speed=km/(min/60);
-    let cost,label,subida; // custos líquidos (kcal/kg/km acima do repouso)
-    if(speed<6.5){cost=0.32;label="caminhada";subida=SUBIDA_ANDANDO;}
-    else if(speed<8){cost=0.60;label="trote leve";subida=SUBIDA_CORRENDO;}
-    else if(speed<11){cost=0.90;label="corrida moderada";subida=SUBIDA_CORRENDO;}
-    else{cost=0.95;label="corrida intensa";subida=SUBIDA_CORRENDO;}
+    let cost,label; // custos líquidos (kcal/kg/km acima do repouso)
+    if(speed<6.5){cost=0.32;label="caminhada";}
+    else if(speed<8){cost=0.60;label="trote leve";}
+    else if(speed<11){cost=0.90;label="corrida moderada";}
+    else{cost=0.95;label="corrida intensa";}
     /* Duas maneiras de dizer a mesma subida, e cada aparelho fala uma:
        a esteira mostra INCLINAÇÃO em %, o relógio e o Strava mostram GANHO
        acumulado em metros. A conta só precisa dos metros; a % é convertida. */
@@ -2581,14 +2597,23 @@ function taCalc(){
          absurdo se denuncia sozinho na prévia. Ela não entra na conta. */
       inc=km>0?metros/(km*10):0;
     }
-    const kcal=Math.round(w*km*cost*(a.fac||1)+w*metros*subida);
+    const kcal=Math.round(w*km*cost*(a.fac||1)+w*metros*SUBIDA);
     return {name:a.n,min,km,speed,pace:min/km,label,inc,metros,ganho,unid,kcal,ok:true,dist:true};
   }
   const f=parseFloat($("taInt").value)||1;
   return {name:a.n,min,kcal:Math.round(netKcal(a.met*f,min)),ok:min>0};
 }
+let taAtivAnterior=null;
 function taPreview(){
-  const a=T_ACTS[parseInt($("taAct").value)||0];
+  const idx=parseInt($("taAct").value)||0;
+  const a=T_ACTS[idx];
+  /* Trocar de atividade troca o SIGNIFICADO do campo de elevação: 1100 é um
+     ganho plausível na rua e uma inclinação impossível na esteira, onde vira
+     30% pelo teto e inventa 1.500 m de subida com a tela toda parecendo certa.
+     O alternador de unidade já limpava; a troca de atividade não limpava, e
+     era por onde o número errado entrava calado. */
+  if(taAtivAnterior!==null&&taAtivAnterior!==idx){$("taInc").value="";elevUnidEscolhida="pct";}
+  taAtivAnterior=idx;
   const km=numBR($("taKm").value);
   const porDist=!!(a.dist||(a.distOpc&&km>0));
   $("taKmWrap").style.display=(a.dist||a.distOpc)?"block":"none";
@@ -2607,10 +2632,14 @@ function taPreview(){
   $("taKm").placeholder=a.distOpc?"opcional":"5";
   const c=taCalc();
   if(porDist){
+    /* Inclinação média absurda não é limitada em silêncio: limitar mudaria o
+       número sem a pessoa saber. Ela é mostrada e sinalizada, para o dedo
+       errado se denunciar. */
+    const media=c.inc>0?`${kgTxt(c.inc)}% de inclinação média`:"";
     const rampa=c.metros>0
       ?(c.unid==="pct"
         ?` · <b>${kgTxt(c.inc)}%</b> de inclinação (${r0(c.metros)} m de subida)`
-        :` · <b>${r0(c.metros)} m</b> de ganho${c.inc>0?` (${kgTxt(c.inc)}% de inclinação média)`:""}`)
+        :` · <b>${r0(c.metros)} m</b> de ganho${media?` (${c.inc>INC_ALERTA?`<span class="ta-alerta">${media} — confira</span>`:media})`:""}`)
       :"";
     $("taPreview").innerHTML=c.ok?`<b>${kgTxt(c.km)} km</b> em ${r0(c.min)} min → <b>${kgTxt(c.speed)} km/h</b> (pace ${paceFmt(c.pace)}/km) · ${c.label}${rampa}<br>Estimativa: <b>${r0(c.kcal)} kcal</b> (peso ${kgTxt(userWeight())} kg)`:"Informe a distância (km) e a duração.";
   }else{

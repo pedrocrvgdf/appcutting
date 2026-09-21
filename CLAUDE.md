@@ -434,25 +434,30 @@ Três cuidados:
   passa para o caminho da distância e o seletor de intensidade some — campo
   visível que não entra na conta é campo que mente.
 - **O que custa energia são os METROS SUBIDOS, não a inclinação.** O acréscimo é
-  `peso × metros × coeficiente`, com **0,009 kcal/kg/m andando** e **0,0045
-  correndo**. Eles saem das equações metabólicas do ACSM — o termo de rampa é
-  1,8 e 0,9 ml de O₂ por kg a cada metro-minuto, e integrado ao longo de 1 km a
-  **velocidade cancela**, sobrando 1,8 e 0,9 ml por metro vertical; a 5 kcal por
-  litro de O₂, dá 0,009 e 0,0045. É esse cancelamento que permite calcular só
-  com os metros, sem saber o ritmo da subida.
-- **Duas conferências que não usam o ACSM**, para o número não depender de uma
-  fonte só:
-  - Física: subir 1 m com 1 kg custa 9,81 J. Com 0,009 a eficiência implícita
-    fica em 26%, o valor clássico da caminhada em subida.
-  - Minetti (2002), custo em rampa extrema: a +45% a caminhada custa 15,7 J/kg
-    por metro percorrido, o que dá 38 J por metro **vertical**, ou 0,0091
-    kcal/kg/m. Bate com o ACSM.
-- **Ressalva registrada:** nos dados do Minetti, em rampa extrema, correr custa
-  por metro vertical quase o mesmo que andar, e não metade. O 0,9 do ACSM vale
-  na faixa em que foi validado — rampa de esteira e inclinação média de rua.
-  Acima de uns 25–30% o coeficiente de corrida subestima. Não foi mudado porque
-  quase nenhum treino real cai nessa faixa e trocar a conta quebraria a
-  comparação com o histórico já gravado.
+  `peso × metros × SUBIDA`, com **um coeficiente só, 0,0057 kcal/kg/m, igual
+  para andar e correr**.
+- **Por que um só, e não os dois do ACSM.** O app já usou 0,009 andando e
+  0,0045 correndo, tirados do termo de rampa do ACSM. Os dois estavam errados
+  de duas maneiras, e a segunda era um defeito de verdade:
+  1. **A razão 2 para 1 não existe na rampa que este app vê.** Rodando o
+     polinômio de Minetti (2002) e convertendo para metro **vertical**, o custo
+     em kcal/kg/m dá 0,00526 e 0,00519 a 5%; 0,00576 e 0,00569 a 10%; 0,00655 e
+     0,00659 a 20%. São iguais. A diferença do ACSM é artefato de duas
+     regressões ajustadas em separado, não fato sobre subir. O elástico do
+     tendão devolve o que guardou **dentro da passada**; em subida sustentada o
+     centro de massa nunca torna a descer, então não há o que devolver.
+  2. **Coeficiente que muda com a velocidade criava inversão.** A faixa de
+     6,5 km/h trocava 0,009 por 0,0045 no mesmo ponto em que o custo plano sobe
+     de 0,32 para 0,60, e acelerar num percurso com subida **baixava** a
+     estimativa: 5 km a 10% davam 482 kcal a 6,494 km/h e 408 a 6,508. Existe
+     teste varrendo as quatro faixas e exigindo que acelerar nunca reduza o
+     número.
+- **0,0057 é o centro da faixa do Minetti entre 5% e 20%**, que é onde cai
+  praticamente todo treino real. O erro máximo ali fica em torno de 10%.
+- **Armadilha para quem mexer nisso:** o custo de **plano** não é do ACSM. O
+  ACSM dá 0,50 kcal/kg/km para caminhada e o app usa 0,32, sem procedência
+  anotada. Quem "corrigir" o plano para 0,50 sem revisar a rampa faz a
+  caminhada em morro superestimar. Os dois se revisam juntos, ou nenhum.
 - **Duas unidades para a mesma subida, e cada aparelho fala uma.** A esteira
   mostra **inclinação em %**; o relógio e o Strava mostram **ganho acumulado em
   metros**, que chega a 1.100 m num treino de montanha. Por isso:
@@ -463,9 +468,15 @@ Três cuidados:
     diferentes, e converter por baixo do pano gravaria um número que a pessoa
     não escolheu.
 - **A inclinação média mostrada no ar livre é conferência de tela, não dado.**
-  Ela não entra na conta e não é gravada: serve para 1.100 m em 2 km aparecerem
-  como 55% e o dedo errado se denunciar sozinho. Teto de sanidade do ganho:
-  `GANHO_MAX` 10.000 m.
+  Ela não entra na conta e não é gravada. Acima de `INC_ALERTA` (45%) ela sai
+  **sinalizada em vermelho, e não limitada**: limitar mudaria o número sem a
+  pessoa saber, que é o mesmo defeito pelo outro lado. Teto absoluto do ganho:
+  `GANHO_MAX` 10.000 m, que é domínio de dedo errado.
+- **Trocar de atividade limpa o campo de elevação e volta a unidade para %.**
+  1100 é ganho plausível na rua e inclinação impossível na esteira, onde virava
+  30% pelo teto e inventava 1.500 m de subida com a tela inteira parecendo
+  certa. O alternador de unidade já limpava; a troca de atividade não limpava,
+  e era por onde o número errado entrava calado.
 - **Com elevação 0, a conta precisa dar exatamente o número de antes.** Se
   mudar, o histórico de quem já registrou deixa de ser comparável com o de
   amanhã, e a pessoa vê uma "melhora" que só existe porque a fórmula mudou.
