@@ -434,30 +434,42 @@ Três cuidados:
   passa para o caminho da distância e o seletor de intensidade some — campo
   visível que não entra na conta é campo que mente.
 - **O que custa energia são os METROS SUBIDOS, não a inclinação.** O acréscimo é
-  `peso × metros × SUBIDA`, com **um coeficiente só, 0,0057 kcal/kg/m, igual
-  para andar e correr**.
-- **Por que um só, e não os dois do ACSM.** O app já usou 0,009 andando e
-  0,0045 correndo, tirados do termo de rampa do ACSM. Os dois estavam errados
-  de duas maneiras, e a segunda era um defeito de verdade:
-  1. **A razão 2 para 1 não existe na rampa que este app vê.** Rodando o
-     polinômio de Minetti (2002) e convertendo para metro **vertical**, o custo
-     em kcal/kg/m dá 0,00526 e 0,00519 a 5%; 0,00576 e 0,00569 a 10%; 0,00655 e
-     0,00659 a 20%. São iguais. A diferença do ACSM é artefato de duas
-     regressões ajustadas em separado, não fato sobre subir. O elástico do
-     tendão devolve o que guardou **dentro da passada**; em subida sustentada o
-     centro de massa nunca torna a descer, então não há o que devolver.
-  2. **Coeficiente que muda com a velocidade criava inversão.** A faixa de
-     6,5 km/h trocava 0,009 por 0,0045 no mesmo ponto em que o custo plano sobe
-     de 0,32 para 0,60, e acelerar num percurso com subida **baixava** a
-     estimativa: 5 km a 10% davam 482 kcal a 6,494 km/h e 408 a 6,508. Existe
-     teste varrendo as quatro faixas e exigindo que acelerar nunca reduza o
-     número.
-- **0,0057 é o centro da faixa do Minetti entre 5% e 20%**, que é onde cai
-  praticamente todo treino real. O erro máximo ali fica em torno de 10%.
-- **Armadilha para quem mexer nisso:** o custo de **plano** não é do ACSM. O
-  ACSM dá 0,50 kcal/kg/km para caminhada e o app usa 0,32, sem procedência
-  anotada. Quem "corrigir" o plano para 0,50 sem revisar a rampa faz a
-  caminhada em morro superestimar. Os dois se revisam juntos, ou nenhum.
+  `peso × metros × subidaCoef(rampa)`, e o coeficiente vem da **curva de
+  Minetti (2002)**, não de uma constante.
+- **A fonte, e por que ela.** Minetti, Moia, Roi, Susta e Ferretti, *Energy
+  cost of walking and running at extreme uphill and downhill slopes*, J Appl
+  Physiol 93(3):1039-1046, 2002 — https://pubmed.ncbi.nlm.nih.gov/12183501/.
+  Medição primária em laboratório, revisada por pares, de −45% a +45%. É a
+  fonte de maior acurácia e respaldo para gradiente. O app já usou as equações
+  do ACSM, que são regressões de prescrição com erro assumido maior; o dono
+  pediu a fonte mais acurada, e é esta.
+- **Como o coeficiente sai da curva.** `MINETTI_CW(i)` é o custo da caminhada
+  em J/kg por metro **percorrido**, com `i` em fração. O acréscimo por metro
+  **vertical** é `[Cw(i) − Cw(0)] / sen(atan(i)) / 4184`. Ele cresce com a
+  rampa — 0,0053 a 5%, 0,0058 a 10%, 0,0072 a 30% — porque subir íngreme
+  desperdiça menos movimento horizontal. Uma constante única errava até 35%
+  nas pontas; existe teste com os mesmos 300 m subidos em 6% e em 15%.
+- **Acima de 45% o coeficiente trava** (`MINETTI_MAX`). O polinômio é de
+  quinto grau e dispara fora do medido: a 75% daria quase o triplo. Extrapolar
+  é inventar número, então para em 45%. Existe teste.
+- **Não depende da velocidade, e isso é de propósito.** O app já teve
+  coeficiente que trocava de faixa junto com o custo plano (0,009 abaixo de
+  6,5 km/h, 0,0045 acima), e acelerar num percurso com subida **baixava** a
+  estimativa: 5 km a 10% davam 482 kcal a 6,494 km/h e 408 a 6,508. Existe
+  teste varrendo as quatro faixas e exigindo que acelerar nunca reduza.
+- **Correr e andar usam a mesma curva.** Pelo `Cr` do mesmo artigo, os dois
+  custam praticamente o mesmo por metro vertical nesta faixa (0,00576 contra
+  0,00569 a 10%). A razão 2 para 1 do ACSM era artefato de duas regressões
+  separadas, não fisiologia: o tendão devolve o que guardou **dentro da
+  passada**, e em subida sustentada o centro de massa nunca torna a descer.
+- **Armadilha para quem mexer nisso:** o custo de **plano** não é do Minetti.
+  Ele dá 0,60 kcal/kg/km para caminhada no plano e o app usa 0,32, sem
+  procedência anotada; para corrida o app está certo (0,90 contra 0,86). Uma
+  auditoria por quatro fontes independentes (ACSM, Minetti, compêndio de
+  METs, calculadoras de campo) convergiu em 0,50–0,60 para caminhada e
+  0,82–1,00 para trote leve, contra os 0,32 e 0,60 do app. **O dono foi
+  informado e decidiu não mexer agora.** Quem for mexer, revise plano e rampa
+  juntos, e saiba que corrigir libera comida a mais num app de cutting.
 - **Duas unidades para a mesma subida, e cada aparelho fala uma.** A esteira
   mostra **inclinação em %**; o relógio e o Strava mostram **ganho acumulado em
   metros**, que chega a 1.100 m num treino de montanha. Por isso:

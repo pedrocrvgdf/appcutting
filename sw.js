@@ -1,5 +1,5 @@
 /* T - Results — service worker */
-const CACHE = "tresults-v30";
+const CACHE = "tresults-v31";
 const CORE = [
   "./",
   "./index.html",
