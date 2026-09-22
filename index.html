@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v32";
+window.APP_RELEASE = "tresults-v33";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -985,6 +985,7 @@ window.APP_RELEASE = "tresults-v32";
   .macros2 .m2:nth-child(3) .bar2 span{background:var(--mg)}
   .pf-row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:14px;border-radius:18px;font-size:14px;font-weight:700}
   .pf-row+.pf-row{border-top:1px solid var(--line);border-radius:0}
+  a.pf-row{color:inherit;text-decoration:none}
   .pf-row svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
   .pf-row.danger{color:var(--warn)}
   .pf-row:active{background:var(--primary-08)}
@@ -1086,6 +1087,13 @@ window.APP_RELEASE = "tresults-v32";
   .exog-fonte{font-size:12px;color:var(--muted);text-align:center;margin:0 0 12px;line-height:1.5}
   .exog-riscos{margin:0;padding:0 0 0 18px;font-size:13.5px;line-height:1.55;color:var(--ink);text-align:left}
   .exog-riscos li{margin-bottom:5px}
+  .exog-aviso{font-size:12px;color:var(--muted);line-height:1.5;margin:12px 0 0;text-align:center}
+  .exog-aviso a{color:var(--primary);font-weight:700}
+  .exog-local{display:flex;align-items:flex-start;gap:12px;margin-top:12px;padding:12px 14px;border-radius:14px;background:var(--primary-08);cursor:pointer}
+  .exog-local input{width:20px;height:20px;margin:1px 0 0;accent-color:var(--primary);flex:none}
+  .exog-local span{display:flex;flex-direction:column;min-width:0}
+  .exog-local b{font-size:13.5px;font-weight:800;color:var(--ink)}
+  .exog-local em{font-style:normal;font-size:12px;color:var(--muted);font-weight:600;line-height:1.4;margin-top:2px}
   .pfg-exog{font-size:12px;font-weight:700;margin-top:6px;opacity:.9}
 
 </style>
@@ -1539,6 +1547,7 @@ window.APP_RELEASE = "tresults-v32";
 
   <div class="card" style="padding:4px">
     <button class="pf-row" id="pfTheme"><svg id="themeMoon2" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg><span id="themeLbl2">Modo escuro</span></button>
+    <a class="pf-row" id="pfPriv" href="privacidade.html"><svg viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/></svg><span>Privacidade e seus dados</span><svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></a>
     <button class="pf-row danger" id="pfReset"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/></svg>Excluir dados</button>
     <button class="pf-row" id="pfLogout"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>Sair da conta</button>
   </div>
@@ -1677,6 +1686,7 @@ window.APP_RELEASE = "tresults-v32";
     <div class="seg" id="exogPopSeg" data-v="nao"><button type="button" data-v="nao" class="on">Não</button><button type="button" data-v="sim">Sim</button></div>
     <div class="gw-cards exog-lista" id="exogPopLista" style="display:none"></div>
     <div class="field exog-dose" id="exogPopDoseWrap" style="display:none"><label class="lbl" for="exogPopDose">Dose diária de clembuterol (mcg)</label><input class="in num" id="exogPopDose" type="text" inputmode="decimal" placeholder="80"><span class="campo-nota" id="exogPopDoseNota"></span></div>
+    <label class="exog-local" id="exogPopLocalWrap" style="display:none"><input type="checkbox" id="exogPopLocal" checked><span><b>Guardar só neste aparelho</b><em>Não sobe para a nuvem. Em outro celular, marque de novo.</em></span></label>
     <div class="gw-hint" id="exogPopNota"></div>
     <button class="btn" id="exogPopSalvar">Salvar</button>
     <button class="btn secondary" id="exogPopVoltar">Voltar</button>
@@ -1691,6 +1701,8 @@ window.APP_RELEASE = "tresults-v32";
     <p class="exog-fonte" id="exogRiscoFonte"></p>
     <ul class="exog-riscos" id="exogRiscoLista"></ul>
     <div class="gw-hint" id="exogRiscoConta"></div>
+    <p class="exog-aviso" id="exogRiscoAviso">O T-RESULTS não recomenda nem prescreve nenhuma dessas substâncias. Isto não substitui acompanhamento médico.</p>
+    <p class="exog-aviso" id="exogRiscoLgpd">Esta informação é <b>dado de saúde</b>. Por padrão ela fica só neste aparelho, e você pode apagá-la a qualquer momento. Ao marcar, você concorda com isso. <a href="privacidade.html">Como o app trata seus dados</a>.</p>
     <button class="btn" id="exogRiscoOk">Entendi, marcar</button>
     <button class="btn secondary" id="exogRiscoVoltar">Voltar</button>
   </div>
@@ -1983,6 +1995,7 @@ window.APP_RELEASE = "tresults-v32";
       <div class="seg" id="gExogSeg" data-v="nao"><button type="button" data-v="nao" class="on">Não</button><button type="button" data-v="sim">Sim</button></div>
       <div class="gw-cards exog-lista" id="gExogLista" style="display:none"></div>
       <div class="field exog-dose" id="gExogDoseWrap" style="display:none"><label class="lbl" for="gExogDose">Dose diária de clembuterol (mcg)</label><input class="in num" id="gExogDose" type="text" inputmode="decimal" placeholder="80"><span class="campo-nota" id="gExogDoseNota"></span></div>
+      <label class="exog-local" id="gExogLocalWrap" style="display:none"><input type="checkbox" id="gExogLocal" checked><span><b>Guardar só neste aparelho</b><em>Não sobe para a nuvem. Em outro celular, marque de novo.</em></span></label>
       <div class="gw-hint" id="gExogNota" style="display:none"></div>
       <div class="monthline" id="goalPreview" style="margin-top:16px;text-align:left;line-height:1.5"></div>
     </div>
@@ -4271,9 +4284,20 @@ async function startSync(){
   }catch(e){ setSyncDot("err","Erro ao carregar"); }
 }
 function stopSync(){ if(unsub){unsub();unsub=null;} }
+/* O uso de exógenos é dado de saúde sensível (LGPD, art. 5º e 11), e pode
+   sugerir conduta ilícita. Por padrão ele fica só no aparelho: a nuvem recebe o
+   objetivo sem esses campos, e o que volta da nuvem não os apaga daqui. Quem
+   quiser sincronizar desliga a chave "Guardar só neste aparelho". */
+const EXOG_CAMPOS=["exog","clenDose","exogAceite","exogLocal"];
+function goalsParaNuvem(g){
+  if(!g||!g.exogLocal)return g||{};
+  const c=Object.assign({},g);EXOG_CAMPOS.forEach(k=>delete c[k]);return c;
+}
 function applyRemote(data){
   applyingRemote=true;
+  const meu=(store&&store.goals&&store.goals.exogLocal)?EXOG_CAMPOS.reduce((o,k)=>{if(store.goals[k]!==undefined)o[k]=store.goals[k];return o;},{}):null;
   store={getd:data.getd||0,days:data.days||{},custom:data.custom||[],goals:data.goals||{},liquids:data.liquids||{},protocol:data.protocol||[],weights:data.weights||[],tprotocol:data.tprotocol||[],tdays:data.tdays||{}};
+  if(meu)Object.assign(store.goals,meu);
   viewKey=todayKey();realToday=todayKey();
   localStorage.setItem(KEY,JSON.stringify(store));
   $("getdInput").value=store.getd>0?store.getd:"";
@@ -4287,7 +4311,7 @@ function pushRemote(immediate){
   clearTimeout(pushTimer);
   const doPush=async()=>{
     setSyncDot("saving","Salvando…");
-    try{ await setDoc(doc(db,"users",user.uid),{getd:store.getd,days:store.days,custom:store.custom||[],goals:store.goals||{},liquids:store.liquids||{},protocol:store.protocol||[],weights:store.weights||[],tprotocol:store.tprotocol||[],tdays:store.tdays||{},writer:DEVICE,updatedAt:serverTimestamp()}); setSyncDot("ok","Sincronizado"); }
+    try{ await setDoc(doc(db,"users",user.uid),{getd:store.getd,days:store.days,custom:store.custom||[],goals:goalsParaNuvem(store.goals),liquids:store.liquids||{},protocol:store.protocol||[],weights:store.weights||[],tprotocol:store.tprotocol||[],tdays:store.tdays||{},writer:DEVICE,updatedAt:serverTimestamp()}); setSyncDot("ok","Sincronizado"); }
     catch(e){ setSyncDot("err","Salvo local"); }
   };
   if(immediate)return doPush();
@@ -5283,8 +5307,8 @@ function exogRiscos(id){
    que se desencontram. Marcar uma opção passa pelo pop-up de riscos antes de
    valer; desmarcar não pede nada. */
 function montarExog(ids,onChange){
-  let sel=[];
-  const seg=$(ids.seg),lista=$(ids.lista),doseWrap=$(ids.doseWrap),dose=$(ids.dose),doseNota=$(ids.doseNota);
+  let sel=[],aceite="";
+  const seg=$(ids.seg),lista=$(ids.lista),doseWrap=$(ids.doseWrap),dose=$(ids.dose),doseNota=$(ids.doseNota),localWrap=$(ids.localWrap),local=$(ids.local);
   lista.innerHTML=EXOG.map(e=>`<button type="button" data-ex="${e.id}"><span class="pc"></span><span class="tx"><b>${e.nome}</b><em>${e.sub}</em></span></button>`).join("");
   const mudou=()=>{if(onChange)onChange();};
   const pintar=()=>{
@@ -5294,6 +5318,7 @@ function montarExog(ids,onChange){
     lista.querySelectorAll("button").forEach(b=>b.classList.toggle("on",sel.includes(b.dataset.ex)));
     const clen=sim&&sel.includes("clen");
     doseWrap.style.display=clen?"":"none";
+    localWrap.style.display=(sim&&sel.length)?"":"none";
     if(clen){
       const d=numBR(dose.value);
       doseNota.textContent=d>CLEN_MAX?`Acima de ${CLEN_MAX} mcg a conta trava em ${CLEN_MAX}: não há medição além disso.`
@@ -5306,17 +5331,30 @@ function montarExog(ids,onChange){
     const id=b.dataset.ex;
     if(sel.includes(id)){sel=sel.filter(x=>x!==id);pintar();mudou();return;}
     if(!(await exogRiscos(id)))return;
+    /* "Entendi, marcar" é o aceite do dado de saúde: fica a data, para o app
+       saber quando a pessoa concordou. */
+    aceite=new Date().toISOString();
     sel=sel.concat(id);pintar();mudou();
   });
   dose.addEventListener("input",()=>{dose.value=dose.value.replace(/[^\d.,]/g,"");pintar();mudou();});
+  local.addEventListener("change",mudou);
   return {
-    set(l,d){sel=(Array.isArray(l)?l:[]).filter(exogInfo);seg.dataset.v=sel.length?"sim":"nao";dose.value=d>0?String(d):"";pintar();mudou();},
-    get(){const sim=seg.dataset.v==="sim";return {exog:sim?sel.slice():[],clenDose:sim&&sel.includes("clen")?clenDoseEfetiva(dose.value):0};}
+    set(g){
+      g=g||{};
+      sel=(Array.isArray(g.exog)?g.exog:[]).filter(exogInfo);aceite=g.exogAceite||"";
+      seg.dataset.v=sel.length?"sim":"nao";dose.value=g.clenDose>0?String(g.clenDose):"";
+      local.checked=g.exogLocal!==false;   // sem escolha guardada, fica no aparelho
+      pintar();mudou();
+    },
+    get(){
+      const sim=seg.dataset.v==="sim",l=sim?sel.slice():[];
+      return {exog:l,clenDose:l.includes("clen")?clenDoseEfetiva(dose.value):0,exogAceite:l.length?aceite:"",exogLocal:local.checked};
+    }
   };
 }
 let exogForm=null;
-function readGoalForm(){const x=exogForm?exogForm.get():{exog:[],clenDose:0};return {sexo:$("gSexo").value,idade:$("gIdade").value,altura:$("gAltura").value,pesoAtual:$("gPesoAtual").value,ativ:$("gAtiv").value,pesoAlvo:$("gPesoAlvo").value,meses:$("gMeses").value,liquidTarget:$("gLiquid").value,exog:x.exog,clenDose:x.clenDose};}
-exogForm=montarExog({seg:"gExogSeg",lista:"gExogLista",doseWrap:"gExogDoseWrap",dose:"gExogDose",doseNota:"gExogDoseNota"},()=>{
+function readGoalForm(){const x=exogForm?exogForm.get():{exog:[],clenDose:0,exogAceite:"",exogLocal:true};return {sexo:$("gSexo").value,idade:$("gIdade").value,altura:$("gAltura").value,pesoAtual:$("gPesoAtual").value,ativ:$("gAtiv").value,pesoAlvo:$("gPesoAlvo").value,meses:$("gMeses").value,liquidTarget:$("gLiquid").value,exog:x.exog,clenDose:x.clenDose,exogAceite:x.exogAceite,exogLocal:x.exogLocal};}
+exogForm=montarExog({seg:"gExogSeg",lista:"gExogLista",doseWrap:"gExogDoseWrap",dose:"gExogDose",doseNota:"gExogDoseNota",localWrap:"gExogLocalWrap",local:"gExogLocal"},()=>{
   const g=readGoalForm(),n=$("gExogNota"),f=exogFator(g),getd=computeGETD(g);
   n.style.display=g.exog.length?"block":"none";
   if(g.exog.length)n.innerHTML=f>0&&getd>0?`GETD com o exógeno: <b>${r0(getd)}</b> kcal/dia (+${Math.round(f*100)}% da taxa basal).`:f>0?"Preencha o perfil para ver o efeito no GETD.":"Só informação: a meta não muda.";
@@ -5342,7 +5380,7 @@ function openGoals(){
   $("gAtiv").value=g.ativ?String(neatAtiv(g.ativ)):"1.4";$("gPesoAlvo").value=g.pesoAlvo||"";$("gMeses").value=g.meses||"";$("gLiquid").value=g.liquidTarget||3000;
   const pa=parseFloat(g.pesoAtual)||0,pv=parseFloat(g.pesoAlvo)||0;
   selectedObj=g.objetivo||(pv&&pa?(pv>pa?"bulking":"cutting"):null);
-  exogForm.set(g.exog,g.clenDose);
+  exogForm.set(g);
   document.querySelectorAll(".obj-btn").forEach(x=>x.classList.toggle("on",x.dataset.obj===selectedObj));
   document.querySelectorAll(".pace-opt").forEach(x=>x.classList.remove("on"));
   document.querySelectorAll("#gSexoSeg button").forEach(x=>x.classList.toggle("on",x.dataset.v===$("gSexo").value));
@@ -5393,7 +5431,7 @@ $("saveGoals").onclick=()=>{
      número parado no tempo. */
   const nasc=(store.goals&&store.goals.nasc)||"";
   const anos=idadeDe(nasc);
-  store.goals={nome,inicio,nasc,objetivo:obj,sexo:g.sexo,idade:anos>0?anos:(parseFloat(g.idade)||0),altura:parseFloat(g.altura)||0,pesoAtual:parseFloat(g.pesoAtual)||0,ativ:parseFloat(g.ativ)||1.2,pesoAlvo:parseFloat(g.pesoAlvo)||0,meses:parseFloat(g.meses)||0,liquidTarget:parseInt(g.liquidTarget)||3000,exog:g.exog||[],clenDose:g.clenDose||0};
+  store.goals={nome,inicio,nasc,objetivo:obj,sexo:g.sexo,idade:anos>0?anos:(parseFloat(g.idade)||0),altura:parseFloat(g.altura)||0,pesoAtual:parseFloat(g.pesoAtual)||0,ativ:parseFloat(g.ativ)||1.2,pesoAlvo:parseFloat(g.pesoAlvo)||0,meses:parseFloat(g.meses)||0,liquidTarget:parseInt(g.liquidTarget)||3000,exog:g.exog||[],clenDose:g.clenDose||0,exogAceite:g.exogAceite||"",exogLocal:g.exogLocal!==false};
   const getd=computeGETD(store.goals);
   if(getd>0){store.getd=Math.round(getd);$("getdInput").value=store.getd;}
   save();render();goalsOverlay.classList.remove("open");
@@ -5402,7 +5440,7 @@ $("saveGoals").onclick=()=>{
 $("cancelGoals").onclick=()=>{goalsOverlay.classList.remove("open");if(onboarding){onboarding=false;showView("inicio");}};
 /* O "+" do Início: quem já usava o app avisa aqui que começou (ou parou) a
    usar exógeno, sem refazer o objetivo. Salvar recalcula o GETD na hora. */
-const exogPop=montarExog({seg:"exogPopSeg",lista:"exogPopLista",doseWrap:"exogPopDoseWrap",dose:"exogPopDose",doseNota:"exogPopDoseNota"},()=>{
+const exogPop=montarExog({seg:"exogPopSeg",lista:"exogPopLista",doseWrap:"exogPopDoseWrap",dose:"exogPopDose",doseNota:"exogPopDoseNota",localWrap:"exogPopLocalWrap",local:"exogPopLocal"},()=>{
   const g=Object.assign({},store.goals||{},exogPop.get()),n=$("exogPopNota");
   const antes=computeGETD(store.goals||{}),depois=computeGETD(g);
   if(antes<=0)n.innerHTML="Defina seu objetivo no perfil para o app calcular o efeito no GETD.";
@@ -5412,7 +5450,7 @@ const exogPop=montarExog({seg:"exogPopSeg",lista:"exogPopLista",doseWrap:"exogPo
 });
 function abrirExog(){
   const g=store.goals||{};
-  exogPop.set(g.exog,g.clenDose);
+  exogPop.set(g);
   $("exogOverlay").classList.add("open");
   const md=$("exogOverlay").querySelector(".modal");if(md)md.scrollTop=0;
 }
