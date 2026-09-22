@@ -22,6 +22,7 @@ window.__t={
   ALARM_DUR, ALARM_CICLO, restTick, ALARM_SONS, EX_POR_GRUPO,
   somDoAlarme:()=>somDoAlarme(), idadeDe, idadeAtual, computeTMB, buscaAlimentos, alimPontos, mapOff, ordenarOff, FOODS,
   appNativo:()=>appNativo,
+  applyRemote, goalsParaNuvem, pushRemote:()=>pushRemote(true), naNuvem:()=>!!(cloudEnabled&&user),
   /* Trocar quem está logado, para alcançar o modo local — onde não há conta e
      portanto não há senha a conferir. */
   setUser:u=>{user=u;},

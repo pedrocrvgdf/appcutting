@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Privacidade · T-RESULTS</title>
+<meta name="theme-color" content="#0e7c6b">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#f2f6f4;--surface:#fff;--ink:#15201d;--muted:#5d6d68;--primary:#0e7c6b;--primary-08:rgba(14,124,107,.08);--line:#e2eae7;--sombra:0 10px 30px rgba(21,32,29,.08)}
+  @media (prefers-color-scheme:dark){:root{--bg:#121a18;--surface:#1a2522;--ink:#eef4f2;--muted:#9fb0aa;--primary:#34b39a;--primary-08:rgba(52,179,154,.12);--line:#26332f;--sombra:0 10px 30px rgba(0,0,0,.35)}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:Quicksand,system-ui,sans-serif;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:560px;margin:0 auto;padding:18px 16px calc(32px + env(safe-area-inset-bottom))}
+  .voltar{display:inline-flex;align-items:center;gap:6px;color:var(--primary);font-weight:700;text-decoration:none;margin-bottom:14px}
+  .eyebrow{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--primary)}
+  h1{font-size:26px;margin:2px 0 4px}
+  .data{color:var(--muted);font-size:13px;margin:0 0 18px}
+  .card{background:var(--surface);border-radius:26px;padding:18px 20px;box-shadow:var(--sombra);margin-bottom:14px}
+  h2{font-size:17px;margin:0 0 8px}
+  p{margin:0 0 10px}
+  ul{margin:0 0 10px;padding-left:20px}
+  li{margin-bottom:6px}
+  .aviso{background:var(--primary-08);border-radius:16px;padding:12px 14px;font-weight:600;color:var(--primary)}
+  a{color:var(--primary)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="voltar" href="./">‹ Voltar ao app</a>
+  <div class="eyebrow">True Results</div>
+  <h1>Privacidade e seus dados</h1>
+  <p class="data">Atualizado em 22 de setembro de 2026.</p>
+
+  <div class="card">
+    <h2>O que o app guarda</h2>
+    <p>O T-RESULTS guarda só o que você mesmo digita para o app funcionar:</p>
+    <ul>
+      <li><b>Perfil e objetivo:</b> nome, data de nascimento, sexo, altura, peso, rotina do dia a dia, peso alvo e prazo.</li>
+      <li><b>Alimentação e líquidos:</b> o que você lançou em cada dia.</li>
+      <li><b>Treinos:</b> protocolos, sessões feitas, cargas e cardio registrado.</li>
+      <li><b>Uso de exógenos:</b> se você marcar, quais substâncias e a dose de clembuterol, com a data em que você concordou em registrar isso.</li>
+      <li><b>Conta:</b> o e-mail usado para entrar. A senha fica com o Firebase Auth e o app nunca a vê.</li>
+    </ul>
+    <p>Tudo isso é <b>dado de saúde</b>, e é tratado como tal.</p>
+  </div>
+
+  <div class="card">
+    <h2>Onde fica</h2>
+    <ul>
+      <li><b>No seu aparelho</b>, sempre. O app funciona sem internet e sem conta.</li>
+      <li><b>Na nuvem</b>, só se você entrar com uma conta: os dados são sincronizados no Firebase (Firestore), na sua conta, para você abrir o app em outro celular. Ninguém além de você lê esse documento.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>Uso de exógenos</h2>
+    <p>Marcar que usa anabolizante, clembuterol ou efedrina é uma informação mais delicada que o resto, e por isso ela tem regras próprias:</p>
+    <ul>
+      <li>O app <b>não recomenda nem prescreve</b> nenhuma dessas substâncias. Ele mostra os riscos e ajusta uma estimativa de gasto calórico. Isso não substitui acompanhamento médico.</li>
+      <li>Ao marcar, você concorda que o app registre essa informação, e fica guardada a data do aceite.</li>
+      <li><b>Por padrão ela fica só no seu aparelho.</b> Ela só sobe para a nuvem se você desligar a chave "Guardar só neste aparelho".</li>
+      <li>Você pode desmarcar a qualquer momento, e a informação some.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>Erros do app</h2>
+    <p>Quando o app quebra, ele envia o erro para a Sentry, um serviço de monitoramento. Vai só o erro técnico: sem gravação de tela, sem rastro de navegação, e com e-mails e identificadores mascarados antes de sair do aparelho. Seus dados de saúde não vão junto.</p>
+  </div>
+
+  <div class="card">
+    <h2>Como apagar</h2>
+    <p>Em <b>Perfil → Excluir dados</b>. O app pede a senha da conta e apaga tudo: do aparelho e da nuvem, sem cópia. Não dá para desfazer.</p>
+    <p>Para tirar só o uso de exógenos, abra o "+" no Início ou o objetivo no perfil e escolha "Não".</p>
+  </div>
+
+  <div class="card">
+    <h2>O que o app não faz</h2>
+    <ul>
+      <li>Não vende nem compartilha seus dados com ninguém.</li>
+      <li>Não mostra anúncios nem usa rastreadores de publicidade.</li>
+      <li>Não pede dados que não usa.</li>
+    </ul>
+    <p class="aviso">Dúvidas ou pedidos sobre seus dados: abra um chamado em <a href="https://github.com/pedrocrvgdf/appcutting/issues">github.com/pedrocrvgdf/appcutting/issues</a>.</p>
+  </div>
+</div>
+</body>
+</html>

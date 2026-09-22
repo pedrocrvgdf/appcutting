@@ -1,9 +1,10 @@
 /* T - Results — service worker */
-const CACHE = "tresults-v32";
+const CACHE = "tresults-v33";
 const CORE = [
   "./",
   "./index.html",
   "./manifest.json",
+  "./privacidade.html",
   "./icon-192.png",
   "./icon-512.png",
   "./icon-512-maskable.png",
@@ -37,7 +38,7 @@ self.addEventListener("fetch", e => {
           if (ehOApp) { const cp = res.clone(); caches.open(CACHE).then(c => c.put("./index.html", cp)); }
           return res;
         })
-        .catch(() => caches.match("./index.html"))
+        .catch(() => caches.match(e.request).then(hit => hit || caches.match("./index.html")))
     );
     return;
   }

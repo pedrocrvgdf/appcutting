@@ -262,6 +262,157 @@ test.describe('O "+" do Início', () => {
     expect(s.getd).toBe(0);
   });
 
+  test('o aviso diz que o app não recomenda, pede o aceite e leva à página de privacidade', async ({ page }) => {
+    await abrirApp(page, estado());
+    await clicar(page, '#fdMais');
+    await clicar(page, '#exogPopSeg [data-v="sim"]');
+    await clicar(page, '#exogPopLista [data-ex="clen"]');
+    await page.waitForTimeout(200);
+    const t = await page.evaluate(() => ({
+      aviso: document.getElementById('exogRiscoAviso').textContent,
+      lgpd: document.getElementById('exogRiscoLgpd').textContent,
+      link: document.querySelector('#exogRiscoLgpd a')?.getAttribute('href'),
+    }));
+    expect(t.aviso).toMatch(/não recomenda nem prescreve/);
+    expect(t.aviso).toMatch(/acompanhamento médico/);
+    expect(t.lgpd).toMatch(/dado de saúde/);
+    expect(t.link).toBe('privacidade.html');
+  });
+
+  test('"Entendi, marcar" registra a data do aceite; "Não" a apaga', async ({ page }) => {
+    await abrirApp(page, estado());
+    const antes = Date.now();
+    await clicar(page, '#fdMais');
+    await clicar(page, '#exogPopSeg [data-v="sim"]');
+    await marcar(page, 'exogPopLista', 'efed');
+    await clicar(page, '#exogPopSalvar');
+    await page.waitForTimeout(200);
+    let s = await store(page);
+    const aceite = Date.parse(s.goals.exogAceite);
+    expect(aceite, 'a data do aceite é a de agora, em ISO').toBeGreaterThanOrEqual(antes - 1000);
+    expect(aceite).toBeLessThanOrEqual(Date.now() + 1000);
+
+    await clicar(page, '#fdMais');
+    await clicar(page, '#exogPopSeg [data-v="nao"]');
+    await clicar(page, '#exogPopSalvar');
+    await page.waitForTimeout(200);
+    s = await store(page);
+    expect(s.goals.exog).toEqual([]);
+    expect(s.goals.exogAceite, 'sem exógeno não há o que ter aceitado').toBe('');
+  });
+});
+
+test.describe('O dado de exógenos e a nuvem', () => {
+
+  /* Captura o que o app tentaria gravar no Firestore. pushRemote lê
+     window.__fb na hora da chamada, então trocar o setDoc falso basta. */
+  const capturarPush = page => page.evaluate(() => {
+    window.__pushes = [];
+    window.__fb.setDoc = (ref, data) => { window.__pushes.push(JSON.parse(JSON.stringify(data))); return Promise.resolve(); };
+  });
+
+  test('por padrão fica só no aparelho: a nuvem recebe o objetivo sem os campos', async ({ page }) => {
+    await abrirApp(page, estado());
+    expect(await page.evaluate(() => window.__t.naNuvem()), 'o cenário precisa estar logado').toBe(true);
+    await capturarPush(page);
+    await clicar(page, '#fdMais');
+    await clicar(page, '#exogPopSeg [data-v="sim"]');
+    await marcar(page, 'exogPopLista', 'clen');
+    expect(await visivel(page, 'exogPopLocalWrap'), 'a chave aparece assim que há algo marcado').toBe(true);
+    expect(await page.evaluate(() => document.getElementById('exogPopLocal').checked), 'começa ligada').toBe(true);
+    await digitar(page, 'exogPopDose', '40');
+    await clicar(page, '#exogPopSalvar');
+    await page.waitForTimeout(200);
+    await page.evaluate(() => window.__t.pushRemote());
+    await page.waitForTimeout(100);
+
+    const local = await store(page);
+    expect(local.goals.exog).toEqual(['clen']);
+    expect(local.goals.exogLocal).toBe(true);
+    const nuvem = await page.evaluate(() => window.__pushes.at(-1));
+    expect(nuvem.goals.exog, 'o exógeno não sobe').toBeUndefined();
+    expect(nuvem.goals.clenDose).toBeUndefined();
+    expect(nuvem.goals.exogAceite).toBeUndefined();
+    expect(nuvem.goals.pesoAlvo, 'o resto do objetivo sobe normalmente').toBe(75);
+    expect(nuvem.getd, 'o número do GETD sobe, sem dizer de onde veio').toBe(2679);
+  });
+
+  test('com a chave desligada, o exógeno sincroniza', async ({ page }) => {
+    await abrirApp(page, estado());
+    await capturarPush(page);
+    await clicar(page, '#fdMais');
+    await clicar(page, '#exogPopSeg [data-v="sim"]');
+    await marcar(page, 'exogPopLista', 'efed');
+    await page.evaluate(() => { const c = document.getElementById('exogPopLocal'); c.checked = false; c.dispatchEvent(new Event('change', { bubbles: true })); });
+    await clicar(page, '#exogPopSalvar');
+    await page.waitForTimeout(200);
+    await page.evaluate(() => window.__t.pushRemote());
+    await page.waitForTimeout(100);
+    const nuvem = await page.evaluate(() => window.__pushes.at(-1));
+    expect(nuvem.goals.exog).toEqual(['efed']);
+    expect(nuvem.goals.exogLocal).toBe(false);
+  });
+
+  test('o que volta da nuvem não apaga o exógeno guardado só no aparelho', async ({ page }) => {
+    const s0 = estado();
+    const st = JSON.parse(s0['cutting.v1']);
+    st.goals.exog = ['clen']; st.goals.clenDose = 80; st.goals.exogAceite = '2026-09-22T12:00:00.000Z'; st.goals.exogLocal = true;
+    s0['cutting.v1'] = JSON.stringify(st);
+    await abrirApp(page, s0);
+
+    /* Outro aparelho salvou o objetivo sem saber do exógeno. */
+    await page.evaluate(() => {
+      const remoto = JSON.parse(JSON.stringify(window.__t.store));
+      delete remoto.goals.exog; delete remoto.goals.clenDose; delete remoto.goals.exogAceite; delete remoto.goals.exogLocal;
+      remoto.goals.pesoAlvo = 72;
+      window.__t.applyRemote(remoto);
+    });
+    const s = await store(page);
+    expect(s.goals.pesoAlvo, 'a mudança de lá entra').toBe(72);
+    expect(s.goals.exog, 'o exógeno daqui fica').toEqual(['clen']);
+    expect(s.goals.clenDose).toBe(80);
+    expect(s.goals.exogLocal).toBe(true);
+  });
+
+  test('o objetivo salvo pelo wizard guarda a escolha da chave', async ({ page }) => {
+    await abrirApp(page, estado());
+    await irParaMeta(page);
+    await clicar(page, '#gExogSeg [data-v="sim"]');
+    await marcar(page, 'gExogLista', 'anab');
+    expect(await visivel(page, 'gExogLocalWrap')).toBe(true);
+    await clicar(page, '#saveGoals');
+    await page.waitForTimeout(300);
+    const s = await store(page);
+    expect(s.goals.exogLocal).toBe(true);
+    expect(s.goals.exogAceite).toBeTruthy();
+    expect(await page.evaluate(g => Object.keys(window.__t.goalsParaNuvem(g)).sort(), s.goals))
+      .not.toContain('exog');
+  });
+});
+
+test.describe('A página de privacidade', () => {
+
+  test('o perfil leva a ela, e ela existe e volta ao app', async ({ page }) => {
+    await abrirApp(page, estado());
+    await clicar(page, '#tabbar [data-tab="perfil"]');
+    const href = await page.evaluate(() => document.getElementById('pfPriv').getAttribute('href'));
+    expect(href).toBe('privacidade.html');
+
+    await page.goto('file://' + require('path').join(__dirname, '..', 'privacidade.html'));
+    const t = await page.evaluate(() => ({
+      titulo: document.querySelector('h1')?.textContent,
+      volta: document.querySelector('a.voltar')?.getAttribute('href'),
+      texto: document.body.innerText,
+    }));
+    expect(t.titulo).toBe('Privacidade e seus dados');
+    expect(t.volta).toBe('./');
+    for (const trecho of ['dado de saúde', 'só no seu aparelho', 'Excluir dados', 'Sentry', 'não recomenda nem prescreve'])
+      expect(t.texto, `a página precisa falar de "${trecho}"`).toContain(trecho);
+  });
+});
+
+test.describe('Sem diálogo do navegador', () => {
+
   test('nenhum diálogo do navegador em todo o fluxo', async ({ page }) => {
     let dialogos = 0;
     page.on('dialog', d => { dialogos++; d.dismiss(); });

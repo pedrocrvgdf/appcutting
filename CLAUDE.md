@@ -13,7 +13,7 @@ usado no celular, principalmente dentro da academia.
 
 | | |
 |---|---|
-| Arquivos do app | `index.html` (app inteiro), `sw.js`, `manifest.json`, ícones PNG |
+| Arquivos do app | `index.html` (app inteiro), `sw.js`, `manifest.json`, ícones PNG, `privacidade.html` (política de privacidade), `diag.html` (diagnóstico) |
 | Servidor | `functions/` — só o aviso de descanso por push; o app funciona sem |
 | Build | **Não existe.** O app não é empacotado nem transpilado |
 | Publicação | GitHub Pages, a partir da branch `main` |
@@ -212,9 +212,30 @@ volta.
 - **A dose é em microgramas (mcg), e a tela avisa.** Clembuterol se dosa em
   mcg; "20 mg" seria mil vezes a dose. O campo é `type="text"` com `numBR`,
   como os do cardio, para a vírgula não sumir.
-- `saveGoals` remonta `store.goals` do zero: `exog` e `clenDose` precisam ser
-  carregados junto, como `nasc`. Existe teste.
+- `saveGoals` remonta `store.goals` do zero: `exog`, `clenDose`, `exogAceite`
+  e `exogLocal` precisam ser carregados junto, como `nasc`. Existe teste.
 - Coberto em `tests/exogenos.spec.js`.
+
+**Este dado é sensível pela LGPD** (dado de saúde, art. 5º e 11, e que pode
+sugerir conduta ilícita). Por isso ele tem tratamento próprio, e cada ponto
+tem teste:
+
+- **O pop-up de riscos é também o consentimento.** Ele diz que o app não
+  recomenda nem prescreve, que a informação é dado de saúde, e "Entendi,
+  marcar" grava a data em `goals.exogAceite`. "Não" limpa a data junto.
+- **Por padrão fica só no aparelho** (`goals.exogLocal`, ligado quando não há
+  escolha guardada). `pushRemote` sobe o objetivo por `goalsParaNuvem`, que
+  tira `EXOG_CAMPOS`; e `applyRemote` **guarda os campos locais antes de
+  trocar o `store`** e os devolve depois, senão a primeira sincronização
+  vinda de outro aparelho apagaria a escolha daqui. O número do GETD sobe
+  normalmente: é só um número.
+- Consequência que vale saber: em outro celular o objetivo chega sem o
+  exógeno, e se ele for salvo lá o GETD volta a ser calculado sem o efeito.
+  É o preço de não subir o dado, e a chave diz isso na tela.
+- **`privacidade.html`** é a política de privacidade, ligada do perfil
+  (`#pfPriv`) e do pop-up. É a segunda página do site, além do `diag.html`;
+  está no `CORE` do service worker e a navegação para ela cai no cache dela
+  quando offline, e não no `index.html`.
 
 ### A busca de alimentos
 
@@ -380,7 +401,7 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 | `tests/alimentos.spec.js` | Busca de alimentos: plural, ordem, erro de digitação, afinidade; internet automática, kJ, Brasil primeiro |
 | `tests/cardio.spec.js` | Registro manual: distância opcional na caminhada, inclinação da esteira, ganho de elevação em metros, digitação com vírgula |
 | `tests/liquidos.spec.js` | Histórico de ingestão: horário, origem, exclusão, total antigo sem histórico, zerar com confirmação |
-| `tests/exogenos.spec.js` | Uso de exógenos: pop-up de riscos, clembuterol escalando pela dose com teto, efedrina, anabolizante só informação, o "+" do Início |
+| `tests/exogenos.spec.js` | Uso de exógenos: pop-up de riscos, clembuterol escalando pela dose com teto, efedrina, anabolizante só informação, o "+" do Início; consentimento com data, dado que não sobe para a nuvem por padrão, página de privacidade |
 | `tests/app-nativo.spec.js` | Caminho web desligado quando o app Android está presente |
 | `tests/service-worker.spec.js` | Cache do app, versão, e a página de diagnóstico |
 | `tests/app.js` | Utilitários: Firebase falso, estado inicial, atalhos de navegação |
