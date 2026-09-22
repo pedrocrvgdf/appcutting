@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v31";
+window.APP_RELEASE = "tresults-v32";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -1076,6 +1076,18 @@ window.APP_RELEASE = "tresults-v31";
   .gw-hint{margin-top:14px;background:var(--primary-08);border-radius:12px;padding:12px 14px;font-size:13px;color:var(--primary);line-height:1.5;font-weight:600}
   #objRow .obj-btn{padding:16px}
 
+  /* ---- uso de exógenos ---- */
+  .mais{width:36px;height:36px;border-radius:50%;background:var(--surface);box-shadow:var(--sombra-sm);
+    color:var(--primary);font-size:24px;font-weight:700;line-height:36px;text-align:center;border:0;flex:none}
+  .mais:active{transform:scale(.97)}
+  .exog-lista{margin-top:10px}
+  .exog-dose{margin-top:12px}
+  .exog-dose .campo-nota{display:block;margin-top:6px;font-size:11.5px;color:var(--muted);line-height:1.45}
+  .exog-fonte{font-size:12px;color:var(--muted);text-align:center;margin:0 0 12px;line-height:1.5}
+  .exog-riscos{margin:0;padding:0 0 0 18px;font-size:13.5px;line-height:1.55;color:var(--ink);text-align:left}
+  .exog-riscos li{margin-bottom:5px}
+  .pfg-exog{font-size:12px;font-weight:700;margin-top:6px;opacity:.9}
+
 </style>
 </head>
 <body>
@@ -1244,7 +1256,10 @@ window.APP_RELEASE = "tresults-v31";
 <div class="view" id="view-inicio"><div class="wrap">
   <div class="topbar">
     <div class="brand"><span class="eyebrow">True Results</span><h1>Início</h1></div>
-    <div class="rt"><div class="syncmini"><span class="dot ok" id="syncDot3"></span></div></div>
+    <div class="rt"><div class="syncmini"><span class="dot ok" id="syncDot3"></span></div>
+      <!-- Quem já usava o app não passa de novo pelo objetivo: é por aqui que
+           avisa que começou a usar algum exógeno. -->
+      <button class="mais" id="fdMais" aria-label="Avisar uso de exógenos">+</button></div>
   </div>
 
   <button class="fd-resumo" id="fdDia">
@@ -1482,6 +1497,7 @@ window.APP_RELEASE = "tresults-v31";
   <div class="pfgoal">
     <div class="pfg-top"><span class="pfg-eyebrow">Meu objetivo</span><button class="pfg-edit" id="pfEdit">Editar</button></div>
     <div class="pfg-title" id="pfObjTitle">—</div>
+    <div class="pfg-exog" id="pfExog" style="display:none"></div>
     <div class="pfg-chips">
       <div><span class="k">GETD</span><span class="v num" id="pfGetd">—</span></div>
       <div><span class="k">Meta/dia</span><span class="v num" id="pfMeta">—</span></div>
@@ -1648,6 +1664,35 @@ window.APP_RELEASE = "tresults-v31";
     <p id="appDlgMsg" style="font-size:14px;color:var(--muted);line-height:1.6;text-align:center;margin:0"></p>
     <button class="btn" id="appDlgOk">OK</button>
     <button class="btn secondary" id="appDlgCancel">Cancelar</button>
+  </div>
+</div>
+
+<!-- USO DE EXÓGENOS — o "+" do Início. Fica acima do wizard de objetivo (90)
+     e abaixo do pop-up de riscos (135). -->
+<div class="overlay" id="exogOverlay" style="z-index:100">
+  <div class="modal" style="max-width:460px">
+    <h3 style="margin-bottom:4px">Uso de exógenos</h3>
+    <p class="gw-sub">Começou a fazer uso de algum exógeno? Alguns aumentam o gasto em repouso, e a meta de calorias acompanha.</p>
+    <label class="lbl" style="margin:4px 0 8px">Faz uso de exógenos?</label>
+    <div class="seg" id="exogPopSeg" data-v="nao"><button type="button" data-v="nao" class="on">Não</button><button type="button" data-v="sim">Sim</button></div>
+    <div class="gw-cards exog-lista" id="exogPopLista" style="display:none"></div>
+    <div class="field exog-dose" id="exogPopDoseWrap" style="display:none"><label class="lbl" for="exogPopDose">Dose diária de clembuterol (mcg)</label><input class="in num" id="exogPopDose" type="text" inputmode="decimal" placeholder="80"><span class="campo-nota" id="exogPopDoseNota"></span></div>
+    <div class="gw-hint" id="exogPopNota"></div>
+    <button class="btn" id="exogPopSalvar">Salvar</button>
+    <button class="btn secondary" id="exogPopVoltar">Voltar</button>
+  </div>
+</div>
+
+<!-- RISCOS DO EXÓGENO — abre ao marcar uma opção, antes de ela valer -->
+<div class="overlay" id="exogRiscoOverlay" style="z-index:135">
+  <div class="modal" style="max-width:460px">
+    <div class="dg-ico">⚠️</div>
+    <h3 id="exogRiscoTitulo" style="text-align:center;margin-bottom:4px"></h3>
+    <p class="exog-fonte" id="exogRiscoFonte"></p>
+    <ul class="exog-riscos" id="exogRiscoLista"></ul>
+    <div class="gw-hint" id="exogRiscoConta"></div>
+    <button class="btn" id="exogRiscoOk">Entendi, marcar</button>
+    <button class="btn secondary" id="exogRiscoVoltar">Voltar</button>
   </div>
 </div>
 
@@ -1932,6 +1977,13 @@ window.APP_RELEASE = "tresults-v31";
       </div>
       <div class="safety" id="safetyBox" style="display:none"></div>
       <div class="field" style="margin-top:14px"><label class="lbl">Meta de líquido (ml)</label><input class="in num" id="gLiquid" type="number" inputmode="numeric"></div>
+      <!-- Exógenos: quem usa clembuterol ou efedrina gasta mais em repouso, e a
+           meta precisa acompanhar. Anabolizante fica só como informação. -->
+      <label class="lbl" style="margin:16px 0 8px">Faz uso de exógenos?</label>
+      <div class="seg" id="gExogSeg" data-v="nao"><button type="button" data-v="nao" class="on">Não</button><button type="button" data-v="sim">Sim</button></div>
+      <div class="gw-cards exog-lista" id="gExogLista" style="display:none"></div>
+      <div class="field exog-dose" id="gExogDoseWrap" style="display:none"><label class="lbl" for="gExogDose">Dose diária de clembuterol (mcg)</label><input class="in num" id="gExogDose" type="text" inputmode="decimal" placeholder="80"><span class="campo-nota" id="gExogDoseNota"></span></div>
+      <div class="gw-hint" id="gExogNota" style="display:none"></div>
       <div class="monthline" id="goalPreview" style="margin-top:16px;text-align:left;line-height:1.5"></div>
     </div>
 
@@ -3958,6 +4010,8 @@ function renderPerfil(){
       $("pfObjTitle").textContent="Nenhum objetivo definido";
       $("pfGetd").textContent="—";$("pfMeta").textContent="—";$("pfPrazo").textContent="—";
     }
+    const ex=exogResumo(g),pe=$("pfExog");
+    if(pe){pe.style.display=ex?"":"none";pe.textContent=ex?"Exógenos: "+ex:"";}
   }
   const moon=$("themeMoon2");if(moon)moon.style.fill=themeIsDark()?"currentColor":"none";
   const lbl=$("themeLbl2");if(lbl)lbl.textContent=themeIsDark()?"Modo claro":"Modo escuro";
@@ -5077,7 +5131,10 @@ function idadeAtual(g){
 function computeTMB(g){const peso=parseFloat(g.pesoAtual)||0,alt=parseFloat(g.altura)||0,idade=idadeAtual(g);if(peso<=0||alt<=0||idade<=0)return 0;return 10*peso+6.25*alt-5*idade+((g.sexo==="F")?-161:5);}
 const NEAT_MIG={"1.375":1.3,"1.55":1.4,"1.725":1.55,"1.9":1.7};
 function neatAtiv(v){const f=parseFloat(v)||1.2;const m=NEAT_MIG[String(v)];return m!==undefined?m:f;}
-function computeGETD(g){const tmb=computeTMB(g);const fator=neatAtiv(g.ativ);return tmb>0?tmb*fator:0;}
+/* O exógeno soma sobre a taxa basal, não sobre o GETD inteiro: o que foi medido
+   foi o gasto em repouso, e no exercício o efeito do agonista β2 some
+   (Hostrup, salbutamol, 2022). Multiplicar o GETD todo inflaria a meta. */
+function computeGETD(g){const tmb=computeTMB(g);const fator=neatAtiv(g.ativ);return tmb>0?tmb*fator+tmb*exogFator(g):0;}
 function assessSafety(g){
   const pa=parseFloat(g.pesoAtual)||0,pv=parseFloat(g.pesoAlvo)||0,m=parseFloat(g.meses)||0,kg=Math.abs(pa-pv);
   if(pa<=0||kg<=0||m<=0||!selectedObj)return null;
@@ -5149,7 +5206,122 @@ document.querySelectorAll(".pace-opt").forEach(b=>b.onclick=()=>{
   document.querySelectorAll(".pace-opt").forEach(x=>x.classList.toggle("on",x===b));
   updateGoalPreview();
 });
-function readGoalForm(){return {sexo:$("gSexo").value,idade:$("gIdade").value,altura:$("gAltura").value,pesoAtual:$("gPesoAtual").value,ativ:$("gAtiv").value,pesoAlvo:$("gPesoAlvo").value,meses:$("gMeses").value,liquidTarget:$("gLiquid").value};}
+/* ---- uso de exógenos ----
+   O app é para todo mundo, inclusive quem usa anabolizante ou estimulante — e
+   estimulante muda o gasto em repouso, logo a meta. Os números vêm de medição
+   em humanos, e só deles:
+   - Clembuterol: +21% no gasto em repouso 140 min após 80 mcg, em seis homens
+     jovens (Jessen et al., Drug Test Anal 2020;12:610-618, PMID 31887249).
+     É uma dose só: a resposta por dose não foi medida em humanos, então o app
+     escala em proporção a partir desse ponto (CLEN_REF) e trava em CLEN_MAX,
+     o teto dos ciclos comuns. Acima disso seria inventar número.
+   - Efedrina: +10% sustentado no gasto, com 20 mg três vezes ao dia por três
+     meses, em cinco mulheres (Astrup et al., Metabolism 1986;35:260-265,
+     PMID 3512957).
+   - Anabolizante: não há medida confiável do efeito no gasto (a retirada ou
+     reposição aguda de testosterona não mudou o gasto em repouso — Berg et
+     al., Obesity 2010, PMID 20448541). Fica só como informação; a meta não
+     muda.
+   Clembuterol e efedrina agem pelo mesmo caminho adrenérgico: quem usa os dois
+   recebe o maior dos efeitos, não a soma. */
+const CLEN_FATOR=0.21,CLEN_REF=80,CLEN_MAX=120;
+const EXOG=[
+  {id:"anab",nome:"Anabolizantes",sub:"Esteroides anabolizantes · só informação, não entra na conta"},
+  {id:"clen",nome:"Clembuterol",sub:"Entra na conta: +21% do gasto em repouso a 80 mcg/dia"},
+  {id:"efed",nome:"Efedrina e termogênicos",sub:"Entra na conta: +10% do gasto em repouso"},
+];
+const exogInfo=id=>EXOG.find(e=>e.id===id);
+function clenDoseEfetiva(v){const d=numBR(v);return d>0?Math.min(CLEN_MAX,d):CLEN_REF;}
+function exogFatorDe(id,g){
+  if(id==="clen")return CLEN_FATOR*clenDoseEfetiva(g&&g.clenDose)/CLEN_REF;
+  if(id==="efed")return 0.10;
+  return 0;
+}
+function exogFator(g){const l=Array.isArray(g&&g.exog)?g.exog:[];return l.reduce((m,id)=>Math.max(m,exogFatorDe(id,g)),0);}
+function exogResumo(g){
+  const l=Array.isArray(g&&g.exog)?g.exog.filter(exogInfo):[];
+  if(!l.length)return "";
+  const nomes=l.map(id=>exogInfo(id).nome+(id==="clen"?` ${r0(clenDoseEfetiva(g.clenDose))} mcg`:"")).join(", ");
+  const f=exogFator(g);
+  return nomes+(f>0?` · +${Math.round(f*100)}% no repouso`:"");
+}
+/* Riscos, como o Ministério da Saúde e a Anvisa os descrevem. Texto fixo, sem
+   número inventado: o único número é o que entra na conta, com a fonte. */
+const EXOG_RISCOS={
+  anab:{titulo:"Anabolizantes",
+    fonte:"Fonte: Ministério da Saúde e Anvisa. Venda só com receita retida (Lei 9.965/2000). O CFM proíbe prescrever para fins estéticos ou de desempenho (Resolução 2.333/2023).",
+    riscos:["Coração e circulação: pressão alta, colesterol alterado, infarto e AVC.","Fígado: lesão e tumores.","Hormônios: atrofia dos testículos, infertilidade e ginecomastia. Na mulher, voz grossa e pelos, que não voltam.","Pele: acne e queda de cabelo.","Humor: agressividade, irritabilidade e dependência.","Em adolescente: parada do crescimento."],
+    conta:"Não existe medida confiável de quanto o anabolizante muda o gasto diário. Fica registrado só como informação: sua meta não muda."},
+  clen:{titulo:"Clembuterol",
+    fonte:"Fonte: Ministério da Saúde e Anvisa. Não é aprovado para uso em pessoas; no Brasil é proibido até na criação de animais, e é substância proibida no esporte.",
+    riscos:["Coração: taquicardia, palpitação, arritmia, dor no peito e infarto.","Queda do potássio no sangue, que pode causar arritmia grave.","Tremores, ansiedade, insônia e cãibras.","Aumento do açúcar no sangue.","Intoxicações com internação já foram registradas."],
+    conta:"Entra na conta: +21% do gasto em repouso a 80 mcg por dia, medido em seis homens jovens (Jessen et al., 2020). A resposta por dose não foi medida em pessoas: o app escala em proporção e trava em 120 mcg."},
+  efed:{titulo:"Efedrina e termogênicos",
+    fonte:"Fonte: Ministério da Saúde e Anvisa. A efedrina é de controle especial (Portaria 344/1998) e não pode entrar em suplemento alimentar.",
+    riscos:["Pressão alta, taquicardia e arritmia.","Infarto e AVC, com risco maior junto com cafeína.","Ansiedade, insônia e tremores.","Dependência."],
+    conta:"Entra na conta: +10% do gasto em repouso, medido com 20 mg três vezes ao dia por três meses (Astrup et al., 1986)."},
+};
+function exogRiscos(id){
+  const r=EXOG_RISCOS[id];
+  if(!r)return Promise.resolve(true);
+  return new Promise(res=>{
+    $("exogRiscoTitulo").textContent=r.titulo;
+    $("exogRiscoFonte").textContent=r.fonte;
+    const ul=$("exogRiscoLista");ul.innerHTML="";
+    r.riscos.forEach(t=>{const li=document.createElement("li");li.textContent=t;ul.appendChild(li);});
+    $("exogRiscoConta").textContent=r.conta;
+    const ov=$("exogRiscoOverlay");ov.classList.add("open");
+    const done=v=>{ov.classList.remove("open");$("exogRiscoOk").onclick=null;$("exogRiscoVoltar").onclick=null;ov.onclick=null;res(v);};
+    $("exogRiscoOk").onclick=()=>done(true);
+    $("exogRiscoVoltar").onclick=()=>done(false);
+    ov.onclick=e=>{if(e.target===ov)done(false);};
+    const md=ov.querySelector(".modal");if(md)md.scrollTop=0;
+  });
+}
+/* Um marcador (Não/Sim + lista + dose) montado sobre um conjunto de ids. O
+   passo "Sua meta" e o "+" do Início usam o mesmo, para não haver duas cópias
+   que se desencontram. Marcar uma opção passa pelo pop-up de riscos antes de
+   valer; desmarcar não pede nada. */
+function montarExog(ids,onChange){
+  let sel=[];
+  const seg=$(ids.seg),lista=$(ids.lista),doseWrap=$(ids.doseWrap),dose=$(ids.dose),doseNota=$(ids.doseNota);
+  lista.innerHTML=EXOG.map(e=>`<button type="button" data-ex="${e.id}"><span class="pc"></span><span class="tx"><b>${e.nome}</b><em>${e.sub}</em></span></button>`).join("");
+  const mudou=()=>{if(onChange)onChange();};
+  const pintar=()=>{
+    const sim=seg.dataset.v==="sim";
+    seg.querySelectorAll("button").forEach(b=>b.classList.toggle("on",(b.dataset.v==="sim")===sim));
+    lista.style.display=sim?"":"none";
+    lista.querySelectorAll("button").forEach(b=>b.classList.toggle("on",sel.includes(b.dataset.ex)));
+    const clen=sim&&sel.includes("clen");
+    doseWrap.style.display=clen?"":"none";
+    if(clen){
+      const d=numBR(dose.value);
+      doseNota.textContent=d>CLEN_MAX?`Acima de ${CLEN_MAX} mcg a conta trava em ${CLEN_MAX}: não há medição além disso.`
+        :d>0?`+${Math.round(exogFatorDe("clen",{clenDose:d})*100)}% do gasto em repouso. Clembuterol se dosa em microgramas: o comprimido comum tem 20 ou 40 mcg.`
+        :`Sem dose, o app assume ${CLEN_REF} mcg, a dose do estudo. Clembuterol se dosa em microgramas: o comprimido comum tem 20 ou 40 mcg.`;
+    }
+  };
+  seg.querySelectorAll("button").forEach(b=>b.onclick=()=>{seg.dataset.v=b.dataset.v;if(b.dataset.v==="nao")sel=[];pintar();mudou();});
+  lista.querySelectorAll("button").forEach(b=>b.onclick=async()=>{
+    const id=b.dataset.ex;
+    if(sel.includes(id)){sel=sel.filter(x=>x!==id);pintar();mudou();return;}
+    if(!(await exogRiscos(id)))return;
+    sel=sel.concat(id);pintar();mudou();
+  });
+  dose.addEventListener("input",()=>{dose.value=dose.value.replace(/[^\d.,]/g,"");pintar();mudou();});
+  return {
+    set(l,d){sel=(Array.isArray(l)?l:[]).filter(exogInfo);seg.dataset.v=sel.length?"sim":"nao";dose.value=d>0?String(d):"";pintar();mudou();},
+    get(){const sim=seg.dataset.v==="sim";return {exog:sim?sel.slice():[],clenDose:sim&&sel.includes("clen")?clenDoseEfetiva(dose.value):0};}
+  };
+}
+let exogForm=null;
+function readGoalForm(){const x=exogForm?exogForm.get():{exog:[],clenDose:0};return {sexo:$("gSexo").value,idade:$("gIdade").value,altura:$("gAltura").value,pesoAtual:$("gPesoAtual").value,ativ:$("gAtiv").value,pesoAlvo:$("gPesoAlvo").value,meses:$("gMeses").value,liquidTarget:$("gLiquid").value,exog:x.exog,clenDose:x.clenDose};}
+exogForm=montarExog({seg:"gExogSeg",lista:"gExogLista",doseWrap:"gExogDoseWrap",dose:"gExogDose",doseNota:"gExogDoseNota"},()=>{
+  const g=readGoalForm(),n=$("gExogNota"),f=exogFator(g),getd=computeGETD(g);
+  n.style.display=g.exog.length?"block":"none";
+  if(g.exog.length)n.innerHTML=f>0&&getd>0?`GETD com o exógeno: <b>${r0(getd)}</b> kcal/dia (+${Math.round(f*100)}% da taxa basal).`:f>0?"Preencha o perfil para ver o efeito no GETD.":"Só informação: a meta não muda.";
+  updateGoalPreview();
+});
 document.querySelectorAll(".obj-btn").forEach(b=>b.onclick=()=>{
   selectedObj=b.dataset.obj;
   if($("objHint"))$("objHint").style.display="none";
@@ -5170,6 +5342,7 @@ function openGoals(){
   $("gAtiv").value=g.ativ?String(neatAtiv(g.ativ)):"1.4";$("gPesoAlvo").value=g.pesoAlvo||"";$("gMeses").value=g.meses||"";$("gLiquid").value=g.liquidTarget||3000;
   const pa=parseFloat(g.pesoAtual)||0,pv=parseFloat(g.pesoAlvo)||0;
   selectedObj=g.objetivo||(pv&&pa?(pv>pa?"bulking":"cutting"):null);
+  exogForm.set(g.exog,g.clenDose);
   document.querySelectorAll(".obj-btn").forEach(x=>x.classList.toggle("on",x.dataset.obj===selectedObj));
   document.querySelectorAll(".pace-opt").forEach(x=>x.classList.remove("on"));
   document.querySelectorAll("#gSexoSeg button").forEach(x=>x.classList.toggle("on",x.dataset.v===$("gSexo").value));
@@ -5188,7 +5361,8 @@ function updateGoalPreview(){
   setPaces(selectedObj);
   const m=parseFloat(g.meses)||0,days=Math.round(m*30.44),daily=days>0?kg*KPKG/days:0;
   let txt="";
-  if(getd>0)txt+=`GETD estimado: <b>${r0(getd)}</b> kcal/dia.<br>`;
+  const fx=exogFator(g);
+  if(getd>0)txt+=`GETD estimado: <b>${r0(getd)}</b> kcal/dia${fx>0?` (inclui +${Math.round(fx*100)}% da taxa basal pelo exógeno)`:""}.<br>`;
   if(kg>0&&m>0){
     if(selectedObj==="bulking"){
       txt+=`Ganhar <b>${r1(kg)} kg</b> em ${r0(m)} ${m==1?"mês":"meses"} → superávit de <b>${r0(daily)}</b> kcal/dia (<b>${r0(daily*7)}</b>/semana).`;
@@ -5219,13 +5393,40 @@ $("saveGoals").onclick=()=>{
      número parado no tempo. */
   const nasc=(store.goals&&store.goals.nasc)||"";
   const anos=idadeDe(nasc);
-  store.goals={nome,inicio,nasc,objetivo:obj,sexo:g.sexo,idade:anos>0?anos:(parseFloat(g.idade)||0),altura:parseFloat(g.altura)||0,pesoAtual:parseFloat(g.pesoAtual)||0,ativ:parseFloat(g.ativ)||1.2,pesoAlvo:parseFloat(g.pesoAlvo)||0,meses:parseFloat(g.meses)||0,liquidTarget:parseInt(g.liquidTarget)||3000};
+  store.goals={nome,inicio,nasc,objetivo:obj,sexo:g.sexo,idade:anos>0?anos:(parseFloat(g.idade)||0),altura:parseFloat(g.altura)||0,pesoAtual:parseFloat(g.pesoAtual)||0,ativ:parseFloat(g.ativ)||1.2,pesoAlvo:parseFloat(g.pesoAlvo)||0,meses:parseFloat(g.meses)||0,liquidTarget:parseInt(g.liquidTarget)||3000,exog:g.exog||[],clenDose:g.clenDose||0};
   const getd=computeGETD(store.goals);
   if(getd>0){store.getd=Math.round(getd);$("getdInput").value=store.getd;}
   save();render();goalsOverlay.classList.remove("open");
   if(onboarding){onboarding=false;fillUser();showView("inicio");}
 };
 $("cancelGoals").onclick=()=>{goalsOverlay.classList.remove("open");if(onboarding){onboarding=false;showView("inicio");}};
+/* O "+" do Início: quem já usava o app avisa aqui que começou (ou parou) a
+   usar exógeno, sem refazer o objetivo. Salvar recalcula o GETD na hora. */
+const exogPop=montarExog({seg:"exogPopSeg",lista:"exogPopLista",doseWrap:"exogPopDoseWrap",dose:"exogPopDose",doseNota:"exogPopDoseNota"},()=>{
+  const g=Object.assign({},store.goals||{},exogPop.get()),n=$("exogPopNota");
+  const antes=computeGETD(store.goals||{}),depois=computeGETD(g);
+  if(antes<=0)n.innerHTML="Defina seu objetivo no perfil para o app calcular o efeito no GETD.";
+  else if(g.exog.length&&Math.round(depois)!==Math.round(antes))n.innerHTML=`GETD: <b>${r0(antes)}</b> → <b>${r0(depois)}</b> kcal/dia.`;
+  else if(g.exog.length)n.innerHTML="Só informação: a meta não muda.";
+  else n.innerHTML=`GETD: <b>${r0(depois)}</b> kcal/dia.`;
+});
+function abrirExog(){
+  const g=store.goals||{};
+  exogPop.set(g.exog,g.clenDose);
+  $("exogOverlay").classList.add("open");
+  const md=$("exogOverlay").querySelector(".modal");if(md)md.scrollTop=0;
+}
+$("fdMais").onclick=abrirExog;
+$("exogPopVoltar").onclick=()=>$("exogOverlay").classList.remove("open");
+$("exogOverlay").onclick=e=>{if(e.target===$("exogOverlay"))$("exogOverlay").classList.remove("open");};
+$("exogPopSalvar").onclick=()=>{
+  store.goals=store.goals||{};
+  Object.assign(store.goals,exogPop.get());
+  const getd=computeGETD(store.goals);
+  if(getd>0){store.getd=Math.round(getd);$("getdInput").value=store.getd;}
+  save();render();renderInicio();renderPerfil();
+  $("exogOverlay").classList.remove("open");
+};
 goalsOverlay.onclick=e=>{if(e.target===goalsOverlay&&!onboarding)goalsOverlay.classList.remove("open");};
 $("editGoals").onclick=openGoals;$("setGoalBtn").onclick=openGoals;
 /* ---- wizard de objetivo ---- */

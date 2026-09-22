@@ -174,6 +174,48 @@ data de nascimento, e-mail e senha.
   `lang` da página; o valor é sempre ISO. Não tente "consertar" isso.
 - Coberto em `tests/cadastro.spec.js`.
 
+### Uso de exógenos: quem usa clembuterol gasta mais em repouso
+
+O dono pediu que o app fosse "para todos", inclusive para atleta que usa
+anabolizante ou estimulante — e estimulante muda o gasto diário (GETD), logo a
+meta. A pergunta "Faz uso de exógenos?" vive no passo **Sua meta** do objetivo
+(`#gExogSeg`) e no **"+" do Início** (`#fdMais` → `#exogOverlay`), que existe
+para quem já usava o app avisar sem refazer o objetivo. Os dois usam o **mesmo
+marcador** (`montarExog`): eram para ser duas cópias, e cópia é como o defeito
+volta.
+
+- **Marcar uma opção passa pelo pop-up de riscos** (`exogRiscos`,
+  `#exogRiscoOverlay`) antes de valer; "Voltar" deixa desmarcado. Desmarcar
+  não pede nada. O texto dos riscos é o das orientações do Ministério da Saúde
+  e da Anvisa. **Ele foi escrito sem acesso ao gov.br** (o proxy da sessão
+  bloqueia o domínio): confira lá quando puder, e não acrescente número
+  nenhum nele.
+- **Só entra na conta o que foi medido em humanos**, e a fonte fica no código
+  (`EXOG`, `exogFatorDe`):
+  - Clembuterol: **+21% do gasto em repouso** 140 min após 80 mcg, em seis
+    homens jovens — Jessen et al., *Drug Test Anal* 2020;12:610-618, PMID
+    31887249. É **uma dose só**: a resposta por dose não foi medida em pessoas,
+    então o app **escala em proporção** a partir de `CLEN_REF` (80) e **trava
+    em `CLEN_MAX`** (120 mcg). Isso é extrapolação declarada, não medição. Sem
+    dose digitada, vale a do estudo, e a tela diz isso.
+  - Efedrina: **+10%** sustentado, com 20 mg três vezes ao dia por três meses,
+    em cinco mulheres — Astrup et al., *Metabolism* 1986;35:260-265, PMID
+    3512957. Não escala por dose.
+  - Anabolizante: **só informação, a meta não muda.** Não há medida confiável
+    do efeito no gasto (retirada ou reposição aguda de testosterona não mudou
+    o gasto em repouso — Berg et al., *Obesity* 2010, PMID 20448541).
+- **O acréscimo soma sobre a taxa basal, não multiplica o GETD inteiro**
+  (`computeGETD`): o que foi medido foi repouso, e no exercício o efeito do
+  agonista β2 some (Hostrup, salbutamol, PMID 34665856).
+- **Clembuterol e efedrina juntos: vale o maior, não a soma.** Mesmo caminho
+  adrenérgico. Existe teste.
+- **A dose é em microgramas (mcg), e a tela avisa.** Clembuterol se dosa em
+  mcg; "20 mg" seria mil vezes a dose. O campo é `type="text"` com `numBR`,
+  como os do cardio, para a vírgula não sumir.
+- `saveGoals` remonta `store.goals` do zero: `exog` e `clenDose` precisam ser
+  carregados junto, como `nasc`. Existe teste.
+- Coberto em `tests/exogenos.spec.js`.
+
 ### A busca de alimentos
 
 O dono reclamou que "o repertório de pesquisa não achava nada". Havia duas
@@ -338,6 +380,7 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 | `tests/alimentos.spec.js` | Busca de alimentos: plural, ordem, erro de digitação, afinidade; internet automática, kJ, Brasil primeiro |
 | `tests/cardio.spec.js` | Registro manual: distância opcional na caminhada, inclinação da esteira, ganho de elevação em metros, digitação com vírgula |
 | `tests/liquidos.spec.js` | Histórico de ingestão: horário, origem, exclusão, total antigo sem histórico, zerar com confirmação |
+| `tests/exogenos.spec.js` | Uso de exógenos: pop-up de riscos, clembuterol escalando pela dose com teto, efedrina, anabolizante só informação, o "+" do Início |
 | `tests/app-nativo.spec.js` | Caminho web desligado quando o app Android está presente |
 | `tests/service-worker.spec.js` | Cache do app, versão, e a página de diagnóstico |
 | `tests/app.js` | Utilitários: Firebase falso, estado inicial, atalhos de navegação |
