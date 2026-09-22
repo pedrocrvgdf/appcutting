@@ -176,7 +176,9 @@ test.describe('Imersão — o cumprimento entre a abertura e o app', () => {
     expect(im.visivel).toBe(true);
     expect(im.nome, 'o cumprimento é pessoal, não genérico').toBe('Pedro');
     expect(im.ola).toMatch(/^(Bom dia|Boa tarde|Boa noite|Boa madrugada),$/);
-    expect(im.data, 'a data por extenso, em português').toMatch(/^\w+, \d{1,2} de [a-zç]+$/);
+    /* `\w` não casa "Terça" nem "Sábado": o teste só passava nos outros cinco
+       dias da semana. */
+    expect(im.data, 'a data por extenso, em português').toMatch(/^[A-Za-zÀ-ú]+, \d{1,2} de [a-zç]+$/);
     expect(erros).toEqual([]);
   });
 
