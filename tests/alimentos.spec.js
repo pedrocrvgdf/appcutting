@@ -204,6 +204,46 @@ test.describe('Busca na internet', () => {
     expect((await nomesDoDrop(page))[0]).toMatch(/frango/i);
   });
 
+  test('banco com pouca resposta: a internet complementa embaixo, sem tirar o local', async ({ page }) => {
+    /* "linguiça" tinha um nome só no banco, e o dono concluía que o app "não
+       acha linguiça". Agora o que vem de fora entra embaixo do que é daqui. */
+    const LINGUICAS = [
+      { product_name: 'Linguiça Calabresa', brands: 'Sadia', countries_tags: ['en:brazil'],
+        nutriments: { 'energy-kcal_100g': 300, proteins_100g: 14, carbohydrates_100g: 2, fat_100g: 26 } },
+      { product_name: 'Linguiça Toscana', brands: 'Perdigão', countries_tags: ['en:brazil'],
+        nutriments: { 'energy-kcal_100g': 280, proteins_100g: 15, carbohydrates_100g: 1, fat_100g: 24 } },
+    ];
+    await comOff(page, LINGUICAS);
+    await abrirApp(page, estadoBase());
+    await irAlimentacao(page);
+    await digitar(page, 'linguiça');
+    const antes = await nomesDoDrop(page);
+    expect(antes.length, 'o banco responde na hora').toBeGreaterThan(0);
+    await page.waitForTimeout(1300);
+
+    const locais = await nomesDoDrop(page);
+    const online = await nomesOnline(page);
+    expect(locais, 'o que é local continua em cima').toEqual(antes);
+    expect(online.length, 'a internet entrou sozinha para complementar').toBe(2);
+    const ordem = await page.evaluate(() => [...document.querySelectorAll('#drop .opt')].map(o => o.dataset.idx !== undefined ? 'local' : (o.dataset.offidx !== undefined ? 'online' : 'outro')));
+    expect(ordem.indexOf('online'), 'internet vem depois do local').toBeGreaterThan(ordem.lastIndexOf('local'));
+    expect(await page.evaluate(() => !!document.querySelector('#drop [data-off]')), 'a linha de buscar some quando a busca já foi feita').toBe(false);
+  });
+
+  test('banco com resposta farta: a internet não é consultada sozinha', async ({ page }) => {
+    /* Mandar o que a pessoa digita para fora sem necessidade é dado saindo à toa. */
+    let chamadas = 0;
+    const ctx = page.context();
+    await ctx.route('**/openfoodfacts.org/**', r => { chamadas++; r.fulfill({ status: 200, contentType: 'application/json', body: '{"hits":[]}' }); });
+    await ctx.route('**/api.allorigins.win/**', r => r.abort());
+    await abrirApp(page, estadoBase());
+    await irAlimentacao(page);
+    await digitar(page, 'frango');
+    await page.waitForTimeout(1300);
+    expect((await nomesDoDrop(page)).length).toBeGreaterThanOrEqual(3);
+    expect(chamadas).toBe(0);
+  });
+
   test('a linha para forçar a busca continua quando o banco já respondeu', async ({ page }) => {
     await comOff(page, PRODUTOS);
     await abrirApp(page, estadoBase());

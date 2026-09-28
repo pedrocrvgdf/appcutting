@@ -255,10 +255,15 @@ causas, e nenhuma era o tamanho do banco.
 - **A busca do protocolo de refeições (`#pmSearch`) usa a mesma função.** Eram
   duas cópias do `includes`; consertar uma e esquecer a outra é como o defeito
   volta.
-- **A internet entra sozinha quando o banco não responde**, 700 ms depois de a
-  pessoa parar de digitar (`offAutoT`). A linha "Buscar na internet" continua
-  para quem quiser forçar. Resposta que chega para uma frase que a pessoa já
-  trocou é descartada.
+- **A internet entra sozinha quando o banco responde pouco** (menos de
+  `OFF_MIN` nomes, hoje 3), 700 ms depois de a pessoa parar de digitar
+  (`offAutoT`). "Linguiça" tinha um nome só no banco e o dono concluía que o
+  app "não acha linguiça". O que vem de fora entra **embaixo** do que é local
+  (`pintarDrop` redesenha os dois), sem repetir nome; com o banco vazio a
+  lista vira só internet. Com resposta farta a internet **não** é consultada
+  sozinha: é o que a pessoa digitou saindo para um terceiro sem necessidade. A
+  linha "Buscar na internet" continua para quem quiser forçar. Resposta que
+  chega para uma frase que a pessoa já trocou é descartada.
 - **Open Food Facts:** produto que só traz a energia em kJ (`energy_100g`)
   entra, convertido (÷ 4,184) — exigir `energy-kcal_100g` jogava fora
   justamente os rótulos brasileiros. Produto do Brasil (`countries_tags`) vem

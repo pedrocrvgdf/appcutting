@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v33";
+window.APP_RELEASE = "tresults-v34";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -4544,27 +4544,39 @@ function localList(){return [...(store.custom||[]),...FOODS];}
    depois de a pessoa parar de digitar, para não disparar uma consulta por
    letra. A linha "Buscar na internet" continua ali para quem quiser forçar. */
 let offAutoT=null;
-function renderDrop(){
-  const raw=search.value.trim(),q=norm(raw);
-  clearTimeout(offAutoT);
-  if(!q){closeDrop();return;}
-  currentResults=buscaAlimentos(raw,localList(),8);hlIndex=-1;
-  if(!currentResults.length&&raw.length>=3){
-    offAutoT=setTimeout(()=>{ if(search.value.trim()===raw&&!manualMode&&!picked)offSearch(raw); },700);
-  }
+/* A internet complementa o banco quando ele responde pouco (menos de OFF_MIN
+   nomes), e não só quando responde nada: "linguiça" tinha um nome no banco, e
+   a pessoa concluía que o app "não acha linguiça". O que vem de fora entra
+   EMBAIXO do que é local, sem repetir nome; com o banco vazio, a lista vira só
+   internet, como antes. */
+const OFF_MIN=3;
+const linhaOff=raw=>`<div class="opt off-row" data-off="1"><span class="n" style="color:var(--primary)">🔎 Buscar "${esc(raw)}" na internet</span><span class="m">Open Food Facts</span></div>`;
+/* Redesenha a lista: os nomes locais de `currentResults` em cima, e `extra`
+   (linha de buscar, aviso ou resultados da internet) embaixo. */
+function pintarDrop(extra){
   let html=currentResults.map((f,idx)=>{
     const isCustom=(store.custom||[]).includes(f);
     const meta=f.fixed?`${f.k} kcal · P${f.p} C${f.c} G${f.g} · porção`:`${f.k} kcal · P${f.p} C${f.c} G${f.g} /100g`;
     const rm=isCustom?`<button class="rm" data-rmidx="${idx}" title="Remover">×</button>`:"";
     return `<div class="opt" data-idx="${idx}"><span class="n">${esc(f.n)}</span><span class="m">${meta}${rm}</span></div>`;
-  }).join("");
-  if(raw.length>=2)html+=`<div class="opt off-row" data-off="1"><span class="n" style="color:var(--primary)">🔎 Buscar "${esc(raw)}" na internet</span><span class="m">Open Food Facts</span></div>`;
+  }).join("")+(extra||"");
   if(!html)html=`<div class="opt empty">Digite ao menos 2 letras…</div>`;
   drop.innerHTML=html;
   drop.querySelectorAll(".opt[data-idx]").forEach(o=>o.onclick=()=>selectFood(currentResults[+o.dataset.idx]));
   drop.querySelectorAll(".rm[data-rmidx]").forEach(b=>b.onclick=e=>{e.stopPropagation();const f=currentResults[+b.dataset.rmidx];store.custom=(store.custom||[]).filter(x=>x!==f);save();renderDrop();});
-  const off=drop.querySelector("[data-off]");if(off)off.onclick=e=>{e.stopPropagation();offSearch(raw);};
+  drop.querySelectorAll("[data-offidx]").forEach(o=>o.onclick=e=>{e.stopPropagation();selectOnline(offResults[+o.dataset.offidx]);});
+  const off=drop.querySelector("[data-off]");if(off)off.onclick=e=>{e.stopPropagation();offSearch(search.value.trim());};
   drop.classList.add("open");
+}
+function renderDrop(){
+  const raw=search.value.trim(),q=norm(raw);
+  clearTimeout(offAutoT);
+  if(!q){closeDrop();return;}
+  currentResults=buscaAlimentos(raw,localList(),8);hlIndex=-1;offResults=[];
+  if(currentResults.length<OFF_MIN&&raw.length>=3){
+    offAutoT=setTimeout(()=>{ if(search.value.trim()===raw&&!manualMode&&!picked)offSearch(raw); },700);
+  }
+  pintarDrop(raw.length>=2?linhaOff(raw):"");
 }
 search.addEventListener("input",()=>{ if(manualMode)return; if(picked)clearPick(false); renderDrop(); });
 
@@ -4661,16 +4673,19 @@ async function offFetch(q){
   return hits;
 }
 async function offSearch(q){
-  drop.innerHTML=`<div class="opt empty">Buscando "${esc(q)}" na internet…</div>`;
+  pintarDrop(`<div class="opt empty">Buscando "${esc(q)}" na internet…</div>`);
   try{
     const hits=await offFetch(q);
     if(search.value.trim()!==q)return;          // a pessoa já digitou outra coisa
-    offResults=ordenarOff(hits,q).slice(0,15);
-    if(offResults.length===0){drop.innerHTML=`<div class="opt empty">Nada encontrado com dados de calorias. Tente outro nome ou use "Inserir manualmente".</div>`;return;}
-    drop.innerHTML=offResults.map((f,idx)=>`<div class="opt" data-offidx="${idx}"><span class="n">${esc(f.n)}</span><span class="m">${f.k} kcal · P${f.p} C${f.c} G${f.g} /100g 🌐</span></div>`).join("");
-    drop.querySelectorAll("[data-offidx]").forEach(o=>o.onclick=e=>{e.stopPropagation();selectOnline(offResults[+o.dataset.offidx]);});
+    const locais=new Set(currentResults.map(f=>norm(f.n)));
+    offResults=ordenarOff(hits,q).filter(f=>!locais.has(norm(f.n))).slice(0,15);
+    if(offResults.length===0){
+      pintarDrop(`<div class="opt empty">${currentResults.length?"Nada mais na internet.":"Nada encontrado com dados de calorias. Tente outro nome ou use \"Inserir manualmente\"."}</div>`);
+      return;
+    }
+    pintarDrop(offResults.map((f,idx)=>`<div class="opt" data-offidx="${idx}"><span class="n">${esc(f.n)}</span><span class="m">${f.k} kcal · P${f.p} C${f.c} G${f.g} /100g 🌐</span></div>`).join(""));
   }catch(e){
-    drop.innerHTML=`<div class="opt empty">Não consegui buscar online agora (sem conexão ou serviço indisponível). Tente de novo em instantes.</div>`;
+    pintarDrop(`<div class="opt empty">Não consegui buscar online agora (sem conexão ou serviço indisponível). Tente de novo em instantes.</div>`);
   }
 }
 function selectOnline(f){
