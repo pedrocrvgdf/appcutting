@@ -84,4 +84,21 @@ test.describe('Cache do service worker', () => {
     expect(diag).not.toMatch(/localStorage\s*\.\s*(clear|removeItem|setItem)/);
     expect(diag).not.toMatch(/indexedDB\s*\.\s*deleteDatabase/);
   });
+
+  test('a página de diagnóstico mostra o rastro que o app anotou', async ({ page }) => {
+    /* É por aqui que um "o teclado fechou sozinho" vira dado: a página lê
+       tresults.rastro e o põe no relatório, do mais recente ao mais antigo. */
+    await page.addInitScript(() => {
+      localStorage.setItem('tresults.rastro', JSON.stringify([
+        { t: 1700000000000, s: 0.1, e: 'abriu tresults-v35 · app Android' },
+        { t: 1700000004000, s: 4.1, e: 'busca perdeu foco → ninguém' },
+      ]));
+    });
+    await page.route('**/*', r => (/\.html$/.test(new URL(r.request().url()).pathname) ? r.continue() : r.abort()));
+    await page.goto('file://' + path.join(RAIZ, 'diag.html'));
+    await page.waitForTimeout(600);
+    const rastro = await page.evaluate(() => [...document.querySelectorAll('#rastro .li .val')].map(e => e.textContent));
+    expect(rastro[0]).toBe('busca perdeu foco → ninguém');
+    expect(rastro[1]).toMatch(/app Android/);
+  });
 });
