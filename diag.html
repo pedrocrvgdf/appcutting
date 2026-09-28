@@ -59,6 +59,15 @@
 </div>
 
 <div class="card">
+  <h2>Últimos acontecimentos</h2>
+  <p class="nota">O app anota o que acontece em volta de um problema: quem perdeu o
+  foco e para quem, se a tela se escondeu, se a janela mudou de tamanho, qual tela
+  abriu. <strong>Nunca o que você digitou.</strong> Se algo estranho aconteceu,
+  abra esta página logo depois e copie o relatório.</p>
+  <div id="rastro"></div>
+</div>
+
+<div class="card">
   <h2>Testar</h2>
   <button id="bNotif">Mostrar uma notificação agora</button>
   <p class="nota">Faz exatamente o que o app faz ao começar o descanso. Se não
@@ -96,6 +105,20 @@ const comPrazo = (p, ms, seNao) =>
 const versaoDe = txt => (txt.match(/APP_RELEASE\s*=\s*"([^"]+)"/) || [,'não encontrada'])[1];
 
 (async () => {
+
+  /* ---------- Últimos acontecimentos ----------
+     Só leitura: o app escreve em tresults.rastro; esta página mostra. */
+  try {
+    const rastro = JSON.parse(localStorage.getItem('tresults.rastro') || '[]');
+    if (!rastro.length) li('rastro', 'Nada anotado ainda', 'abra o app e volte aqui', 'alerta');
+    rastro.slice().reverse().forEach(r => {
+      const d = new Date(r.t);
+      const hora = String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') + ':' + String(d.getSeconds()).padStart(2,'0');
+      li('rastro', hora + ' (+' + r.s + 's)', String(r.e).replace(/</g,'&lt;'));
+    });
+  } catch (e) {
+    li('rastro', 'Rastro', 'não deu para ler: ' + e.message, 'ruim');
+  }
 
   /* ---------- Versão ----------
      O nome do cache é o sinal confiável: ele acompanha a versão do app e não

@@ -271,6 +271,18 @@ causas, e nenhuma era o tamanho do banco.
   corrida: entra se os diretos demoram 3,5 s ou assim que os dois falham, e
   não entra se já houve resposta — seria mandar o que a pessoa digitou a um
   terceiro sem necessidade.
+- **Com o teclado aberto, a lista precisa caber no que sobra da tela**
+  (`ajustarDrop`). No app Android (targetSdk 35) a página **não encolhe** para
+  o teclado: ele só cobre, e a lista nascia embaixo dele. O `visualViewport`
+  sabe o que está visível de verdade; a barra de abas, fixa embaixo, também
+  tira espaço. O campo sobe para o alto ao ganhar foco (`subirBusca`).
+- **O rastro para diagnóstico** (`rastro()`, chave `tresults.rastro`, últimos
+  40) existe porque o dono relatou "o teclado fecha sozinho" no app Android e
+  nada no código faz isso por tempo. O app anota quem tirou o foco da busca e
+  para quem, página escondida/visível, tamanho da janela visível e troca de
+  tela; o `diag.html` mostra. **Nunca anote o que a pessoa digitou.**
+  `rastro` é `function`, não `const`, porque `showView` a chama e pode rodar
+  antes da linha em que ela é definida.
 - **Não invente valores nutricionais.** O banco local não foi ampliado nesta
   rodada porque não havia tabela TACO alcançável para importar; números
   chutados num app de dieta são pior que "não achei". Se um dia importar,

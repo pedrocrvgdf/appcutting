@@ -244,6 +244,49 @@ test.describe('Busca na internet', () => {
     expect(chamadas).toBe(0);
   });
 
+});
+
+test.describe('A lista com o teclado aberto', () => {
+
+  test('em tela curta, a lista cabe entre o campo e a barra de abas, e o campo sobe', async ({ page }) => {
+    /* No celular o teclado toma metade da tela. A lista nascia embaixo do
+       campo, debaixo do teclado ou da barra de abas, e a pessoa não via o
+       que ia escolher. */
+    await page.setViewportSize({ width: 390, height: 470 });
+    await abrirApp(page, estadoBase());
+    await irAlimentacao(page);
+    await page.evaluate(() => document.getElementById('search').focus());
+    await digitar(page, 'ovo');
+    await page.waitForTimeout(900);
+
+    const m = await page.evaluate(() => {
+      const d = document.getElementById('drop').getBoundingClientRect();
+      const tb = document.getElementById('tabbar').getBoundingClientRect();
+      const s = document.getElementById('search').getBoundingClientRect();
+      return { fundoLista: d.bottom, topoBarra: tb.top, topoCampo: s.top, alturaJanela: window.innerHeight, maxH: document.getElementById('drop').style.maxHeight };
+    });
+    expect(m.fundoLista, 'a lista não pode entrar debaixo da barra de abas').toBeLessThanOrEqual(m.topoBarra + 1);
+    expect(m.fundoLista).toBeLessThanOrEqual(m.alturaJanela);
+    expect(m.topoCampo, 'o campo sobe para o alto, para a lista ter espaço').toBeLessThan(120);
+    expect(m.maxH).toMatch(/px$/);
+  });
+
+  test('o app anota quem tirou o foco da busca, para o diagnóstico', async ({ page }) => {
+    await abrirApp(page, estadoBase());
+    await irAlimentacao(page);
+    await page.evaluate(() => document.getElementById('search').focus());
+    await digitar(page, 'ovo');
+    await page.evaluate(() => document.getElementById('search').blur());
+    await page.waitForTimeout(100);
+
+    const rastro = await page.evaluate(() => JSON.parse(localStorage.getItem('tresults.rastro') || '[]').map(r => r.e));
+    expect(rastro.some(e => /^abriu tresults-v\d+/.test(e))).toBe(true);
+    expect(rastro).toContain('tela food');
+    expect(rastro).toContain('busca ganhou foco');
+    expect(rastro).toContain('busca perdeu foco → ninguém');
+    expect(rastro.join(' '), 'nunca o que a pessoa digitou').not.toMatch(/ovo/);
+  });
+
   test('a linha para forçar a busca continua quando o banco já respondeu', async ({ page }) => {
     await comOff(page, PRODUTOS);
     await abrirApp(page, estadoBase());

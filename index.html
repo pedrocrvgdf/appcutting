@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v34";
+window.APP_RELEASE = "tresults-v35";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -2490,6 +2490,7 @@ function fecharSessao(){$("sessaoOverlay").classList.remove("open");}
 
 function showView(name){
   hideSplash();
+  if(currentView!==name)rastro("tela "+name);
   currentView=name;
   document.querySelectorAll(".view").forEach(v=>v.classList.remove("on"));
   $("view-"+name).classList.add("on");
@@ -4539,6 +4540,48 @@ function bindRows(){
 
 const search=$("search"),drop=$("drop");
 let hlIndex=-1,currentResults=[],offResults=[];
+/* ---- rastro para diagnóstico ----
+   O dono relatou o teclado fechando sozinho no app Android, no meio da busca.
+   Nada no código faz isso por tempo, e no navegador não acontece. Sem ver o
+   celular, o jeito é o app anotar o que houve nos segundos em volta: quem
+   perdeu o foco e para quem, se a página se escondeu, se a janela mudou de
+   tamanho, qual tela abriu. Fica em tresults.rastro (últimos 40) e aparece no
+   diag.html. Nunca guarda o que a pessoa digitou. É function, e não const,
+   para valer também para quem a chama antes desta linha rodar. */
+function rastro(ev){
+  try{
+    const l=JSON.parse(localStorage.getItem("tresults.rastro")||"[]");
+    l.push({t:Date.now(),s:Math.round(performance.now()/100)/10,e:String(ev).slice(0,60)});
+    localStorage.setItem("tresults.rastro",JSON.stringify(l.slice(-40)));
+  }catch(e){}
+}
+rastro("abriu "+(window.APP_RELEASE||"")+(appNativo?" · app Android":" · navegador"));
+document.addEventListener("visibilitychange",()=>rastro(document.hidden?"página escondida":"página visível"));
+window.addEventListener("pagehide",()=>rastro("página saindo"));
+search.addEventListener("focus",()=>{rastro("busca ganhou foco");setTimeout(subirBusca,350);});
+search.addEventListener("focusout",e=>rastro("busca perdeu foco → "+(e.relatedTarget?(e.relatedTarget.id||e.relatedTarget.tagName.toLowerCase()):"ninguém")));
+/* Com o teclado aberto, a lista precisa caber no que sobra da tela. No app
+   Android a página não encolhe para o teclado (targetSdk 35): ele só cobre. O
+   visualViewport sabe o que está visível de verdade; a barra de abas, fixa
+   embaixo, também tira espaço. E o campo sobe para o alto da tela ao ganhar
+   foco, senão a lista nasce debaixo do teclado. */
+function ajustarDrop(){
+  if(!drop.classList.contains("open"))return;
+  const vv=window.visualViewport;
+  const fundo=vv?vv.offsetTop+vv.height:window.innerHeight;
+  const tb=$("tabbar");
+  const tbTopo=(tb&&tb.classList.contains("show"))?tb.getBoundingClientRect().top:Infinity;
+  const espaco=Math.min(fundo,tbTopo)-drop.getBoundingClientRect().top-8;
+  drop.style.maxHeight=Math.max(120,Math.min(260,espaco))+"px";
+}
+function subirBusca(){
+  if(document.activeElement!==search)return;
+  const y=search.getBoundingClientRect().top+window.scrollY-12;
+  if(y>window.scrollY+40)window.scrollTo({top:y,behavior:"smooth"});
+  setTimeout(ajustarDrop,350);
+}
+if(window.visualViewport)window.visualViewport.addEventListener("resize",()=>{rastro("janela visível "+Math.round(window.visualViewport.height)+"px");ajustarDrop();});
+window.addEventListener("scroll",ajustarDrop,{passive:true});
 function localList(){return [...(store.custom||[]),...FOODS];}
 /* Quando o banco local não responde, a busca na internet começa sozinha —
    depois de a pessoa parar de digitar, para não disparar uma consulta por
@@ -4567,6 +4610,7 @@ function pintarDrop(extra){
   drop.querySelectorAll("[data-offidx]").forEach(o=>o.onclick=e=>{e.stopPropagation();selectOnline(offResults[+o.dataset.offidx]);});
   const off=drop.querySelector("[data-off]");if(off)off.onclick=e=>{e.stopPropagation();offSearch(search.value.trim());};
   drop.classList.add("open");
+  ajustarDrop();
 }
 function renderDrop(){
   const raw=search.value.trim(),q=norm(raw);
