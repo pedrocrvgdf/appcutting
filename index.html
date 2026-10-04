@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v35";
+window.APP_RELEASE = "tresults-v36";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -1096,6 +1096,24 @@ window.APP_RELEASE = "tresults-v35";
   .exog-local em{font-style:normal;font-size:12px;color:var(--muted);font-weight:600;line-height:1.4;margin-top:2px}
   .pfg-exog{font-size:12px;font-weight:700;margin-top:6px;opacity:.9}
 
+  /* ---- passos do dia ---- */
+  .passos-row{display:flex;align-items:center;gap:10px;width:100%;margin-top:12px;padding:10px 12px;
+    border-radius:16px;background:var(--primary-08);text-align:left;border:0}
+  .passos-row svg{width:20px;height:20px;flex:none;stroke:var(--primary);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+  .passos-row .tx{display:flex;flex-direction:column;min-width:0;flex:1}
+  .passos-row b{font-size:13.5px;font-weight:800;color:var(--ink)}
+  .passos-row em{font-style:normal;font-size:12px;color:var(--muted);font-weight:600;line-height:1.35}
+  .passos-row svg.chev{width:15px;height:15px;opacity:.45;stroke:var(--ink);stroke-width:3}
+  .passos-row:active{transform:scale(.98)}
+  .passos-nota{display:block;margin-top:8px;font-size:12px;color:var(--muted);line-height:1.45}
+  .fd-passos{display:flex;align-items:center;gap:10px;width:100%;height:46px;padding:0 14px;margin:0 0 14px;
+    background:var(--surface);border:0;border-radius:15px;box-shadow:var(--sombra-sm);
+    font-weight:800;font-size:13.5px;color:var(--ink);text-align:left}
+  .fd-passos svg{width:19px;height:19px;flex:none;stroke:var(--primary);fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+  .fd-passos span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .fd-passos svg.chev{width:15px;height:15px;opacity:.45;stroke:var(--ink);stroke-width:3}
+  .fd-passos:active{transform:scale(.97)}
+
 </style>
 </head>
 <body>
@@ -1288,6 +1306,14 @@ window.APP_RELEASE = "tresults-v35";
     <svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
   </button>
 
+  <!-- Passos de hoje: mostra o que foi lançado e abre o mesmo pop-up da
+       Alimentação, sempre para o dia de hoje. -->
+  <button class="fd-passos" id="fdPassos" type="button">
+    <svg viewBox="0 0 24 24"><circle cx="13.5" cy="4" r="1.8"/><path d="M9.5 21l2-7.5M14.5 21l-1.5-5-2.5-2.5 1-5 3 2 3 1M8 12l3-5"/></svg>
+    <span id="fdPassosTx">Lançar os passos de hoje</span>
+    <svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
+  </button>
+
   <div class="fd-atalhos">
     <button class="fd-atalho" id="fdIrProgresso">
       <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>
@@ -1344,6 +1370,13 @@ window.APP_RELEASE = "tresults-v35";
       <div class="m2"><div class="r"><span class="t">Gord</span><span><b id="mGord">0</b><small id="mGordT">g</small></span></div><div class="bar2"><span id="mGordBar" style="width:0%"></span></div></div>
     </div>
     <div class="getd">Meta diária (GETD): <input class="num" id="getdInput" type="number" inputmode="numeric" value="3050"> kcal</div>
+    <!-- Passos do dia: o que o celular contou vira distância e calorias, e
+         entra no gasto deste dia. Abre o pop-up #passosOverlay. -->
+    <button class="passos-row" id="passosRow" type="button">
+      <svg viewBox="0 0 24 24"><circle cx="13.5" cy="4" r="1.8"/><path d="M9.5 21l2-7.5M14.5 21l-1.5-5-2.5-2.5 1-5 3 2 3 1M8 12l3-5"/></svg>
+      <span class="tx"><b id="passosTit">Passos do dia</b><em id="passosSub">Toque para lançar o que o celular contou</em></span>
+      <svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
+    </button>
   </section>
 
   <section class="sec">
@@ -1673,6 +1706,25 @@ window.APP_RELEASE = "tresults-v35";
     <p id="appDlgMsg" style="font-size:14px;color:var(--muted);line-height:1.6;text-align:center;margin:0"></p>
     <button class="btn" id="appDlgOk">OK</button>
     <button class="btn secondary" id="appDlgCancel">Cancelar</button>
+  </div>
+</div>
+
+<!-- PASSOS DO DIA — aberto pela linha da Alimentação e pelo selo do Início -->
+<div class="overlay" id="passosOverlay" style="z-index:100">
+  <div class="modal" style="max-width:460px">
+    <div class="gw-step" id="passosData">Hoje</div>
+    <h3 style="margin-bottom:4px">Passos do dia</h3>
+    <p class="gw-sub">O número que o celular ou o relógio mostra. O app converte em distância pela sua altura, e em calorias pelo seu peso.</p>
+    <div class="field"><label class="lbl" for="passosN">Passos</label><input class="in num" id="passosN" type="text" inputmode="numeric" placeholder="8000"></div>
+    <div id="passosAtivWrap" style="display:none">
+      <label class="lbl" style="margin:16px 0 8px">Esses passos já incluem a atividade de hoje?</label>
+      <div class="seg" id="passosIncSeg" data-v="sim"><button type="button" data-v="sim" class="on">Sim</button><button type="button" data-v="nao">Não</button></div>
+      <p class="campo-nota passos-nota" id="passosAtivNota"></p>
+    </div>
+    <div class="gw-hint" id="passosNota"></div>
+    <button class="btn" id="passosSalvar">Salvar</button>
+    <button class="btn secondary" id="passosZerar" style="display:none">Apagar os passos deste dia</button>
+    <button class="btn secondary" id="passosVoltar">Voltar</button>
   </div>
 </div>
 
@@ -2251,8 +2303,8 @@ let currentView=null;
 let qtyUnit="g";
 let selectedObj=null, promptedSetup=false, onboarding=false;
 
-function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.days){s.custom=s.custom||[];s.goals=s.goals||{};s.liquids=s.liquids||{};s.protocol=s.protocol||[];s.weights=s.weights||[];s.tprotocol=s.tprotocol||[];s.tdays=s.tdays||{};return s;}}catch(e){}return {getd:0,days:{},custom:[],goals:{},liquids:{},protocol:[],weights:[],tprotocol:[],tdays:{}};}
-function blankStore(){return {getd:0,days:{},custom:[],goals:{},liquids:{},protocol:[],weights:[],tprotocol:[],tdays:{}};}
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.days){s.custom=s.custom||[];s.goals=s.goals||{};s.liquids=s.liquids||{};s.protocol=s.protocol||[];s.weights=s.weights||[];s.tprotocol=s.tprotocol||[];s.tdays=s.tdays||{};s.passos=s.passos||{};return s;}}catch(e){}return {getd:0,days:{},custom:[],goals:{},liquids:{},protocol:[],weights:[],tprotocol:[],tdays:{},passos:{}};}
+function blankStore(){return {getd:0,days:{},custom:[],goals:{},liquids:{},protocol:[],weights:[],tprotocol:[],tdays:{},passos:{}};}
 const OWNER_KEY="cutting.owner";
 const getOwner=()=>localStorage.getItem(OWNER_KEY);
 const setOwner=uid=>localStorage.setItem(OWNER_KEY,uid||"");
@@ -2396,6 +2448,8 @@ function renderInicio(){
     $("fdSaldoSub").textContent="Toque para configurar";
     if(arco)arco.setAttribute("stroke-dasharray","0 314");
   }
+
+  renderFdPassos();
 
   /* --- feed --- */
   const todas=fdTodas();
@@ -2550,6 +2604,19 @@ $("goTreino").onclick=()=>showView("treino");
 /* dist: a distância é obrigatória — sem ela não há conta.
    distOpc: a distância é aceita, mas quem não mediu registra só pela duração.
    inc: a atividade aceita inclinação (só a esteira sabe a própria rampa). */
+/* Custo líquido do plano, em kcal por kg por km acima do repouso. O dono pediu
+   "o que for cientificamente mais correto", e os dois valores saem da mesma
+   fonte: as equações metabólicas do ACSM (Guidelines for Exercise Testing and
+   Prescription), que são o padrão da fisiologia do exercício.
+   - Caminhada: 0,1 mL O2/kg por metro → 100 mL/kg por km → ×5 kcal/L = 0,50.
+     Bate com o clássico de Margaria (1963), ~0,5 kcal/kg/km.
+   - Corrida: 0,2 mL O2/kg por metro → 1,0 kcal/kg/km; Minetti (2002) mediu
+     0,86. O app fica em 0,90 para todas as faixas de corrida, inclusive o
+     trote, que antes tinha 0,60 sem fonte nenhuma.
+   Antes a caminhada estava em 0,32, também sem fonte, e a auditoria por quatro
+   fontes convergiu em 0,50–0,60. Mudar isto muda o número de quem já
+   registrou: o histórico antigo ficou com o custo antigo. */
+const CUSTO_CAMINHADA=0.50,CUSTO_TROTE=0.90;
 const T_ACTS=[
  {n:"Esteira",dist:true,fac:0.95,inc:true,ganho:true},{n:"Aeróbico ao ar livre",dist:true,fac:1,ganho:true},
  {n:"Musculação",met:5},{n:"Caminhada",met:3.5,distOpc:true},
@@ -2684,8 +2751,8 @@ function taCalc(){
     if(km<=0||min<=0)return {name:a.n,min,km,kcal:0,ok:false};
     const speed=km/(min/60);
     let cost,label; // custos líquidos (kcal/kg/km acima do repouso)
-    if(speed<6.5){cost=0.32;label="caminhada";}
-    else if(speed<8){cost=0.60;label="trote leve";}
+    if(speed<6.5){cost=CUSTO_CAMINHADA;label="caminhada";}
+    else if(speed<8){cost=CUSTO_TROTE;label="trote leve";}
     else if(speed<11){cost=0.90;label="corrida moderada";}
     else{cost=0.95;label="corrida intensa";}
     /* Duas maneiras de dizer a mesma subida, e cada aparelho fala uma:
@@ -4297,7 +4364,7 @@ function goalsParaNuvem(g){
 function applyRemote(data){
   applyingRemote=true;
   const meu=(store&&store.goals&&store.goals.exogLocal)?EXOG_CAMPOS.reduce((o,k)=>{if(store.goals[k]!==undefined)o[k]=store.goals[k];return o;},{}):null;
-  store={getd:data.getd||0,days:data.days||{},custom:data.custom||[],goals:data.goals||{},liquids:data.liquids||{},protocol:data.protocol||[],weights:data.weights||[],tprotocol:data.tprotocol||[],tdays:data.tdays||{}};
+  store={getd:data.getd||0,days:data.days||{},custom:data.custom||[],goals:data.goals||{},liquids:data.liquids||{},protocol:data.protocol||[],weights:data.weights||[],tprotocol:data.tprotocol||[],tdays:data.tdays||{},passos:data.passos||{}};
   if(meu)Object.assign(store.goals,meu);
   viewKey=todayKey();realToday=todayKey();
   localStorage.setItem(KEY,JSON.stringify(store));
@@ -4312,7 +4379,7 @@ function pushRemote(immediate){
   clearTimeout(pushTimer);
   const doPush=async()=>{
     setSyncDot("saving","Salvando…");
-    try{ await setDoc(doc(db,"users",user.uid),{getd:store.getd,days:store.days,custom:store.custom||[],goals:goalsParaNuvem(store.goals),liquids:store.liquids||{},protocol:store.protocol||[],weights:store.weights||[],tprotocol:store.tprotocol||[],tdays:store.tdays||{},writer:DEVICE,updatedAt:serverTimestamp()}); setSyncDot("ok","Sincronizado"); }
+    try{ await setDoc(doc(db,"users",user.uid),{getd:store.getd,days:store.days,custom:store.custom||[],goals:goalsParaNuvem(store.goals),liquids:store.liquids||{},protocol:store.protocol||[],weights:store.weights||[],tprotocol:store.tprotocol||[],tdays:store.tdays||{},passos:store.passos||{},writer:DEVICE,updatedAt:serverTimestamp()}); setSyncDot("ok","Sincronizado"); }
     catch(e){ setSyncDot("err","Salvo local"); }
   };
   if(immediate)return doPush();
@@ -4498,11 +4565,13 @@ function render(){
     $("consumed").textContent=r0(tK);$("metaShow").textContent=r0(meta);
     const frac=Math.max(0,Math.min(1,meta>0?tK/meta:0));
     if(ring){ring.style.strokeDashoffset=(RC*(1-frac)).toFixed(1);ring.style.stroke=over?"var(--warn)":"var(--primary)";}
-    const burn=burnedKcal(viewKey);
+    const burn=burnedKcal(viewKey),ps=passosDia(viewKey);
     if($("burnShow"))$("burnShow").textContent="+"+r0(burn);
-    $("statusLine").textContent=burn>0?`Gasto do dia — ${r0(getd)} (GETD) + ${r0(burn)} (treino) = ${r0(getd+burn)} kcal`:`GETD — ${r0(getd)} kcal`;
+    if(ps&&ps.calculavel)$("statusLine").textContent=`Gasto do dia — ${r0(baseSemRotina())} (base) + ${r0(ps.kcal)} (passos)${burn>0?` + ${r0(burn)} (treino)`:""} = ${r0(gastoDia(viewKey))} kcal`;
+    else $("statusLine").textContent=burn>0?`Gasto do dia — ${r0(getd)} (GETD) + ${r0(burn)} (treino) = ${r0(getd+burn)} kcal`:`GETD — ${r0(getd)} kcal`;
     $("statusLine").style.color="var(--muted)";
   }
+  renderPassos();
   $("mProt").textContent=r1(tP);$("mCarb").textContent=r1(tC);$("mGord").textContent=r1(tG);
   renderMacroBars(tP,tC,tG);
   const lc=$("listCons");
@@ -4857,7 +4926,42 @@ function goalTargets(){
 }
 function isConfigured(){const g=store.goals||{};return computeGETD(g)>0&&(parseFloat(g.pesoAlvo)||0)>0&&(parseFloat(g.meses)||0)>0;}
 function burnedKcal(dk){return ((store.tdays&&store.tdays[dk])||[]).reduce((a,w)=>a+(w.kcal||0),0);}
-function gastoDia(dk){return store.getd+burnedKcal(dk);}
+/* ---- passos do dia ----
+   A pessoa digita o total que o celular ou o relógio contou; o app converte em
+   distância pela altura e em calorias pelo peso, com o mesmo custo da
+   caminhada do cardio (CUSTO_CAMINHADA).
+   - Passo = 0,415 × altura (homem) ou 0,413 × altura (mulher): a regra padrão
+     de calibração de pedômetro.
+   - Caminhada, corrida e esteira registradas no dia podem já estar dentro dos
+     passos, e nem todo app soma as duas coisas. Por isso a pergunta "esses
+     passos já incluem a caminhada?", que só aparece quando há atividade com
+     km naquele dia. Com "sim", as calorias da atividade ficam como estão e só
+     os passos ALÉM dela entram; com "não", entram todos. Nunca desconta.
+   - Num dia com passos, a rotina estimada sai e o medido entra: a base do dia
+     é o GETD sem a parte da rotina acima do piso sedentário (TMB × 1,2). Com
+     GETD digitado à mão o desconto é o mesmo. O exógeno fica, porque é somado
+     à parte. Sem passos, nada muda. */
+const PASSADA_H=0.415,PASSADA_M=0.413,PASSOS_MAX=100000;
+function passadaM(g){const alt=parseFloat(g&&g.altura)||0;return alt>0?alt/100*((g&&g.sexo==="F")?PASSADA_M:PASSADA_H):0;}
+function kmAtividades(dk){return ((store.tdays&&store.tdays[dk])||[]).reduce((a,w)=>a+(w.km>0?w.km:0),0);}
+function passosCalc(dk,n,inclui){
+  const g=store.goals||{},passada=passadaM(g),peso=parseFloat(g.pesoAtual)||0;
+  const kmAtiv=kmAtividades(dk),temAtiv=kmAtiv>0;
+  const passosAtiv=(passada>0&&temAtiv)?Math.round(kmAtiv*1000/passada):0;
+  const incluiDeFato=!!(inclui&&temAtiv);
+  const sobra=incluiDeFato?Math.max(0,n-passosAtiv):n;
+  const km=passada>0?n*passada/1000:0,kmSobra=passada>0?sobra*passada/1000:0;
+  const calculavel=passada>0&&peso>0;
+  return {n,inclui:incluiDeFato,temAtiv,kmAtiv,passosAtiv,sobra,km,kmSobra,kcal:calculavel?Math.round(peso*kmSobra*CUSTO_CAMINHADA):0,calculavel};
+}
+function passosDia(dk){const p=store.passos&&store.passos[dk];if(!p||!(p.n>0))return null;return passosCalc(dk,p.n,!!p.inclui);}
+function baseSemRotina(){
+  const g=store.goals||{},tmb=computeTMB(g);
+  if(tmb<=0)return store.getd;
+  return Math.max(0,Math.round(store.getd-tmb*(neatAtiv(g.ativ)-1.2)));
+}
+function gastoDia(dk){const p=passosDia(dk);if(p&&p.calculavel)return baseSemRotina()+p.kcal+burnedKcal(dk);return store.getd+burnedKcal(dk);}
+const nPt=n=>Math.round(n).toLocaleString("pt-BR");
 function goalMeta(t,dk){const base=gastoDia(dk||viewKey);return t.mode==="bulking"?base+t.daily:Math.max(0,base-t.daily);}
 function dayMetric(t,dk){return t.mode==="bulking"?(consumedKcal(dk)-gastoDia(dk)):(gastoDia(dk)-consumedKcal(dk));}
 function setBar(id,val,target){const el=$(id);const pct=target>0?Math.max(0,Math.min(100,val/target*100)):0;el.style.width=pct+"%";el.parentElement.classList.toggle("warnfill",val<0);}
@@ -5497,6 +5601,70 @@ $("saveGoals").onclick=()=>{
   if(onboarding){onboarding=false;fillUser();showView("inicio");}
 };
 $("cancelGoals").onclick=()=>{goalsOverlay.classList.remove("open");if(onboarding){onboarding=false;showView("inicio");}};
+/* ---- pop-up dos passos ---- */
+let passosDk=null;
+function passosLerN(){return Math.min(PASSOS_MAX,parseInt(String($("passosN").value).replace(/\D/g,""),10)||0);}
+function passosInclui(){return $("passosIncSeg").dataset.v!=="nao";}
+function pintarPassos(){
+  const n=passosLerN(),c=passosCalc(passosDk,n,passosInclui());
+  $("passosAtivWrap").style.display=c.temAtiv?"":"none";
+  if(c.temAtiv){
+    const ativs=((store.tdays&&store.tdays[passosDk])||[]).filter(x=>x.km>0).map(x=>`${x.name} ${kgTxt(x.km)} km`).join(", ");
+    $("passosAtivNota").textContent=`${ativs} ≈ ${nPt(c.passosAtiv)} passos. `+(c.inclui?"Só o que passar disso entra na conta; as calorias da atividade ficam como estão.":"Os passos entram inteiros, por cima da atividade.");
+  }
+  $("passosIncSeg").querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.v===(passosInclui()?"sim":"nao")));
+  const nota=$("passosNota");
+  if(n<=0)nota.textContent="Digite os passos que o celular ou o relógio mostra.";
+  else if(!c.calculavel)nota.textContent="Defina altura e peso no perfil para o app converter os passos em calorias.";
+  else nota.innerHTML=`${nPt(n)} passos ≈ <b>${kgTxt(c.km)} km</b>.`+(c.inclui?` Sobram <b>${nPt(c.sobra)}</b> além da atividade.`:"")+` Entram <b>+${r0(c.kcal)} kcal</b> no gasto do dia.`;
+  $("passosZerar").style.display=(store.passos&&store.passos[passosDk])?"":"none";
+}
+function abrirPassos(dk){
+  passosDk=dk;
+  const p=(store.passos||{})[dk];
+  $("passosN").value=p&&p.n>0?nPt(p.n):"";
+  /* A resposta sobre a atividade vem da última vez, porque quem usa o mesmo
+     relógio responde sempre a mesma coisa. Com passos já gravados neste dia,
+     vale o que foi respondido neste dia. */
+  let inc=true;try{inc=localStorage.getItem("tresults.passosInc")!=="nao";}catch(e){}
+  if(p&&kmAtividades(dk)>0)inc=!!p.inclui;
+  $("passosIncSeg").dataset.v=inc?"sim":"nao";
+  $("passosData").textContent=dk===todayKey()?"Hoje":fdRotuloDia(dk);
+  pintarPassos();
+  $("passosOverlay").classList.add("open");
+  setTimeout(()=>$("passosN").focus(),200);
+}
+$("passosN").addEventListener("input",()=>{const c=$("passosN"),v=c.value.replace(/[^\d.]/g,"");if(v!==c.value)c.value=v;pintarPassos();});
+$("passosIncSeg").querySelectorAll("button").forEach(b=>b.onclick=()=>{$("passosIncSeg").dataset.v=b.dataset.v;pintarPassos();});
+$("passosSalvar").onclick=()=>{
+  const n=passosLerN();
+  if(n<=0){$("passosNota").textContent="Digite os passos que o celular ou o relógio mostra.";$("passosN").focus();return;}
+  store.passos=store.passos||{};
+  const temAtiv=kmAtividades(passosDk)>0;
+  store.passos[passosDk]={n,inclui:temAtiv?passosInclui():false};
+  if(temAtiv){try{localStorage.setItem("tresults.passosInc",passosInclui()?"sim":"nao");}catch(e){}}
+  save();render();renderInicio();
+  $("passosOverlay").classList.remove("open");
+};
+$("passosZerar").onclick=()=>{if(store.passos)delete store.passos[passosDk];save();render();renderInicio();$("passosOverlay").classList.remove("open");};
+$("passosVoltar").onclick=()=>$("passosOverlay").classList.remove("open");
+$("passosOverlay").onclick=e=>{if(e.target===$("passosOverlay"))$("passosOverlay").classList.remove("open");};
+$("passosRow").onclick=()=>abrirPassos(viewKey);
+$("fdPassos").onclick=()=>abrirPassos(todayKey());
+/* A linha na Alimentação (dia visto) e o selo no Início (sempre hoje). */
+function renderPassos(){
+  if(!$("passosRow"))return;
+  const p=passosDia(viewKey);
+  if(!p){$("passosTit").textContent="Passos do dia";$("passosSub").textContent="Toque para lançar o que o celular contou";return;}
+  $("passosTit").textContent=`${nPt(p.n)} passos · ${kgTxt(p.km)} km`;
+  $("passosSub").textContent=!p.calculavel?"Defina altura e peso para converter em kcal":p.inclui?`${nPt(p.sobra)} além da atividade · +${r0(p.kcal)} kcal`:`+${r0(p.kcal)} kcal no gasto do dia`;
+}
+function renderFdPassos(){
+  const el=$("fdPassosTx");if(!el)return;
+  const p=passosDia(todayKey());
+  el.textContent=p?`${nPt(p.n)} passos hoje${p.calculavel?` · +${r0(p.kcal)} kcal`:""}`:"Lançar os passos de hoje";
+}
+
 /* O "+" do Início: quem já usava o app avisa aqui que começou (ou parou) a
    usar exógeno, sem refazer o objetivo. Salvar recalcula o GETD na hora. */
 const exogPop=montarExog({seg:"exogPopSeg",lista:"exogPopLista",doseWrap:"exogPopDoseWrap",dose:"exogPopDose",doseNota:"exogPopDoseNota",localWrap:"exogPopLocalWrap",local:"exogPopLocal"},()=>{

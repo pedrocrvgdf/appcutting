@@ -237,6 +237,38 @@ tem teste:
   está no `CORE` do service worker e a navegação para ela cai no cache dela
   quando offline, e não no `index.html`.
 
+### Passos do dia
+
+A pessoa digita o total que o celular ou o relógio contou, e o app o converte
+em distância e em calorias que entram no gasto daquele dia. Lança-se na
+**Alimentação** (`#passosRow`, embaixo do saldo, no dia visto pela seta) e no
+**Início** (`#fdPassos`, sempre hoje); os dois abrem o mesmo pop-up
+(`#passosOverlay`, `abrirPassos(dk)`). Fica em `store.passos[dia] = {n,
+inclui}`, sincronizado como o resto.
+
+- **Passo = 0,415 × altura (homem) ou 0,413 × altura (mulher)**, a regra
+  padrão de calibração de pedômetro (`passadaM`). Sem altura ou peso o app
+  guarda os passos e **não inventa caloria**: a tela pede o perfil.
+- **Calorias = peso × km × `CUSTO_CAMINHADA`**, o mesmo custo da caminhada do
+  cardio. Foi por isso que o custo foi corrigido nos dois ao mesmo tempo.
+- **Num dia com passos, a rotina estimada sai e o medido entra**
+  (`baseSemRotina`): a base é o GETD menos `TMB × (fator da rotina − 1,2)`,
+  o piso sedentário. Com GETD digitado à mão o desconto é o mesmo; o
+  exógeno fica, porque é somado à parte. **Dias sem passos não mudam.** Quem
+  andou menos que a rotina estimada vê a meta cair: é o medido mandando.
+- **A pergunta "esses passos já incluem a atividade de hoje?" só aparece
+  quando há caminhada, corrida ou esteira com km naquele dia**
+  (`kmAtividades`). Nem todo app soma as duas coisas. Com "sim", as
+  calorias da atividade ficam como estão e só os passos **além** dela entram
+  (a distância da atividade vira passos pela mesma passada; para corrida isso
+  superestima um pouco e a sobra sai menor, que é o lado seguro). Com "não",
+  entram todos. **Nunca desconta**: menos passos que a atividade dá sobra
+  zero, não número negativo. A resposta fica guardada por dia, e a da última
+  vez vem marcada (`tresults.passosInc`).
+- O campo é `type="text"` com `inputmode="numeric"`, aceita "10.000" e
+  recusa letra; teto `PASSOS_MAX`.
+- Coberto em `tests/passos.spec.js`.
+
 ### A busca de alimentos
 
 O dono reclamou que "o repertório de pesquisa não achava nada". Havia duas
@@ -418,6 +450,7 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 | `tests/alimentos.spec.js` | Busca de alimentos: plural, ordem, erro de digitação, afinidade; internet automática, kJ, Brasil primeiro |
 | `tests/cardio.spec.js` | Registro manual: distância opcional na caminhada, inclinação da esteira, ganho de elevação em metros, digitação com vírgula |
 | `tests/liquidos.spec.js` | Histórico de ingestão: horário, origem, exclusão, total antigo sem histórico, zerar com confirmação |
+| `tests/passos.spec.js` | Passos do dia: conversão pela altura e peso, rotina trocada pelo medido, pergunta só com atividade com km, "sim" conta só a sobra, "não" conta tudo, selo do Início, nuvem |
 | `tests/exogenos.spec.js` | Uso de exógenos: pop-up de riscos, clembuterol escalando pela dose com teto, efedrina, anabolizante só informação, o "+" do Início; consentimento com data, dado que não sobe para a nuvem por padrão, página de privacidade |
 | `tests/app-nativo.spec.js` | Caminho web desligado quando o app Android está presente |
 | `tests/service-worker.spec.js` | Cache do app, versão, e a página de diagnóstico |
@@ -543,14 +576,17 @@ Três cuidados:
   0,00569 a 10%). A razão 2 para 1 do ACSM era artefato de duas regressões
   separadas, não fisiologia: o tendão devolve o que guardou **dentro da
   passada**, e em subida sustentada o centro de massa nunca torna a descer.
-- **Armadilha para quem mexer nisso:** o custo de **plano** não é do Minetti.
-  Ele dá 0,60 kcal/kg/km para caminhada no plano e o app usa 0,32, sem
-  procedência anotada; para corrida o app está certo (0,90 contra 0,86). Uma
-  auditoria por quatro fontes independentes (ACSM, Minetti, compêndio de
-  METs, calculadoras de campo) convergiu em 0,50–0,60 para caminhada e
-  0,82–1,00 para trote leve, contra os 0,32 e 0,60 do app. **O dono foi
-  informado e decidiu não mexer agora.** Quem for mexer, revise plano e rampa
-  juntos, e saiba que corrigir libera comida a mais num app de cutting.
+- **O custo de plano vem das equações do ACSM** (`CUSTO_CAMINHADA` 0,50 e
+  `CUSTO_TROTE` 0,90 kcal/kg/km, líquidos): caminhada 0,1 mL O2/kg por metro
+  → 0,50; corrida 0,2 mL/kg por metro → 1,0, com Minetti (2002) em 0,86, e o
+  app em 0,90 para todas as faixas de corrida. O app já usou 0,32 para
+  caminhada e 0,60 para trote, sem fonte; uma auditoria por quatro fontes
+  (ACSM, Minetti, compêndio de METs, calculadoras de campo) convergiu em
+  0,50–0,60 e 0,82–1,00. O dono primeiro preferiu não mexer, e ao criar os
+  passos do dia pediu "o que for cientificamente mais correto": a mudança
+  valeu para o cardio e para os passos juntos, para a mesma caminhada não
+  valer dois números. **O histórico registrado antes ficou com o custo
+  antigo** e não é recalculado: o número gravado é o que a pessoa viu.
 - **Duas unidades para a mesma subida, e cada aparelho fala uma.** A esteira
   mostra **inclinação em %**; o relógio e o Strava mostram **ganho acumulado em
   metros**, que chega a 1.100 m num treino de montanha. Por isso:
@@ -570,10 +606,12 @@ Três cuidados:
   30% pelo teto e inventava 1.500 m de subida com a tela inteira parecendo
   certa. O alternador de unidade já limpava; a troca de atividade não limpava,
   e era por onde o número errado entrava calado.
-- **Com elevação 0, a conta precisa dar exatamente o número de antes.** Se
-  mudar, o histórico de quem já registrou deixa de ser comparável com o de
-  amanhã, e a pessoa vê uma "melhora" que só existe porque a fórmula mudou.
-  Existe teste fixando esse valor, nas duas unidades.
+- **Com elevação 0, a conta precisa dar exatamente o número do plano.** Se
+  mudar sem decisão do dono, o histórico de quem já registrou deixa de ser
+  comparável com o de amanhã, e a pessoa vê uma "melhora" que só existe
+  porque a fórmula mudou. Existe teste fixando esse valor, nas duas unidades
+  (190 kcal para 5 km em 60 min na esteira, 80 kg). Ele mudou uma vez, de
+  122 para 190, quando o custo da caminhada foi corrigido a pedido do dono.
 - **A descida não é descontada.** Num percurso de volta ao ponto de partida, o
   app cobra o plano pelo trecho de descida, que na verdade custa menos que o
   plano. É a simplificação que toda ferramenta do mercado faz, e ela
