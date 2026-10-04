@@ -246,6 +246,51 @@ test.describe('Busca na internet', () => {
 
 });
 
+test.describe('Produto do Brasil primeiro, e sem lixo', () => {
+
+  test('a busca pede produto do Brasil, e só vai ao mundo se o Brasil não responder', async ({ page }) => {
+    /* "picanha" devolvia hambúrguer importado; "salmão", um produto só. Com o
+       filtro de país, picanha de verdade e 30 coxinhas em vez de 9. */
+    const pedidos = [];
+    const ctx = page.context();
+    await ctx.route('**/search.openfoodfacts.org/**', r => {
+      const u = decodeURIComponent(r.request().url());
+      /* a lista de campos também contém "countries_tags": o filtro de país é
+         o trecho com o valor */
+      const brasil = u.includes('countries_tags:"en:brazil"');
+      pedidos.push(brasil ? 'brasil' : 'mundo');
+      r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ hits: brasil ? [] : [PRODUTOS[0]] }) });
+    });
+    await ctx.route('**/world.openfoodfacts.org/**', r => r.fulfill({ status: 200, contentType: 'application/json', body: '{"products":[]}' }));
+    await ctx.route('**/api.allorigins.win/**', r => r.abort());
+    await abrirApp(page, estadoBase());
+    await irAlimentacao(page);
+    await digitar(page, 'gatorade zero');
+    await page.waitForTimeout(1500);
+
+    expect(pedidos[0], 'o primeiro pedido é só Brasil').toBe('brasil');
+    expect(pedidos, 'o mundo entra como reserva').toContain('mundo');
+    expect((await nomesOnline(page)).length, 'a reserva respondeu').toBeGreaterThan(0);
+  });
+
+  test('o que não tem nenhuma palavra da pergunta no nome sai da lista', async ({ page }) => {
+    /* O serviço casa por ingrediente: "banana" trazia "Protein + Vegan". */
+    await comOff(page, [
+      { product_name: 'Protein + Vegan', brands: 'Supino', countries_tags: ['en:brazil'],
+        nutriments: { 'energy-kcal_100g': 380, proteins_100g: 20, carbohydrates_100g: 40, fat_100g: 10 } },
+      { product_name: 'Banana Passa', brands: 'Banana Brasil', countries_tags: ['en:brazil'],
+        nutriments: { 'energy-kcal_100g': 290, proteins_100g: 2, carbohydrates_100g: 70, fat_100g: 0.5 } },
+    ]);
+    await abrirApp(page, estadoBase());
+    await irAlimentacao(page);
+    await digitar(page, 'banana passa');
+    await page.waitForTimeout(1300);
+    const n = await nomesOnline(page);
+    expect(n.some(x => /Banana Passa/.test(x))).toBe(true);
+    expect(n.some(x => /Protein/.test(x)), 'sem banana no nome, não responde à pergunta').toBe(false);
+  });
+});
+
 test.describe('A lista com o teclado aberto', () => {
 
   test('em tela curta, a lista cabe entre o campo e a barra de abas, e o campo sobe', async ({ page }) => {

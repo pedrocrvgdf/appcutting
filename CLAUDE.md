@@ -298,11 +298,26 @@ causas, e nenhuma era o tamanho do banco.
   chega para uma frase que a pessoa já trocou é descartada.
 - **Open Food Facts:** produto que só traz a energia em kJ (`energy_100g`)
   entra, convertido (÷ 4,184) — exigir `energy-kcal_100g` jogava fora
-  justamente os rótulos brasileiros. Produto do Brasil (`countries_tags`) vem
-  antes (`ordenarOff`). O proxy (`api.allorigins.win`) é **reserva**, não
-  corrida: entra se os diretos demoram 3,5 s ou assim que os dois falham, e
-  não entra se já houve resposta — seria mandar o que a pessoa digitou a um
-  terceiro sem necessidade.
+  justamente os rótulos brasileiros. **Os dois corredores pedem produto do
+  Brasil** (`countries_tags:"en:brazil"` no search-a-licious, `cc=br` no
+  cgi): sem o filtro, "picanha" devolvia hambúrguer importado e "salmão" um
+  produto só; com ele, 30 coxinhas em vez de 9. A busca mundial é
+  **reserva**, junto com o proxy (`api.allorigins.win`): entram se os
+  diretos demoram 3,5 s ou assim que os dois terminam sem nada. O proxy não
+  entra se já houve resposta — seria mandar o que a pessoa digitou a um
+  terceiro sem necessidade. Produto do Brasil vem antes (`ordenarOff`), e **o
+  que não tem nenhuma palavra da pergunta no nome nem na marca sai da lista**
+  (o serviço casa por ingrediente: "banana" trazia barra de proteína), desde
+  que sobre alguma coisa que tenha. **Cuidado nos testes:** a lista de
+  campos da URL também contém `countries_tags`; quem distingue o pedido do
+  Brasil é o trecho com o valor.
+- **O que falta, e por quê.** O banco local tem ~210 nomes e a Open Food
+  Facts é boa em produto embalado, fraca em comida genérica e prato pronto
+  (ovo, picanha, strogonoff). As tabelas que resolvem isso, TACO (UNICAMP) e
+  TBCA (USP), não são alcançáveis do ambiente de sessão nem têm API pública
+  sem chave; e serviços como FatSecret exigem chave que não pode viver no
+  `index.html` (teria que passar por uma função em `functions/`). O caminho
+  combinado com o dono está na issue #62.
 - **Com o teclado aberto, a lista precisa caber no que sobra da tela**
   (`ajustarDrop`). No app Android (targetSdk 35) a página **não encolhe** para
   o teclado: ele só cobre, e a lista nascia embaixo dele. O `visualViewport`
