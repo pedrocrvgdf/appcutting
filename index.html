@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v36";
+window.APP_RELEASE = "tresults-v37";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -4732,10 +4732,15 @@ function ordenarOff(hits,q){
   hits.forEach((h,i)=>{
     const f=mapOff(h);if(!f)return;
     const chave=norm(f.n);if(vistos.has(chave))return;vistos.add(chave);
-    out.push({f,pts:alimPontos(f.n,qTokens,qNorm)+(f.br?40:0),i});
+    out.push({f,afin:alimPontos(f.n,qTokens,qNorm),i});
   });
-  out.sort((a,b)=>b.pts-a.pts||a.i-b.i);
-  return out.map(x=>x.f);
+  /* O serviço casa também por ingrediente e categoria: "banana" trazia barra
+     de proteína sem banana no nome. O que não tem nenhuma palavra da pergunta
+     no nome nem na marca sai, desde que sobre alguma coisa que tenha. */
+  const comNome=out.filter(x=>x.afin>0);
+  const lista=comNome.length?comNome:out;
+  lista.sort((a,b)=>(b.afin+(b.f.br?40:0))-(a.afin+(a.f.br?40:0))||a.i-b.i);
+  return lista.map(x=>x.f);
 }
 function fetchJSONone(u,ms){
   return new Promise((resolve,reject)=>{
@@ -4752,35 +4757,43 @@ async function offFetch(q){
   if(offCache.has(q))return offCache.get(q);
   const enc=encodeURIComponent(q);
   const FIELDS="product_name,product_name_pt,brands,quantity,nutriments,countries_tags";
-  // corrida em paralelo: responde quem chegar primeiro com resultados
+  /* Corrida em paralelo: responde quem chegar primeiro com resultados. Os dois
+     corredores pedem produto do BRASIL: sem o filtro, "picanha" devolvia
+     hambúrguer importado e "salmão" um produto só; com ele, picanha de
+     verdade e 30 coxinhas em vez de 9. A busca mundial (A) virou reserva,
+     junto com o proxy: só entra se o Brasil não responder nada. */
+  const ABr=`https://search.openfoodfacts.org/search?q=${encodeURIComponent(q+' countries_tags:"en:brazil"')}&langs=pt,main&page_size=50&fields=${FIELDS}`;
   const A=`https://search.openfoodfacts.org/search?q=${enc}&langs=pt,main&page_size=40&fields=${FIELDS}`;
   const B=`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${enc}&search_simple=1&action=process&json=1&page_size=24&cc=br&lc=pt&fields=${FIELDS}`;
   const C="https://api.allorigins.win/raw?url="+encodeURIComponent(B);
   const hitsOf=d=>(d&&(d.hits||d.products))||[];
   const hits=await new Promise((resolve,reject)=>{
-    let feito=false,pend=0,vazio=false,cTentado=false;
+    let feito=false,pend=0,vazio=false,reservaTentada=false;
     const fim=h=>{if(!feito){feito=true;resolve(h);}};
-    /* O proxy (C) é reserva, não corrida: entra se os diretos demoram 3,5 s ou
-       assim que os dois falham — sem esperar o relógio com a pessoa olhando
-       "Buscando…". E não entra se já houve resposta: seria mandar o que a
-       pessoa digitou a um terceiro sem necessidade. */
-    const abrirC=()=>{if(feito||cTentado)return;cTentado=true;acompanhar(fetchJSONone(C,9000));};
+    /* A reserva (mundo + proxy) não corre junto: entra se os diretos demoram
+       3,5 s ou assim que os dois terminam sem nada — sem esperar o relógio
+       com a pessoa olhando "Buscando…". O proxy, em especial, não entra se já
+       houve resposta: seria mandar o que a pessoa digitou a um terceiro sem
+       necessidade. */
+    const abrirReserva=()=>{if(feito||reservaTentada)return;reservaTentada=true;vazio=false;acompanhar(fetchJSONone(A,9000));acompanhar(fetchJSONone(C,9000));};
     function acompanhar(p){
       pend++;
       p.then(d=>{
         const h=hitsOf(d);
         if(h.length)return fim(h);
         vazio=true;
-        if(--pend===0)fim([]);      // resposta vazia é resposta: o proxy traria a mesma
+        if(--pend!==0)return;
+        if(!reservaTentada)return abrirReserva();   // Brasil vazio: tenta o mundo
+        fim([]);
       }).catch(()=>{
         if(--pend!==0)return;
-        if(!cTentado&&!vazio)return abrirC();
+        if(!reservaTentada)return abrirReserva();
         vazio?fim([]):(feito||reject(new Error("all failed")));
       });
     }
-    acompanhar(fetchJSONone(A,9000));
+    acompanhar(fetchJSONone(ABr,9000));
     acompanhar(fetchJSONone(B,9000));
-    setTimeout(abrirC,3500);
+    setTimeout(abrirReserva,3500);
   });
   if(hits.length)offCache.set(q,hits);
   return hits;
