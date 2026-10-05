@@ -104,6 +104,45 @@ test.describe('Busca no banco local', () => {
   });
 });
 
+test.describe('A tabela TACO no banco local', () => {
+  /* Tabela Brasileira de Composição de Alimentos, 4ª ed. (NEPA/UNICAMP),
+     importada da planilha oficial por tools/importar_taco.py. É ela que cobre
+     a comida genérica e o prato pronto que a internet não acha. */
+
+  test('a tabela inteira está no app, com número em todo campo', async ({ page }) => {
+    await abrirApp(page, estadoBase());
+    const t = await page.evaluate(() => ({
+      n: window.__t.TACO.length,
+      ruins: window.__t.TACO.filter(f => !f.n || typeof f.k !== 'number' || typeof f.p !== 'number' || typeof f.c !== 'number' || typeof f.g !== 'number' || f.src !== 'taco').length,
+      noBanco: window.__t.localList().filter(f => f.src === 'taco').length,
+    }));
+    expect(t.n, 'a planilha tem 597 linhas; 6 não têm dado nenhum').toBe(591);
+    expect(t.ruins).toBe(0);
+    expect(t.noBanco, 'a busca enxerga a tabela').toBe(591);
+  });
+
+  test('comida genérica que a internet não achava sai do banco, com os valores da planilha', async ({ page }) => {
+    await abrirApp(page, estadoBase());
+    await irAlimentacao(page);
+    await digitar(page, 'picanha grelhada');
+    const n = await nomesDoDrop(page);
+    expect(n.some(x => /picanha, com gordura, grelhada/i.test(x))).toBe(true);
+    const meta = await page.evaluate(() => [...document.querySelectorAll('#drop .opt[data-idx]')]
+      .find(o => /picanha, com gordura, grelhada/i.test(o.querySelector('.n').textContent)).querySelector('.m').textContent);
+    expect(meta).toMatch(/^289 kcal · P26\.4 C0 G19\.5 \/100g · TACO$/);   // linha 289 da planilha
+  });
+
+  test('o nome curto do banco continua vindo antes do nome formal da TACO', async ({ page }) => {
+    /* "Arroz branco cozido" responde melhor a "arroz" que "Arroz, tipo 1, cozido" */
+    await abrirApp(page, estadoBase());
+    await irAlimentacao(page);
+    await digitar(page, 'arroz');
+    const n = await nomesDoDrop(page);
+    expect(n[0]).toMatch(/^Arroz /);
+    expect(n.some(x => /^Arroz, /.test(x)), 'e a TACO vem junto').toBe(true);
+  });
+});
+
 /* ---- Open Food Facts, imitado ----
    A rede desta sessão não alcança o serviço; os testes respondem no lugar
    dele, com o formato real das duas APIs (hits / products). */
@@ -206,19 +245,22 @@ test.describe('Busca na internet', () => {
 
   test('banco com pouca resposta: a internet complementa embaixo, sem tirar o local', async ({ page }) => {
     /* "linguiça" tinha um nome só no banco, e o dono concluía que o app "não
-       acha linguiça". Agora o que vem de fora entra embaixo do que é daqui. */
-    const LINGUICAS = [
-      { product_name: 'Linguiça Calabresa', brands: 'Sadia', countries_tags: ['en:brazil'],
-        nutriments: { 'energy-kcal_100g': 300, proteins_100g: 14, carbohydrates_100g: 2, fat_100g: 26 } },
-      { product_name: 'Linguiça Toscana', brands: 'Perdigão', countries_tags: ['en:brazil'],
-        nutriments: { 'energy-kcal_100g': 280, proteins_100g: 15, carbohydrates_100g: 1, fat_100g: 24 } },
+       acha linguiça". Agora o que vem de fora entra embaixo do que é daqui.
+       (Com a TACO, linguiça passou a ter sete nomes; o caso de "pouca
+       resposta" é a granola, que tem um.) */
+    const GRANOLAS = [
+      { product_name: 'Granola Tradicional', brands: 'Mãe Terra', countries_tags: ['en:brazil'],
+        nutriments: { 'energy-kcal_100g': 430, proteins_100g: 10, carbohydrates_100g: 65, fat_100g: 14 } },
+      { product_name: 'Granola Zero Açúcar', brands: 'Jasmine', countries_tags: ['en:brazil'],
+        nutriments: { 'energy-kcal_100g': 410, proteins_100g: 11, carbohydrates_100g: 60, fat_100g: 13 } },
     ];
-    await comOff(page, LINGUICAS);
+    await comOff(page, GRANOLAS);
     await abrirApp(page, estadoBase());
     await irAlimentacao(page);
-    await digitar(page, 'linguiça');
+    await digitar(page, 'granola');
     const antes = await nomesDoDrop(page);
     expect(antes.length, 'o banco responde na hora').toBeGreaterThan(0);
+    expect(antes.length).toBeLessThan(3);
     await page.waitForTimeout(1300);
 
     const locais = await nomesDoDrop(page);

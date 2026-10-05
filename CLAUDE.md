@@ -15,6 +15,7 @@ usado no celular, principalmente dentro da academia.
 |---|---|
 | Arquivos do app | `index.html` (app inteiro), `sw.js`, `manifest.json`, ícones PNG, `privacidade.html` (política de privacidade), `diag.html` (diagnóstico) |
 | Servidor | `functions/` — só o aviso de descanso por push; o app funciona sem |
+| Dados importados | `dados/` (planilha oficial da TACO) e `tools/importar_taco.py`, que gera o bloco no `index.html` |
 | Build | **Não existe.** O app não é empacotado nem transpilado |
 | Publicação | GitHub Pages, a partir da branch `main` |
 | Backend | Firebase (Auth + Firestore) para login e sincronização |
@@ -311,13 +312,28 @@ causas, e nenhuma era o tamanho do banco.
   que sobre alguma coisa que tenha. **Cuidado nos testes:** a lista de
   campos da URL também contém `countries_tags`; quem distingue o pedido do
   Brasil é o trecho com o valor.
-- **O que falta, e por quê.** O banco local tem ~210 nomes e a Open Food
-  Facts é boa em produto embalado, fraca em comida genérica e prato pronto
-  (ovo, picanha, strogonoff). As tabelas que resolvem isso, TACO (UNICAMP) e
-  TBCA (USP), não são alcançáveis do ambiente de sessão nem têm API pública
-  sem chave; e serviços como FatSecret exigem chave que não pode viver no
-  `index.html` (teria que passar por uma função em `functions/`). O caminho
-  combinado com o dono está na issue #62.
+- **A TACO está no banco local** (`const TACO`, 591 alimentos, por 100 g):
+  Tabela Brasileira de Composição de Alimentos, 4ª edição, NEPA/UNICAMP,
+  2011. É ela que cobre a comida genérica e o prato pronto que a internet
+  não acha (picanha, strogonoff, coxinha). A fonte é a **planilha oficial**
+  (https://nepa.unicamp.br/publicacoes/tabela-taco-excel/), guardada em
+  `dados/taco-4ed-unicamp.xlsx`, e o bloco entre `/* TACO:INICIO */` e
+  `/* TACO:FIM */` é **gerado** por `tools/importar_taco.py` — não edite à
+  mão; mude a planilha ou o script e rode de novo. Das 597 linhas, 6 não têm
+  dado nenhum ("*"/"NA" em tudo) e ficam de fora; "Tr" (traço) vira 0. O
+  PDF da obra autoriza: "É permitida a reprodução total ou parcial do
+  material, desde que seja citada a fonte" — por isso cada linha leva
+  `src:"taco"` e a lista mostra "· TACO". Os nomes são os da tabela
+  ("Carne, bovina, picanha, com gordura, grelhada"); o casamento por
+  palavras acha "picanha grelhada" neles, e o nome curto do banco próprio
+  continua vindo antes porque é mais curto.
+- **A TBCA (USP) NÃO pode ser importada.** O site diz: "Não é permitida a
+  reprodução total ou parcial do material" e "Para fins comerciais, é
+  necessário contatar os coordenadores". Ela fica como consulta externa. Só
+  entra se o dono obtiver autorização por escrito dos coordenadores.
+- **O que ainda falta:** marcas e restaurantes em pt-BR. Serviços como
+  FatSecret exigem chave que não pode viver no `index.html` (teria que passar
+  por uma função em `functions/`). Está na issue #62.
 - **Com o teclado aberto, a lista precisa caber no que sobra da tela**
   (`ajustarDrop`). No app Android (targetSdk 35) a página **não encolhe** para
   o teclado: ele só cobre, e a lista nascia embaixo dele. O `visualViewport`
@@ -330,10 +346,10 @@ causas, e nenhuma era o tamanho do banco.
   tela; o `diag.html` mostra. **Nunca anote o que a pessoa digitou.**
   `rastro` é `function`, não `const`, porque `showView` a chama e pode rodar
   antes da linha em que ela é definida.
-- **Não invente valores nutricionais.** O banco local não foi ampliado nesta
-  rodada porque não havia tabela TACO alcançável para importar; números
-  chutados num app de dieta são pior que "não achei". Se um dia importar,
-  registre a fonte.
+- **Não invente valores nutricionais.** Números chutados num app de dieta
+  são pior que "não achei". O que entrou veio com fonte (a TACO, acima); se
+  importar outra tabela, registre a fonte, a licença e o arquivo original em
+  `dados/`, e gere o bloco por script, como a TACO.
 - O serviço não é alcançável do ambiente de sessão (o proxy bloqueia): os
   testes respondem no lugar dele, com o formato real das duas APIs (`hits` /
   `products`). Coberto em `tests/alimentos.spec.js`.
