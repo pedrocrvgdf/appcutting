@@ -23,7 +23,7 @@ window.__t={
   somDoAlarme:()=>somDoAlarme(), idadeDe, idadeAtual, computeTMB, buscaAlimentos, alimPontos, mapOff, ordenarOff, FOODS,
   appNativo:()=>appNativo,
   applyRemote, goalsParaNuvem, pushRemote:()=>pushRemote(true), naNuvem:()=>!!(cloudEnabled&&user),
-  gastoDia, passosDia, baseSemRotina, kmAtividades,
+  gastoDia, passosDia, baseSemRotina, kmAtividades, TACO, localList,
   /* Trocar quem está logado, para alcançar o modo local — onde não há conta e
      portanto não há senha a conferir. */
   setUser:u=>{user=u;},
