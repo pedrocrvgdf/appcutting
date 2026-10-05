@@ -126,29 +126,50 @@ O T-RESULTS é um **app**, não um site. Ele precisa se comportar como tal.
   `prefers-reduced-motion` ela nem entra — sem movimento seria só uma parede
   de 2 s na frente do app. Coberta em `tests/abertura.spec.js`.
 
-### A direção visual é "soft", e não tem contorno
+### A direção visual: off-white, fio fino e o saldo em verde fosco
 
-O app já foi cartoon — contorno preto grosso e sombra dura deslocada. **Não é
-mais.** A direção atual é a que o dono escolheu depois: pastel arredondado.
+O app já foi cartoon (contorno preto e sombra dura) e depois pastel arredondado
+(sombra difusa, cantos de 30px, Quicksand). O dono achou que o pastel "parecia
+livro de receitas" e escolheu esta direção depois de comparar quatro maquetes.
+Ela vive num bloco próprio no fim do CSS ("DIREÇÃO OFF-WHITE E VERDE") e nos
+tokens do `:root`.
 
-- **Nada de `border` como decoração.** Quem separa um cartão do fundo é a sombra
-  difusa (`--sombra`, `--sombra-sm`), não uma linha. `--line` sobrou para
-  divisores de verdade — entre linhas de uma lista.
-- O fundo (`--bg`) é levemente esverdeado de propósito: sombra sobre branco puro
-  desaparece, e os cartões pareceriam flutuar sem chão.
-- Cantos grandes: 26–30px nos cartões, 18–22px no que vive dentro deles.
-- Fonte **Quicksand** em `--sans` e `--display`. Ela vai só até o peso 700; os
-  `font-weight:800` do código são apertados para 700 pelo navegador, sem
-  estrago.
-- Botão apertado **encolhe** (`transform:scale(.97)`), não afunda contra um
-  contorno.
-- **Os macros são tons da mesma família do verde da marca**, do mais claro ao
-  mais fundo (`--mp`/`--mc`/`--mg` e os `-bg`), e não uma cor diferente para
-  cada. Foi pedido explicitamente: "tire as cores diversas, deixe como
-  predominância a cor do app".
+- **Fundo off-white** (`--bg` #F6F5F1) e **cartões brancos separados por fio
+  fino**, não por sombra: os tokens `--sombra`, `--sombra-sm` e `--shadow`
+  viraram `0 0 0 1px var(--line)`. Quem usa os tokens ganhou o fio sozinho.
+  Não devolva sombra difusa colorida.
+- **Cantos médios:** 20–22px nos cartões, 16–18px no que vive dentro deles.
+- **Fonte Sora** em `--sans` e `--display`, pesos 400 a 800.
+- **Botão de ação em degradê de verdes** (`--acao`, do menta ao verde da
+  marca). O texto fica centralizado, onde o degradê já é escuro o bastante
+  para o branco ler. Botão secundário é branco com fio.
+- **O saldo do dia é um cartão verde-escuro FOSCO**, com o anel numa cor só
+  (verde sálvia), sem halo e sem degradê: o dono pediu "fosco ao invés de
+  neon". Ele aparece no Início (`.fd-resumo`) e na Alimentação
+  (`.hero .ringwrap`), e o cartão do objetivo no perfil (`.pfgoal`) usa o
+  mesmo fundo. **O cartão redefine os tokens para si** (`--ink`, `--muted`,
+  `--line`, `--primary`, `--anel-tri`) em vez de reescrever cada regra de
+  cor: o anel que o JavaScript pinta com `var(--primary)` passa a sair
+  sálvia sem mexer no JavaScript. Se criar outro elemento dentro dele, use os
+  tokens e ele já nasce certo.
+- **Marca d'água por aba**, em `#view-*::before`: o T da marca no Início e no
+  Progresso, talheres na Comida, halter no Treino, silhueta no Perfil. É
+  máscara SVG sobre `var(--ink)` a 3,5%, em `z-index:-1`, sem criar contexto
+  de empilhamento (senão prenderia pop-ups). Some atrás de qualquer cartão,
+  de propósito.
+- **Verde como TEXTO é o verde da marca, não o menta.** Menta sobre branco
+  não passa de 2:1 de contraste.
+- **Macros:** ilhas neutras com fio; o verde só na barra que enche, do mais
+  claro ao mais fundo. Foi pedido "tire as cores diversas, deixe como
+  predominância a cor do app", e o pastel de cada um era o resto do visual
+  antigo.
+- Botão apertado **encolhe** (`transform:scale(.97)`).
 - Fundo tingido pede tinta escura por cima: `--selo-bg`/`--selo-ink` e
   `--macro-ink`/`--macro-num` existem porque reaproveitar `--mg` como fundo de
   texto escuro deixou o selo "+25% de carga" ilegível no tema claro.
+- **O tema escuro segue a mesma estrutura**: grafite esverdeado, fio fino, o
+  mesmo saldo fosco um tom acima. Ainda não houve rodada de revisão dele com
+  o dono.
 
 ### Criar conta, e a idade que não envelhece errada
 

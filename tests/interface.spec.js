@@ -290,3 +290,47 @@ test.describe('Campo de digitar se distingue do que está atrás', () => {
     expect(await contraste(page, '#view-login .in')).toEqual([]);
   });
 });
+
+test.describe('A direção visual off-white e verde', () => {
+  /* Escolhida pelo dono depois de comparar quatro maquetes. Estes testes
+     travam o que a define, para ninguém voltar ao pastel por engano. */
+
+  test('o saldo do dia é um cartão verde-escuro fosco, e o anel lê a cor dele', async ({ page }) => {
+    await abrirApp(page, estadoBase());
+    const v = await page.evaluate(() => {
+      const card = document.getElementById('fdDia');
+      const cs = getComputedStyle(card);
+      return {
+        fundo: cs.backgroundColor,
+        brilho: cs.boxShadow,
+        anel: getComputedStyle(card).getPropertyValue('--primary').trim().toLowerCase(),
+        ringwrapFundo: getComputedStyle(document.querySelector('.hero .ringwrap')).backgroundColor,
+      };
+    });
+    expect(v.fundo).toBe('rgb(27, 53, 48)');
+    expect(v.ringwrapFundo, 'o saldo da Alimentação é o mesmo cartão').toBe('rgb(27, 53, 48)');
+    expect(v.brilho, 'fosco: sem sombra nem halo').toBe('none');
+    expect(v.anel, 'o anel sai sálvia sem mexer no JavaScript').toBe('#8cc7b5');
+  });
+
+  test('cartão separado por fio fino, não por sombra difusa', async ({ page }) => {
+    await abrirApp(page, estadoBase());
+    const sombra = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--sombra').trim());
+    expect(sombra).toMatch(/^0 0 0 1px/);
+  });
+
+  test('cada aba tem a sua marca d\'água, atrás do conteúdo', async ({ page }) => {
+    await abrirApp(page, estadoBase());
+    const m = await page.evaluate(() => ['inicio', 'food', 'treino', 'perfil'].map(id => {
+      const cs = getComputedStyle(document.getElementById('view-' + id), '::before');
+      return { id, mascara: cs.maskImage || cs.webkitMaskImage || '', z: cs.zIndex, op: cs.opacity };
+    }));
+    for (const x of m) {
+      expect(x.mascara, `marca d'água em ${x.id}`).toMatch(/^url\("data:image\/svg\+xml/);
+      expect(x.z, 'atrás do conteúdo').toBe('-1');
+      expect(Number(x.op), 'de leve').toBeLessThan(0.06);
+    }
+    const marcas = new Set(m.map(x => x.mascara));
+    expect(marcas.size, 'Comida, Treino e Perfil têm figuras próprias').toBeGreaterThanOrEqual(3);
+  });
+});

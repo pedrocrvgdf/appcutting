@@ -17,7 +17,7 @@
 <title>T - Results</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script>(function(){try{var t=localStorage.getItem("tresults.theme");var d=(t==="dark")||(t!=="light"&&window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches);if(d)document.documentElement.setAttribute("data-theme","dark");}catch(e){}})();</script>
 
 <!-- ==================== MONITORAMENTO DE ERROS (Sentry) ====================
@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v38";
+window.APP_RELEASE = "tresults-v39";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -104,8 +104,8 @@ window.APP_RELEASE = "tresults-v38";
      o fundo é levemente esverdeado em vez de branco: sombra sobre branco puro
      some, e os cartões pareceriam flutuar sem chão. */
   :root{
-    --bg:#F4F9F6; --surface:#FFFFFF; --ink:#2C3A34; --muted:#7C8C85;
-    --line:#EAF4EF;
+    --bg:#F6F5F1; --surface:#FFFFFF; --ink:#15201D; --muted:#6B7570;
+    --line:#E4E3DD;
     --primary:#0E7C6B; --primary-08:rgba(14,124,107,.10);
     --primary-14:rgba(14,124,107,.18); --warn:#D8452B; --sched:#7C8C85;
     --ok:#3F8A6B; --amber:#9B7A28; --water:#4FB3A0;
@@ -117,12 +117,19 @@ window.APP_RELEASE = "tresults-v38";
     --selo-bg:#DDF3E7; --selo-ink:#14483A;
     --macro-ink:#3F8A6B; --macro-num:#14483A;
     --anel:#8FD9C2; --anel-tri:#EAF4EF;
-    --shadow:0 6px 20px rgba(14,124,107,.08);
-    --sombra:0 10px 30px rgba(14,124,107,.10);
-    --sombra-sm:0 5px 16px rgba(14,124,107,.08);
+    /* Quem separa o cartão do fundo é um fio fino, não sombra difusa: a
+       sombra pastel era o que dava ao app cara de livro de receitas. */
+    --shadow:0 0 0 1px var(--line);
+    --sombra:0 0 0 1px var(--line);
+    --sombra-sm:0 0 0 1px var(--line);
     --mono:ui-monospace,"SF Mono","Roboto Mono",Menlo,Consolas,monospace;
-    --sans:'Quicksand',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
-    --display:'Quicksand',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    --sans:'Sora',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    --display:'Sora',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    /* O verde do botão de ação: do menta ao verde fundo da marca. */
+    --acao:linear-gradient(135deg,#5EE3C0,#0E7C6B);
+    /* Cartão do saldo: verde-escuro FOSCO, anel numa cor só, sem brilho. */
+    --saldo-bg:#1B3530; --saldo-ink:#FFFFFF; --saldo-mut:#9FC0B6;
+    --saldo-anel:#8CC7B5; --saldo-tri:#2B4741; --saldo-linha:rgba(255,255,255,.10);
     --mmhl:#0E7C6B;
     color-scheme:only light;
   }
@@ -132,8 +139,8 @@ window.APP_RELEASE = "tresults-v38";
      contraste entre elas que faz o traço aparecer. Fundo escuro com contorno
      escuro apagaria o desenho inteiro. */
   html[data-theme="dark"]{
-    --bg:#141C19; --surface:#1E2A25; --ink:#E8F0EC; --muted:#8FA39A;
-    --line:#2A3A33;
+    --bg:#121715; --surface:#1A211E; --ink:#E9EFEC; --muted:#8FA39A;
+    --line:#29332F;
     --primary:#2FB39A; --primary-08:rgba(47,179,154,.16);
     --primary-14:rgba(47,179,154,.26); --warn:#FF7A59; --sched:#8FA39A;
     --ok:#34D399; --amber:#F5A623; --water:#2FB39A;
@@ -145,9 +152,10 @@ window.APP_RELEASE = "tresults-v38";
     --anel:#3FC4A8; --anel-tri:#2A3A33;
     /* No escuro a sombra colorida não aparece: quem separa o cartão do fundo
        passa a ser o próprio tom da superfície, mais claro que o fundo. */
-    --shadow:0 6px 20px rgba(0,0,0,.35);
-    --sombra:0 10px 30px rgba(0,0,0,.38);
-    --sombra-sm:0 5px 16px rgba(0,0,0,.30);
+    --shadow:0 0 0 1px var(--line);
+    --sombra:0 0 0 1px var(--line);
+    --sombra-sm:0 0 0 1px var(--line);
+    --saldo-bg:#1F3A34; --saldo-tri:#2E4A43;
     --mmhl:#3EE6B0;
     color-scheme:dark;
   }
@@ -1113,6 +1121,67 @@ window.APP_RELEASE = "tresults-v38";
   .fd-passos span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .fd-passos svg.chev{width:15px;height:15px;opacity:.45;stroke:var(--ink);stroke-width:3}
   .fd-passos:active{transform:scale(.97)}
+
+  /* ===================== DIREÇÃO OFF-WHITE E VERDE =====================
+     Escolhida pelo dono depois de comparar quatro direções: fundo off-white,
+     cartões brancos separados por fio fino (os tokens de sombra viraram
+     contorno de 1px), cantos médios, fonte Sora, botão de ação em degradê de
+     verdes, e o saldo do dia num cartão verde-escuro FOSCO, sem brilho.
+     O que mudou de cara fica aqui, junto; as regras antigas acima continuam
+     valendo para o resto. */
+
+  /* cantos médios: 30px de cartão era parte do visual de receita */
+  .card{border-radius:20px}
+  .hero{border-radius:22px}
+  .fd-card{border-radius:18px}
+  .fd-atalho,.fd-passos,.account{border-radius:16px}
+  .modal{border-radius:24px 24px 0 0}
+  @media (min-width:560px){.modal{border-radius:20px}}
+
+  /* botão de ação: degradê de verdes. O texto fica no meio do botão, onde o
+     degradê já é escuro o bastante para o branco ler. */
+  .btn:not(.secondary):not(.dgr){background:var(--acao);box-shadow:none}
+  .btn.secondary{box-shadow:var(--sombra-sm)}
+
+  /* barra de abas: chão branco com fio no topo, sem a curva de 30px */
+  #tabbar{border-radius:0;box-shadow:0 -1px 0 var(--line)}
+  #tabbar .fab{background:var(--acao);border-radius:18px;box-shadow:0 6px 16px rgba(14,124,107,.25)}
+
+  /* O SALDO DO DIA, nos dois lugares em que aparece (Início e Alimentação):
+     cartão verde-escuro chapado, anel numa cor só. Em vez de reescrever cada
+     regra de cor, o cartão redefine os tokens para si: tudo que está dentro
+     dele (o anel que o JavaScript pinta com var(--primary), o texto em
+     var(--ink), o fio em var(--line)) passa a ler os valores do escuro. */
+  .fd-resumo,.hero .ringwrap{
+    --ink:var(--saldo-ink); --muted:var(--saldo-mut); --line:var(--saldo-linha);
+    --primary:var(--saldo-anel); --anel:var(--saldo-anel); --anel-tri:var(--saldo-tri);
+    --warn:#FF9C80;
+    background:var(--saldo-bg);color:var(--ink);box-shadow:none}
+  .fd-resumo:active{box-shadow:none}
+  .hero .ringwrap{border-radius:18px;padding:14px 16px;margin-top:10px}
+  /* O objetivo no perfil é da mesma família do saldo: o mesmo verde fosco.
+     Em verde vivo ele virava um bloco menta no tema escuro. */
+  .pfgoal{background:var(--saldo-bg)}
+
+  /* Macros: ilhas neutras com fio, e o verde só na barra que enche. O tom
+     pastel de cada um era o resto do visual de receita. A barra continua do
+     mais claro ao mais fundo, que é o que distingue um macro do outro. */
+  .macros2 .m2:nth-child(n){background:var(--bg);box-shadow:inset 0 0 0 1px var(--line);border-radius:16px}
+
+  /* MARCA D'ÁGUA: uma figura por aba, ligada ao que a tela faz, em traço da
+     cor do texto a 3,5% — aparece com a tela quieta e some atrás de qualquer
+     cartão. É máscara sobre var(--ink), então acompanha o tema sozinha. Fica
+     em z-index -1, abaixo de todo o conteúdo e acima do fundo do body, sem
+     criar contexto de empilhamento que prenda pop-ups. */
+  #view-inicio::before,#view-progresso::before,#view-food::before,#view-treino::before,#view-perfil::before{
+    content:"";position:fixed;z-index:-1;pointer-events:none;
+    right:-48px;bottom:calc(72px + env(safe-area-inset-bottom));width:300px;height:300px;
+    background:var(--ink);opacity:.035;transform:rotate(-8deg);
+    -webkit-mask:var(--marca) center/contain no-repeat;mask:var(--marca) center/contain no-repeat}
+  #view-inicio,#view-progresso{--marca:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M12 14h76v16H58v58H42V30H12z'/%3E%3C/svg%3E")}
+  #view-food{--marca:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none' stroke='black' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M30 10v34M22 10v18a8 8 0 0 0 16 0V10M30 44v46M68 10c-8 4-12 14-12 26 0 8 4 12 10 12h2v42M68 10v38'/%3E%3C/svg%3E")}
+  #view-treino{--marca:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M8 40h8v20H8zM16 34h10v32H16zM74 34h10v32H74zM84 40h8v20h-8zM26 46h48v8H26z'/%3E%3C/svg%3E")}
+  #view-perfil{--marca:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none' stroke='black' stroke-width='6' stroke-linecap='round'%3E%3Ccircle cx='50' cy='30' r='16'/%3E%3Cpath d='M18 92c0-20 14-32 32-32s32 12 32 32'/%3E%3C/svg%3E")}
 
 </style>
 </head>
