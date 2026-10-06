@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v39";
+window.APP_RELEASE = "tresults-v40";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -3543,9 +3543,14 @@ $("taAdd").onclick=()=>{
 
 function renderTreino(){
   if(!$("tGasto"))return;
-  const burn=burnedKcal(todayKey());
-  $("tGasto").textContent=r0(store.getd+burn);
-  $("tGastoSub").innerHTML=store.getd>0?`GETD <b>${r0(store.getd)}</b> + treino <b>${r0(burn)}</b> kcal`:`Configure seu objetivo na Alimentação`;
+  /* A mesma conta do Início e da Alimentação (gastoDia): esta tela já
+     mostrou "GETD + treino" ignorando os passos, e os três números do app
+     discordavam entre si. */
+  const burn=burnedKcal(todayKey()),ps=passosDia(todayKey());
+  $("tGasto").textContent=r0(gastoDia(todayKey()));
+  $("tGastoSub").innerHTML=store.getd<=0?`Configure seu objetivo na Alimentação`
+    :(ps&&ps.calculavel)?`GETD sem a rotina <b>${r0(baseSemRotina())}</b> + passos <b>${r0(ps.kcal)}</b> + treino <b>${r0(burn)}</b> kcal`
+    :`GETD <b>${r0(store.getd)}</b> + treino <b>${r0(burn)}</b> kcal`;
   // cards do protocolo
   const list=store.tprotocol||[];
   $("tprotoCards").innerHTML=list.length?list.map(w=>`<button class="proto-card" data-tw="${w.id}"><div><div class="pccat">Treino ${esc(w.cat||"")}</div><div class="pcname">${esc(w.nome)}</div><div class="pcmac">${(w.ex||[]).length} exercícios · ${tpSeries(w)} séries</div></div><span class="pckcal">▶ Iniciar</span></button>`).join(""):'<div class="proto-empty">Você ainda não montou seu protocolo de treino. Toque abaixo para cadastrar (ex.: Treino A, B, C) — depois é um toque para iniciar o treino do dia.</div>';
@@ -5256,7 +5261,7 @@ function render(){
     if(ring){ring.style.strokeDashoffset=(RC*(1-frac)).toFixed(1);ring.style.stroke=over?"var(--warn)":"var(--primary)";}
     const burn=burnedKcal(viewKey),ps=passosDia(viewKey);
     if($("burnShow"))$("burnShow").textContent="+"+r0(burn);
-    if(ps&&ps.calculavel)$("statusLine").textContent=`Gasto do dia — ${r0(baseSemRotina())} (base) + ${r0(ps.kcal)} (passos)${burn>0?` + ${r0(burn)} (treino)`:""} = ${r0(gastoDia(viewKey))} kcal`;
+    if(ps&&ps.calculavel)$("statusLine").textContent=`Gasto do dia — ${r0(baseSemRotina())} (GETD sem a rotina) + ${r0(ps.kcal)} (passos)${burn>0?` + ${r0(burn)} (treino)`:""} = ${r0(gastoDia(viewKey))} kcal`;
     else $("statusLine").textContent=burn>0?`Gasto do dia — ${r0(getd)} (GETD) + ${r0(burn)} (treino) = ${r0(getd+burn)} kcal`:`GETD — ${r0(getd)} kcal`;
     $("statusLine").style.color="var(--muted)";
   }
@@ -5662,6 +5667,13 @@ function baseSemRotina(){
   if(tmb<=0)return store.getd;
   return Math.max(0,Math.round(store.getd-tmb*(neatAtiv(g.ativ)-1.2)));
 }
+/* A troca que acontece num dia com passos, dita em números: quanto a rotina
+   estimada valia (e sai) e quanto a meta muda de fato. O dono via "+421 kcal"
+   no selo e a meta parada, porque a rotina que saiu valia quase o mesmo.
+   A conta não mudou; ela passou a aparecer inteira na tela. */
+function rotinaKcal(){return Math.max(0,Math.round((store.getd||0)-baseSemRotina()));}
+function efeitoPassos(p){return p&&p.calculavel?Math.round(p.kcal-rotinaKcal()):0;}
+const sinal=v=>(v>0?"+":v<0?"−":"")+nPt(Math.abs(v));
 function gastoDia(dk){const p=passosDia(dk);if(p&&p.calculavel)return baseSemRotina()+p.kcal+burnedKcal(dk);return store.getd+burnedKcal(dk);}
 const nPt=n=>Math.round(n).toLocaleString("pt-BR");
 function goalMeta(t,dk){const base=gastoDia(dk||viewKey);return t.mode==="bulking"?base+t.daily:Math.max(0,base-t.daily);}
@@ -6318,7 +6330,12 @@ function pintarPassos(){
   const nota=$("passosNota");
   if(n<=0)nota.textContent="Digite os passos que o celular ou o relógio mostra.";
   else if(!c.calculavel)nota.textContent="Defina altura e peso no perfil para o app converter os passos em calorias.";
-  else nota.innerHTML=`${nPt(n)} passos ≈ <b>${kgTxt(c.km)} km</b>.`+(c.inclui?` Sobram <b>${nPt(c.sobra)}</b> além da atividade.`:"")+` Entram <b>+${r0(c.kcal)} kcal</b> no gasto do dia.`;
+  else{
+    const rot=rotinaKcal(),ef=Math.round(c.kcal-rot);
+    nota.innerHTML=`${nPt(n)} passos ≈ <b>${kgTxt(c.km)} km</b>`+(c.inclui?`, ${nPt(c.sobra)} além da atividade`:"")+` = <b>${nPt(c.kcal)} kcal</b>.`
+      +(rot>0?` Eles entram <b>no lugar</b> da sua rotina do dia a dia, que já contava ${nPt(rot)} kcal de movimento. <b>Na meta: ${sinal(ef)} kcal.</b>`+(ef<0?" Hoje você andou menos do que a rotina estimava.":"")
+             :` <b>Na meta: +${nPt(c.kcal)} kcal.</b>`);
+  }
   $("passosZerar").style.display=(store.passos&&store.passos[passosDk])?"":"none";
 }
 function abrirPassos(dk){
@@ -6345,10 +6362,10 @@ $("passosSalvar").onclick=()=>{
   const temAtiv=kmAtividades(passosDk)>0;
   store.passos[passosDk]={n,inclui:temAtiv?passosInclui():false};
   if(temAtiv){try{localStorage.setItem("tresults.passosInc",passosInclui()?"sim":"nao");}catch(e){}}
-  save();render();renderInicio();
+  save();render();renderInicio();renderTreino();
   $("passosOverlay").classList.remove("open");
 };
-$("passosZerar").onclick=()=>{if(store.passos)delete store.passos[passosDk];save();render();renderInicio();$("passosOverlay").classList.remove("open");};
+$("passosZerar").onclick=()=>{if(store.passos)delete store.passos[passosDk];save();render();renderInicio();renderTreino();$("passosOverlay").classList.remove("open");};
 $("passosVoltar").onclick=()=>$("passosOverlay").classList.remove("open");
 $("passosOverlay").onclick=e=>{if(e.target===$("passosOverlay"))$("passosOverlay").classList.remove("open");};
 $("passosRow").onclick=()=>abrirPassos(viewKey);
@@ -6359,12 +6376,14 @@ function renderPassos(){
   const p=passosDia(viewKey);
   if(!p){$("passosTit").textContent="Passos do dia";$("passosSub").textContent="Toque para lançar o que o celular contou";return;}
   $("passosTit").textContent=`${nPt(p.n)} passos · ${kgTxt(p.km)} km`;
-  $("passosSub").textContent=!p.calculavel?"Defina altura e peso para converter em kcal":p.inclui?`${nPt(p.sobra)} além da atividade · +${r0(p.kcal)} kcal`:`+${r0(p.kcal)} kcal no gasto do dia`;
+  const rot=rotinaKcal();
+  $("passosSub").textContent=!p.calculavel?"Defina altura e peso para converter em kcal"
+    :(p.inclui?`${nPt(p.sobra)} além da atividade · `:"")+(rot>0?`${nPt(p.kcal)} no lugar de ${nPt(rot)} da rotina · ${sinal(efeitoPassos(p))} na meta`:`+${nPt(p.kcal)} kcal na meta`);
 }
 function renderFdPassos(){
   const el=$("fdPassosTx");if(!el)return;
   const p=passosDia(todayKey());
-  el.textContent=p?`${nPt(p.n)} passos hoje${p.calculavel?` · +${r0(p.kcal)} kcal`:""}`:"Lançar os passos de hoje";
+  el.textContent=p?`${nPt(p.n)} passos hoje${p.calculavel?` · ${sinal(efeitoPassos(p))} kcal na meta`:""}`:"Lançar os passos de hoje";
 }
 
 /* O "+" do Início: quem já usava o app avisa aqui que começou (ou parou) a

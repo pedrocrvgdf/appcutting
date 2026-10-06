@@ -278,6 +278,15 @@ inclui}`, sincronizado como o resto.
   o piso sedentário. Com GETD digitado à mão o desconto é o mesmo; o
   exógeno fica, porque é somado à parte. **Dias sem passos não mudam.** Quem
   andou menos que a rotina estimada vê a meta cair: é o medido mandando.
+- **A troca aparece inteira na tela** (`rotinaKcal`, `efeitoPassos`). O dono
+  via "+421 kcal" no selo e a meta parada: a rotina que saiu valia quase o
+  mesmo, e a tela só mostrava o que entrava. Hoje o pop-up, a linha da
+  Alimentação e o selo do Início dizem o que entra, o que sai e o efeito
+  na meta ("421 no lugar de 420 da rotina · +1 na meta"). Ele escolheu
+  isso no lugar de mudar a conta. **Não volte a mostrar só o que entra.**
+- **As três telas usam a mesma conta (`gastoDia`)**: Início, Alimentação e
+  o "Gasto de hoje" do Treino, que já mostrou "GETD + treino" ignorando os
+  passos. Existe teste.
 - **A pergunta "esses passos já incluem a atividade de hoje?" só aparece
   quando há caminhada, corrida ou esteira com km naquele dia**
   (`kmAtividades`). Nem todo app soma as duas coisas. Com "sim", as
