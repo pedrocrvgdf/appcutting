@@ -60,7 +60,9 @@ test.describe('Lançar os passos na Alimentação', () => {
     await digitar(page, '10.000');
     const nota = await texto(page, 'passosNota');
     expect(nota, 'a prévia mostra a distância').toMatch(/7,5 km/);
-    expect(nota, 'e as calorias').toMatch(/\+299 kcal/);
+    expect(nota, 'e as calorias').toMatch(/= 299 kcal/);
+    expect(nota, 'e diz o que sai no lugar').toMatch(/rotina do dia a dia, que já contava 534 kcal/);
+    expect(nota, 'e o efeito de fato na meta').toMatch(/Na meta: −235 kcal/);
     expect(await visivel(page, 'passosAtivWrap'), 'sem atividade no dia, não há o que perguntar').toBe(false);
     await salvar(page);
 
@@ -68,8 +70,8 @@ test.describe('Lançar os passos na Alimentação', () => {
     expect(s.passos[diaISO(0)]).toEqual({ n: 10000, inclui: false });
     expect(await gasto(page), '2466 de base sem rotina + 299 dos passos').toBe(2765);
     expect(await texto(page, 'passosTit')).toBe('10.000 passos · 7,5 km');
-    expect(await texto(page, 'passosSub')).toMatch(/\+299 kcal/);
-    expect(await texto(page, 'statusLine')).toMatch(/2466 \(base\) \+ 299 \(passos\)/);
+    expect(await texto(page, 'passosSub')).toBe('299 no lugar de 534 da rotina · −235 na meta');
+    expect(await texto(page, 'statusLine')).toMatch(/2466 \(GETD sem a rotina\) \+ 299 \(passos\)/);
     const metaDepois = parseInt(await texto(page, 'metaShow'), 10);
     expect(metaAntes - metaDepois, 'a rotina estimada (534) sai, os passos (299) entram').toBe(235);
     expect(erros).toEqual([]);
@@ -170,14 +172,14 @@ test.describe('A atividade registrada e os passos', () => {
     await digitar(page, '10000');
     expect(await visivel(page, 'passosAtivWrap')).toBe(true);
     expect(await texto(page, 'passosAtivNota')).toMatch(/Caminhada 3,7 km ≈ 5.000 passos/);
-    expect(await texto(page, 'passosNota')).toMatch(/Sobram 5.000/);
-    expect(await texto(page, 'passosNota')).toMatch(/\+149 kcal/);   // 80 × 3,735 × 0,5
+    expect(await texto(page, 'passosNota')).toMatch(/5.000 além da atividade/);
+    expect(await texto(page, 'passosNota')).toMatch(/= 149 kcal/);   // 80 × 3,735 × 0,5
     await salvar(page);
 
     const s = await store(page);
     expect(s.passos[diaISO(0)]).toEqual({ n: 10000, inclui: true });
     expect(await gasto(page), '2466 + 149 dos passos a mais + 150 da caminhada').toBe(2765);
-    expect(await texto(page, 'passosSub')).toMatch(/5.000 além da atividade · \+149 kcal/);
+    expect(await texto(page, 'passosSub')).toBe('5.000 além da atividade · 149 no lugar de 534 da rotina · −385 na meta');
   });
 
   test('"não": os passos entram inteiros, por cima da caminhada', async ({ page }) => {
@@ -186,8 +188,8 @@ test.describe('A atividade registrada e os passos', () => {
     await abrirPopup(page);
     await digitar(page, '10000');
     await clicar(page, '#passosIncSeg [data-v="nao"]');
-    expect(await texto(page, 'passosNota')).toMatch(/\+299 kcal/);
-    expect(await texto(page, 'passosNota')).not.toMatch(/Sobram/);
+    expect(await texto(page, 'passosNota')).toMatch(/= 299 kcal/);
+    expect(await texto(page, 'passosNota')).not.toMatch(/além da atividade/);
     await salvar(page);
     expect((await store(page)).passos[diaISO(0)].inclui).toBe(false);
     expect(await gasto(page), '2466 + 299 + 150').toBe(2915);
@@ -198,8 +200,7 @@ test.describe('A atividade registrada e os passos', () => {
     await irAlimentacao(page);
     await abrirPopup(page);
     await digitar(page, '4000');
-    expect(await texto(page, 'passosNota')).toMatch(/Sobram 0/);
-    expect(await texto(page, 'passosNota')).toMatch(/\+0 kcal/);
+    expect(await texto(page, 'passosNota')).toMatch(/0 além da atividade = 0 kcal/);
     await salvar(page);
     expect(await gasto(page), '2466 + 0 + 150: a caminhada continua inteira').toBe(2616);
   });
@@ -245,7 +246,7 @@ test.describe('O selo no Início', () => {
     expect(await texto(page, 'passosData')).toBe('Hoje');
     await digitar(page, '10000');
     await salvar(page);
-    expect(await texto(page, 'fdPassosTx')).toBe('10.000 passos hoje · +299 kcal');
+    expect(await texto(page, 'fdPassosTx')).toBe('10.000 passos hoje · −235 kcal na meta');
     expect(await texto(page, 'fdSaldoSub'), 'o saldo do Início acompanha').toMatch(/de 2342 kcal/);   // 2765 − 423 de déficit
   });
 
@@ -260,6 +261,35 @@ test.describe('O selo no Início', () => {
     await page.waitForTimeout(100);
     const nuvem = await page.evaluate(() => window.__pushes.at(-1));
     expect(nuvem.passos[Object.keys(nuvem.passos)[0]].n).toBe(5000);
+  });
+
+  test('passos que superam a rotina aparecem como ganho na meta', async ({ page }) => {
+    /* Rotina "Sentado" (1,2): não há rotina a trocar, e tudo que os passos
+       medem entra na meta. */
+    const s = estadoBase();
+    const st = JSON.parse(s['cutting.v1']); st.goals.ativ = 1.2; st.getd = 2136; s['cutting.v1'] = JSON.stringify(st);
+    await abrirApp(page, s);
+    await irAlimentacao(page);
+    await abrirPopup(page);
+    await digitar(page, '10000');
+    expect(await texto(page, 'passosNota')).toMatch(/Na meta: \+299 kcal/);
+    await salvar(page);
+    expect(await texto(page, 'passosSub')).toBe('+299 kcal na meta');
+    expect(await gasto(page)).toBe(2435);
+  });
+
+  test('a tela de Treino conta os passos como o Início e a Alimentação', async ({ page }) => {
+    /* Ela mostrava "GETD + treino" e ignorava os passos: três telas, dois
+       números para o mesmo dia. */
+    await abrirApp(page, estadoBase());
+    await irAlimentacao(page);
+    await abrirPopup(page);
+    await digitar(page, '10000');
+    await salvar(page);
+    await clicar(page, '#tabbar [data-tab="treino"]');
+    await page.waitForTimeout(200);
+    expect(await texto(page, 'tGasto')).toBe(String(await gasto(page)));
+    expect(await texto(page, 'tGastoSub')).toMatch(/GETD sem a rotina 2466 \+ passos 299 \+ treino 0/);
   });
 
   test('nenhum diálogo do navegador', async ({ page }) => {
