@@ -496,6 +496,7 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 | Arquivo | Cobre |
 |---|---|
 | `tests/treino.spec.js` | Persistência da sessão, retomada após o app ser descartado, desconto do tempo fora do app |
+| `tests/academias.spec.js` | Academias: sem cadastro o app fica igual, filtro por academia, treino novo nascendo na escolhida, sessão gravando onde foi, referência e selo na mesma academia, excluir sem apagar treino nem histórico, nuvem, 320px |
 | `tests/historico.spec.js` | Referência da última sessão, sugestões, indicador de progressão de carga |
 | `tests/interface.spec.js` | Zoom bloqueado, diálogos internos, layout em 390/320px, tema claro e escuro |
 | `tests/alarme.spec.js` | Volume e ausência de distorção do alarme de descanso |
@@ -571,6 +572,46 @@ Chaves usadas no armazenamento local, úteis para montar cenários:
   página já está visível de novo. Quem sabe a verdade é `trS.saiuNoDescanso`,
   marcado no `visibilitychange` e no `trRestore` (restaurar = a página foi
   descartada, logo a pessoa esteve fora).
+
+### Academias: cada uma tem os seus aparelhos
+
+O dono pediu que o app entendesse que "nem todas as academias comportam todos
+os aparelhos": a pessoa cadastra as academias que frequenta (quantas forem) e
+cada uma tem o seu treino, ou o mesmo se repete onde der. Academia aqui é um
+**agrupamento de treinos**, não um inventário de aparelhos — o inventário
+ficou como próximo passo possível, não construído.
+
+- **`store.academias = [{id, nome}]`** sincroniza como o resto (load,
+  blankStore, applyRemote, pushRemote). **A escolhida é do aparelho**
+  (`tresults.acad`): é o celular que vai à academia. Escolha que não existe
+  mais (excluída aqui ou em outro aparelho) vale "Todas" (`acadSel`), em vez
+  de esconder o protocolo.
+- **Cada treino guarda em `acads` onde vale; ausente ou vazio = todas.** É
+  como todo treino nasceu antes disto, e é por isso que **sem academia
+  cadastrada o app fica exatamente igual** — existe teste. `tpSave` remonta o
+  treino do zero: carregue `acads` junto, como `nasc` no objetivo.
+- Treino novo e sugestão de protocolo **nascem na academia escolhida**: é para
+  ela que estão sendo montados.
+- **A sessão grava `acad` e `acadNome`** (`trNext`), e `trPersist`/`trRestore`
+  carregam a academia do treino em andamento (lista explícita de campos).
+  Com "Todas" escolhida, a sessão é da única academia do treino, se ele tiver
+  uma só; senão fica sem academia — não se inventa (`acadDaSessao`). O nome
+  na tela vem de `acadNomeDe`: o atual, se a academia existe (renomear muda o
+  histórico também), senão o guardado.
+- **Referência e progressão comparam na mesma academia** (`mesmaAcad`): o leg
+  press de uma não é o da outra. **Registro sem academia casa com qualquer
+  uma** — sem isso, ao cadastrar a primeira academia, o histórico inteiro
+  deixaria de servir de referência. Sem nada na mesma academia,
+  `lastExSession` devolve a de outra **com o nome dela** (`outra`), e a linha
+  diz "em Smart Fit" no lugar de "anterior"; o selo do feed diz
+  **"primeira vez nesta academia"** (`fdSoEmOutra`), nunca "primeira vez deste
+  treino" para um treino que já foi feito. `abrirSessao` usa a mesma regra do
+  selo para comparar exercício a exercício.
+- **Excluir academia não apaga treino nem histórico.** O id sai dos treinos
+  (id que não existe esconderia o treino de todas); o treino que era só dela
+  passa a valer em todas; a sessão gravada mantém `acadNome`. Pede
+  `appConfirm`, não senha: nada se perde.
+- Coberto em `tests/academias.spec.js`.
 
 ### Trocar o exercício no meio do treino
 
