@@ -24,6 +24,7 @@ window.__t={
   appNativo:()=>appNativo,
   applyRemote, goalsParaNuvem, pushRemote:()=>pushRemote(true), naNuvem:()=>!!(cloudEnabled&&user),
   gastoDia, passosDia, baseSemRotina, kmAtividades, TACO, localList,
+  academias, acadSel, acadDaSessao, treinoNaAcad, fdTodas, fdProgressao, fdSoEmOutra,
   /* Trocar quem está logado, para alcançar o modo local — onde não há conta e
      portanto não há senha a conferir. */
   setUser:u=>{user=u;},

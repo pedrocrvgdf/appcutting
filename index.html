@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v40";
+window.APP_RELEASE = "tresults-v41";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -704,6 +704,19 @@ window.APP_RELEASE = "tresults-v40";
   .synchips button:active{transform:scale(.94)}
   .synchips button.on{background:var(--primary);border-color:var(--primary);color:#fff}
   .synchips .none{font-size:12px;color:var(--muted)}
+  /* Academias: onde se treina hoje, no alto da aba Treino */
+  .acad-bar{margin-bottom:12px}
+  .acad-topo{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+  .acad-topo .lbl{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-left:2px}
+  .acad-editar{font-size:12.5px;font-weight:700;color:var(--primary);padding:4px 2px}
+  .acad-chips button{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .acad-chips .acad-mais{min-width:40px;color:var(--primary);font-size:15px;line-height:1}
+  .acad-primeira{width:100%;text-align:left;font-size:12.5px;font-weight:700;color:var(--primary);padding:11px 13px;border:1px dashed var(--line);border-radius:16px;line-height:1.4}
+  .acad-primeira:active{transform:scale(.97)}
+  .acad-row .in{flex:1;min-width:0}
+  .tp-acad-nota{display:block;margin:6px 0 0 2px}
+  .tr-ref-outra{font-size:12px;line-height:1.5;color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:9px 12px;margin-bottom:10px;overflow-wrap:anywhere}
+  .tr-ref-outra b{color:var(--ink)}
   .mmwrap{display:flex;gap:26px;justify-content:center;align-items:flex-start;padding:8px 0 4px}
   .mmfig{text-align:center}
   .mmfig svg{width:104px;height:auto;display:block}
@@ -900,9 +913,14 @@ window.APP_RELEASE = "tresults-v40";
     background:var(--primary);display:flex;align-items:center;justify-content:center}
   .fd-ico svg{width:20px;height:20px;stroke:#fff;fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
   .fd-nome{flex:1;min-width:0}
-  .fd-nome .n{font-family:var(--display);font-size:18px;font-weight:800;line-height:1.2;
-    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .fd-nome .h{font-size:11.5px;font-weight:700;color:var(--muted);margin-top:1px;
+  /* display:block nos dois: em <span> inline nada é cortado nem quebrado, e
+     um nome comprido de treino ou de academia vazava por cima da seta e da
+     borda. O nome do treino quebra linha em vez de perder o fim (a pessoa
+     precisa ler qual treino foi); a linha de baixo, que é detalhe, leva
+     reticência. */
+  .fd-nome .n{display:block;font-family:var(--display);font-size:18px;font-weight:800;line-height:1.2;
+    overflow-wrap:anywhere}
+  .fd-nome .h{display:block;font-size:11.5px;font-weight:700;color:var(--muted);margin-top:1px;
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .fd-top .chev{width:16px;height:16px;flex:none;margin-top:11px;opacity:.45;stroke:var(--ink);
     fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;transition:transform .18s ease}
@@ -1676,6 +1694,7 @@ window.APP_RELEASE = "tresults-v40";
         <button data-tab="avulso">Treino avulso</button>
       </div>
       <div id="tTabProto">
+        <div class="acad-bar" id="acadBar"></div>
         <div class="proto-cards" id="tprotoCards"></div>
         <button class="btn secondary" id="tOpenProtocol" style="margin-top:10px">＋ Montar / editar protocolo de treino</button>
         <button class="btn secondary" id="tSugBtn" style="margin-top:8px">✨ Ver sugestões de treino</button>
@@ -1897,6 +1916,19 @@ window.APP_RELEASE = "tresults-v40";
   </div>
 </div>
 
+<!-- MINHAS ACADEMIAS — abre da aba Treino. Fica acima do protocolo (90) e
+     abaixo do diálogo de confirmação, que pergunta antes de excluir. -->
+<div class="overlay" id="acadOverlay" style="z-index:100">
+  <div class="modal" style="max-width:460px">
+    <h3 style="margin-bottom:4px">Minhas academias</h3>
+    <p class="gw-sub">Nem toda academia tem todos os aparelhos. Cadastre as que você frequenta e, em cada treino do protocolo, marque onde dá para fazê-lo.</p>
+    <div id="acadLista"></div>
+    <div class="field"><label class="lbl" for="acadNome">Nova academia</label><input class="in" id="acadNome" type="text" maxlength="40" placeholder="Ex.: Academia do prédio" autocomplete="off" enterkeyhint="done"></div>
+    <button class="btn secondary" id="acadAdd" style="margin-top:10px">＋ Adicionar academia</button>
+    <button class="btn" id="acadFechar">Concluir</button>
+  </div>
+</div>
+
 <!-- EDITOR DE TREINO -->
 <div class="overlay" id="tpEditOverlay">
   <div class="modal">
@@ -1906,6 +1938,11 @@ window.APP_RELEASE = "tresults-v40";
       <div class="field" style="flex:1"><label class="lbl" for="tpCat">Divisão</label>
         <select class="in" id="tpCat"><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>Livre</option></select>
       </div>
+    </div>
+    <div id="tpAcadWrap" style="display:none">
+      <label class="lbl" style="margin:16px 0 6px">Academias onde dá para fazer este treino</label>
+      <div class="synchips" id="tpAcads"></div>
+      <p class="campo-nota tp-acad-nota" id="tpAcadNota"></p>
     </div>
     <label class="lbl" style="margin:16px 0 6px">Grupos trabalhados neste treino</label>
     <div class="mm" id="tpMap"></div>
@@ -2992,8 +3029,8 @@ let currentView=null;
 let qtyUnit="g";
 let selectedObj=null, promptedSetup=false, onboarding=false;
 
-function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.days){s.custom=s.custom||[];s.goals=s.goals||{};s.liquids=s.liquids||{};s.protocol=s.protocol||[];s.weights=s.weights||[];s.tprotocol=s.tprotocol||[];s.tdays=s.tdays||{};s.passos=s.passos||{};return s;}}catch(e){}return {getd:0,days:{},custom:[],goals:{},liquids:{},protocol:[],weights:[],tprotocol:[],tdays:{},passos:{}};}
-function blankStore(){return {getd:0,days:{},custom:[],goals:{},liquids:{},protocol:[],weights:[],tprotocol:[],tdays:{},passos:{}};}
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.days){s.custom=s.custom||[];s.goals=s.goals||{};s.liquids=s.liquids||{};s.protocol=s.protocol||[];s.weights=s.weights||[];s.tprotocol=s.tprotocol||[];s.tdays=s.tdays||{};s.passos=s.passos||{};s.academias=s.academias||[];return s;}}catch(e){}return {getd:0,days:{},custom:[],goals:{},liquids:{},protocol:[],weights:[],tprotocol:[],tdays:{},passos:{},academias:[]};}
+function blankStore(){return {getd:0,days:{},custom:[],goals:{},liquids:{},protocol:[],weights:[],tprotocol:[],tdays:{},passos:{},academias:[]};}
 const OWNER_KEY="cutting.owner";
 const getOwner=()=>localStorage.getItem(OWNER_KEY);
 const setOwner=uid=>localStorage.setItem(OWNER_KEY,uid||"");
@@ -3088,9 +3125,19 @@ function fdProgressao(lista,i){
   if(!at.vol)return null;
   for(let j=i+1;j<lista.length;j++){
     const p=lista[j].w;
-    if(p.name===at.name&&p.vol)return {pct:(at.vol/p.vol-1)*100,de:p.vol,dia:lista[j].dia};
+    /* Na mesma academia: o volume do mesmo treino em aparelhos diferentes
+       não se compara. Registro sem academia casa com qualquer uma. */
+    if(p.name===at.name&&p.vol&&mesmaAcad(at.acad,p.acad))return {pct:(at.vol/p.vol-1)*100,de:p.vol,dia:lista[j].dia,j};
   }
   return null;
+}
+/** Sem anterior nesta academia, mas o treino já foi feito em outra? Então o
+    selo não pode dizer "primeira vez deste treino": seria mentira. */
+function fdSoEmOutra(lista,i){
+  const at=lista[i].w;
+  if(!at.vol||!at.acad)return false;
+  for(let j=i+1;j<lista.length;j++){const p=lista[j].w;if(p.name===at.name&&p.vol)return true;}
+  return false;
 }
 
 const FD_DIAS=["domingo","segunda","terça","quarta","quinta","sexta","sábado"];
@@ -3104,8 +3151,8 @@ function fdRotuloDia(k){
   return (dif<7?FD_DIAS[d.getDay()]+" · ":"")+dd+"/"+mm;
 }
 
-function fdSelo(pr){
-  if(!pr)return '<span class="fd-prog primeira"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>primeira vez deste treino</span>';
+function fdSelo(pr,soEmOutra){
+  if(!pr)return `<span class="fd-prog primeira"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>${soEmOutra?"primeira vez nesta academia":"primeira vez deste treino"}</span>`;
   const pct=Math.round(pr.pct);
   if(pct>0)return `<span class="fd-prog sobe"><svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>+${pct}% de carga</span>`;
   if(pct<0)return `<span class="fd-prog desce"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12l7 7 7-7"/></svg>${pct}% de carga</span>`;
@@ -3157,12 +3204,13 @@ function renderInicio(){
     const forca=!!(w.ex&&w.ex.length);
     const pr=fdProgressao(todas,i);
     const series=forca?w.ex.reduce((a,e)=>a+(e.sets||[]).length,0):0;
+    const onde=acadNomeDe(w);
 
     html+=`<div class="fd-card" data-fd="${esc(w.id)}">
       <button class="fd-top" data-fdtoggle="${esc(w.id)}">
         <span class="fd-ico">${forca?FD_ICO_FORCA:FD_ICO_CARDIO}</span>
         <span class="fd-nome"><span class="n">${esc(w.name)}</span>
-          <span class="h">${forca?`${w.ex.length} exercícios · ${series} séries`:(w.km?`${kgTxt(w.km)} km${w.inc?` · ${kgTxt(w.inc)}% de inclinação`:""}${w.ganho?` · ${r0(w.ganho)} m de ganho`:""}`:"registro manual")}</span></span>
+          <span class="h">${forca?`${w.ex.length} exercícios · ${series} séries${onde?` · ${esc(onde)}`:""}`:(w.km?`${kgTxt(w.km)} km${w.inc?` · ${kgTxt(w.inc)}% de inclinação`:""}${w.ganho?` · ${r0(w.ganho)} m de ganho`:""}`:"registro manual")}</span></span>
         <svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
       </button>
       <div class="fd-stats">
@@ -3170,7 +3218,7 @@ function renderInicio(){
         <div class="fd-stat"><div class="k">Gasto (kcal)</div><div class="v">${r0(w.kcal)}</div></div>
         <div class="fd-stat"><div class="k">${forca?"Volume (kg)":(w.km?"Distância (km)":"Tipo")}</div><div class="v">${forca?r0(w.vol||0):(w.km?kgTxt(w.km):esc((w.intens||"—").split(" · ")[0]))}</div></div>
       </div>
-      ${forca?fdSelo(pr):""}
+      ${forca?fdSelo(pr,!pr&&fdSoEmOutra(todas,i)):""}
       <div class="fd-mais">
         ${forca?w.ex.map(e=>{
           const st=(e.sets||[]);
@@ -3199,9 +3247,10 @@ function abrirSessao(id){
   const {w,dia}=lista[i];
   const pr=fdProgressao(lista,i);
 
-  /* sessão anterior do mesmo treino, para comparar exercício por exercício */
-  let ant=null;
-  for(let j=i+1;j<lista.length;j++){if(lista[j].w.name===w.name&&lista[j].w.ex){ant=lista[j].w;break;}}
+  /* A sessão anterior é a MESMA que o selo usou (pr.j): com dois critérios,
+     uma sessão vazia no meio fazia o selo dizer "+10%" e a comparação
+     exercício a exercício sumir. */
+  const ant=pr?lista[pr.j].w:null;
   const antDe=n=>{
     if(!ant)return null;
     const e=(ant.ex||[]).find(x=>x.n===n);
@@ -3210,8 +3259,9 @@ function abrirSessao(id){
   };
 
   $("ssTitulo").textContent=w.name;
-  $("ssSub").textContent=`${fdRotuloDia(dia)} · ${r0(w.min)} min · ${r0(w.kcal)} kcal`;
-  $("ssSelo").innerHTML=(w.ex&&w.ex.length)?fdSelo(pr):"";
+  const onde=acadNomeDe(w);
+  $("ssSub").textContent=`${fdRotuloDia(dia)} · ${r0(w.min)} min · ${r0(w.kcal)} kcal${onde?" · "+onde:""}`;
+  $("ssSelo").innerHTML=(w.ex&&w.ex.length)?fdSelo(pr,!pr&&fdSoEmOutra(lista,i)):"";
   $("ssCorpo").innerHTML=(w.ex||[]).map(e=>{
     const antes=antDe(e.n);
     const agora=(e.sets||[]).reduce((a,x)=>Math.max(a,x.kg||0),0);
@@ -3551,14 +3601,21 @@ function renderTreino(){
   $("tGastoSub").innerHTML=store.getd<=0?`Configure seu objetivo na Alimentação`
     :(ps&&ps.calculavel)?`GETD sem a rotina <b>${r0(baseSemRotina())}</b> + passos <b>${r0(ps.kcal)}</b> + treino <b>${r0(burn)}</b> kcal`
     :`GETD <b>${r0(store.getd)}</b> + treino <b>${r0(burn)}</b> kcal`;
-  // cards do protocolo
-  const list=store.tprotocol||[];
-  $("tprotoCards").innerHTML=list.length?list.map(w=>`<button class="proto-card" data-tw="${w.id}"><div><div class="pccat">Treino ${esc(w.cat||"")}</div><div class="pcname">${esc(w.nome)}</div><div class="pcmac">${(w.ex||[]).length} exercícios · ${tpSeries(w)} séries</div></div><span class="pckcal">▶ Iniciar</span></button>`).join(""):'<div class="proto-empty">Você ainda não montou seu protocolo de treino. Toque abaixo para cadastrar (ex.: Treino A, B, C) — depois é um toque para iniciar o treino do dia.</div>';
+  // cards do protocolo, só os que cabem na academia escolhida
+  renderAcadBar();
+  const todos=store.tprotocol||[],sel=acadSel();
+  const list=todos.filter(w=>treinoNaAcad(w,sel));
+  /* Com "Todas" escolhida, o cartão diz a academia do treino que tem uma:
+     é o único lugar em que a pessoa vê tudo junto. */
+  const onde=w=>(!sel&&acadsDoTreino(w).length)?` · ${esc(acadsTxt(w))}`:"";
+  $("tprotoCards").innerHTML=list.length?list.map(w=>`<button class="proto-card" data-tw="${w.id}"><div><div class="pccat">Treino ${esc(w.cat||"")}</div><div class="pcname">${esc(w.nome)}</div><div class="pcmac">${(w.ex||[]).length} exercícios · ${tpSeries(w)} séries${onde(w)}</div></div><span class="pckcal">▶ Iniciar</span></button>`).join("")
+    :todos.length?`<div class="proto-empty">Nenhum treino marcado para <b>${esc((acadPorId(sel)||{}).nome||"")}</b> ainda. Monte um para ela, ou marque esta academia num treino que você já tem, em "Montar / editar protocolo".</div>`
+    :'<div class="proto-empty">Você ainda não montou seu protocolo de treino. Toque abaixo para cadastrar (ex.: Treino A, B, C) — depois é um toque para iniciar o treino do dia.</div>';
   $("tprotoCards").querySelectorAll("[data-tw]").forEach(b=>b.onclick=()=>startTRun(b.dataset.tw));
   // treinos de hoje
   const td=((store.tdays||{})[todayKey()])||[];
   $("tCount").textContent=td.length+(td.length===1?" treino":" treinos");
-  $("tTodayList").innerHTML=td.length?td.map(w=>`<div class="proto-meal-row"><div><div class="n">${esc(w.name)}</div><div class="m">${r0(w.min)} min${w.km?` · ${kgTxt(w.km)} km`:""}${w.inc?` · ${kgTxt(w.inc)}% de inclinação`:""}${w.ganho?` · ${r0(w.ganho)} m de ganho`:""} · ${r0(w.kcal)} kcal${w.intens?` · ${w.intens}`:""}${w.rir!=null?` · RIR médio ${w.rir}`:""}${w.vol?` · ${r0(w.vol)} kg movimentados`:""}</div></div><div class="acts"><button class="del" data-tdel="${w.id}">Excluir</button></div></div>`).join(""):'<div class="proto-empty">Nenhum treino registrado hoje.</div>';
+  $("tTodayList").innerHTML=td.length?td.map(w=>`<div class="proto-meal-row"><div><div class="n">${esc(w.name)}</div><div class="m">${r0(w.min)} min${w.km?` · ${kgTxt(w.km)} km`:""}${w.inc?` · ${kgTxt(w.inc)}% de inclinação`:""}${w.ganho?` · ${r0(w.ganho)} m de ganho`:""} · ${r0(w.kcal)} kcal${w.intens?` · ${w.intens}`:""}${w.rir!=null?` · RIR médio ${w.rir}`:""}${w.vol?` · ${r0(w.vol)} kg movimentados`:""}${acadNomeDe(w)?` · ${esc(acadNomeDe(w))}`:""}</div></div><div class="acts"><button class="del" data-tdel="${w.id}">Excluir</button></div></div>`).join(""):'<div class="proto-empty">Nenhum treino registrado hoje.</div>';
   $("tTodayList").querySelectorAll("[data-tdel]").forEach(b=>b.onclick=()=>{
     store.tdays[todayKey()]=tToday().filter(x=>x.id!==b.dataset.tdel);save();renderTreino();render();renderInicio();
   });
@@ -3646,15 +3703,176 @@ function useTSug(pid){
   const obj=(store.goals||{}).objetivo||"cutting";
   const rest=obj==="bulking"?90:60;
   store.tprotocol=store.tprotocol||[];
-  p.w.forEach(w=>{store.tprotocol.push({id:uid(),nome:w.nome,cat:w.cat,ex:w.ex.map(e=>({n:e.n,s:e.s,rest,g:e.g,sec:synFor(e.g)}))});});
+  /* Quem escolheu uma academia e pegou uma sugestão está montando o treino
+     DELA: sem isto, o protocolo novo apareceria em todas. */
+  const sel=acadSel();
+  p.w.forEach(w=>{store.tprotocol.push(Object.assign({id:uid(),nome:w.nome,cat:w.cat,ex:w.ex.map(e=>({n:e.n,s:e.s,rest,g:e.g,sec:synFor(e.g)}))},sel?{acads:[sel]}:{}));});
   save();
   $("tSugOverlay").classList.remove("open");
   renderTreino();
-  showCongrats("Protocolo adicionado — bom treino!");
+  showCongrats(sel?`Protocolo adicionado em ${acadPorId(sel).nome} — bom treino!`:"Protocolo adicionado — bom treino!");
 }
 $("tSugClose").onclick=()=>$("tSugOverlay").classList.remove("open");
 $("tSugOverlay").onclick=e=>{if(e.target===$("tSugOverlay"))$("tSugOverlay").classList.remove("open");};
 $("tSugBtn").onclick=openTSug;
+
+/* ============================================================
+   ACADEMIAS
+
+   Nem toda academia tem todos os aparelhos: quem treina em mais de uma monta
+   um treino para cada, ou repete o mesmo onde der. Cada treino do protocolo
+   guarda em `acads` as academias onde ele vale, e lista vazia quer dizer
+   "qualquer academia" — que é como todo treino nasceu antes disto existir.
+   Por isso quem nunca cadastrou academia vê o app exatamente como era.
+
+   A academia escolhida é DESTE aparelho (tresults.acad): é o celular que vai
+   à academia, e outro aparelho pode estar em outra. A lista de academias
+   sincroniza com o resto.
+
+   A sessão registrada guarda a academia (`acad`) e o nome dela na hora
+   (`acadNome`), para o histórico continuar dizendo onde foi mesmo depois de
+   a academia ser excluída.
+   ============================================================ */
+const ACAD_KEY="tresults.acad";
+const ACAD_NOME_MAX=40;
+function academias(){return store.academias||[];}
+function acadPorId(id){return id?academias().find(a=>a.id===id)||null:null;}
+/** A academia escolhida, ou "" para todas. Uma que sumiu (excluída aqui ou
+    em outro aparelho) volta para todas, em vez de esconder o protocolo. */
+function acadSel(){let id="";try{id=localStorage.getItem(ACAD_KEY)||"";}catch(e){}return acadPorId(id)?id:"";}
+function setAcadSel(id){try{if(id)localStorage.setItem(ACAD_KEY,id);else localStorage.removeItem(ACAD_KEY);}catch(e){}}
+/** As academias do treino que ainda existem. */
+function acadsDoTreino(w){return ((w&&w.acads)||[]).filter(id=>acadPorId(id));}
+/** O treino aparece nesta academia? Sem academia marcada, aparece em todas. */
+function treinoNaAcad(w,id){const a=acadsDoTreino(w);return !id||!a.length||a.includes(id);}
+/** Onde a sessão está sendo feita: a academia escolhida; com "Todas", a única
+    academia do treino, se ele tiver uma só. Sem isso, não se sabe — e não se
+    inventa. */
+function acadDaSessao(w){
+  const sel=acadSel();if(sel)return sel;
+  const a=acadsDoTreino(w);return a.length===1?a[0]:"";
+}
+/** Nome da academia de um registro: o atual, se ela ainda existe (pode ter
+    sido renomeada); senão, o guardado na hora. */
+function acadNomeDe(reg){const a=acadPorId(reg&&reg.acad);return a?a.nome:((reg&&reg.acadNome)||"");}
+/** Duas sessões são comparáveis? Registro sem academia (de antes de ela
+    existir, ou feito em "Todas") casa com qualquer uma: senão, ao cadastrar a
+    primeira academia, o histórico inteiro deixaria de servir de referência. */
+function mesmaAcad(a,b){return !a||!b||a===b;}
+
+function renderAcadBar(){
+  const el=$("acadBar");if(!el)return;
+  const lista=academias(),sel=acadSel();
+  if(!lista.length){
+    el.innerHTML='<button type="button" class="acad-primeira" id="acadPrimeira">＋ Treina em mais de uma academia? Cadastre cada uma</button>';
+    $("acadPrimeira").onclick=()=>abrirAcademias(true);
+    return;
+  }
+  el.innerHTML=`<div class="acad-topo"><span class="lbl">Onde você treina hoje</span><button type="button" class="acad-editar" id="acadEditar">Editar</button></div>
+    <div class="synchips acad-chips">${[{id:"",nome:"Todas"}].concat(lista).map(a=>`<button type="button" data-acad="${esc(a.id)}" class="${a.id===sel?"on":""}">${esc(a.nome)}</button>`).join("")}<button type="button" class="acad-mais" id="acadMais" aria-label="Adicionar academia">＋</button></div>`;
+  el.querySelectorAll("[data-acad]").forEach(b=>b.onclick=()=>{setAcadSel(b.dataset.acad);renderTreino();});
+  $("acadEditar").onclick=()=>abrirAcademias(false);
+  $("acadMais").onclick=()=>abrirAcademias(true);
+}
+
+let acadRen=null,acadRenTxt=null;   // academia sendo renomeada, e o que já foi digitado
+function abrirAcademias(focarNova){
+  acadRen=null;acadRenTxt=null;$("acadNome").value="";
+  renderAcadLista();
+  $("acadOverlay").classList.add("open");
+  if(focarNova)setTimeout(()=>{try{$("acadNome").focus();}catch(e){}},260);
+}
+/** Grava a renomeação em aberto. Falso quando o nome não vale (o aviso já
+    apareceu): fechar o pop-up não pode descartar calado o que foi digitado. */
+function salvarRen(){
+  const a=acadPorId(acadRen);
+  if(!a){acadRen=null;acadRenTxt=null;return true;}
+  const nome=(acadRenTxt!=null?acadRenTxt:a.nome).trim().slice(0,ACAD_NOME_MAX);
+  if(nome!==a.nome){if(!acadNomeValido(nome,a.id))return false;a.nome=nome;save();}
+  acadRen=null;acadRenTxt=null;return true;
+}
+function fecharAcademias(){
+  if(acadRen&&!salvarRen())return;
+  $("acadOverlay").classList.remove("open");acadRen=null;acadRenTxt=null;renderTreino();
+}
+function acadNomeValido(nome,ignorar){
+  if(!nome){appAlert("Escreva o nome da academia.");return false;}
+  if(academias().some(a=>a.id!==ignorar&&norm(a.nome)===norm(nome))){appAlert("Você já tem uma academia com esse nome.");return false;}
+  return true;
+}
+function renderAcadLista(){
+  const lista=academias(),prot=store.tprotocol||[];
+  $("acadLista").innerHTML=lista.length?lista.map(a=>{
+    if(a.id===acadRen)return `<div class="proto-meal-row acad-row"><input class="in" id="acadRenIn" type="text" maxlength="${ACAD_NOME_MAX}" value="${esc(acadRenTxt!=null?acadRenTxt:a.nome)}" autocomplete="off" enterkeyhint="done"><div class="acts"><button data-acadok="${esc(a.id)}">Salvar</button><button data-acadvolta="1">Voltar</button></div></div>`;
+    const n=prot.filter(w=>acadsDoTreino(w).includes(a.id)).length;
+    return `<div class="proto-meal-row acad-row"><div><div class="n">${esc(a.nome)}</div><div class="m">${n?n+(n===1?" treino marcado":" treinos marcados"):"nenhum treino marcado ainda"}</div></div><div class="acts"><button data-acadren="${esc(a.id)}">Renomear</button><button class="del" data-acaddel="${esc(a.id)}">Excluir</button></div></div>`;
+  }).join(""):'<div class="proto-empty" style="margin-bottom:12px">Nenhuma academia cadastrada ainda.</div>';
+  $("acadLista").querySelectorAll("[data-acadren]").forEach(b=>b.onclick=()=>{
+    if(acadRen&&!salvarRen())return;   // a que estava aberta não se perde
+    acadRen=b.dataset.acadren;acadRenTxt=null;renderAcadLista();
+    const i=$("acadRenIn");if(i){i.focus();i.select();}
+  });
+  const ok=()=>{if(salvarRen())renderAcadLista();};
+  $("acadLista").querySelectorAll("[data-acadok]").forEach(b=>b.onclick=ok);
+  $("acadLista").querySelectorAll("[data-acadvolta]").forEach(b=>b.onclick=()=>{acadRen=null;acadRenTxt=null;renderAcadLista();});
+  if($("acadRenIn")){
+    $("acadRenIn").addEventListener("input",e=>{acadRenTxt=e.target.value;});
+    $("acadRenIn").addEventListener("keydown",e=>{if(e.key==="Enter")ok();});
+  }
+  $("acadLista").querySelectorAll("[data-acaddel]").forEach(b=>b.onclick=async()=>{
+    const a=acadPorId(b.dataset.acaddel);if(!a)return;
+    if(!await appConfirm(`Excluir a academia "${a.nome}"? Nenhum treino é apagado: os que eram só dela passam a aparecer em todas, e o histórico continua dizendo onde cada sessão foi.`,{okText:"Excluir"}))return;
+    /* Tirar a academia dos treinos também: um id que não existe mais
+       esconderia o treino de todas as academias. */
+    (store.tprotocol||[]).forEach(w=>{if(w.acads){w.acads=w.acads.filter(id=>id!==a.id);if(!w.acads.length)delete w.acads;}});
+    store.academias=academias().filter(x=>x.id!==a.id);
+    let guardada="";try{guardada=localStorage.getItem(ACAD_KEY)||"";}catch(e){}
+    if(guardada===a.id)setAcadSel("");
+    if(acadRen===a.id){acadRen=null;acadRenTxt=null;}
+    save();renderAcadLista();
+  });
+}
+/** Id de uma academia excluída com este nome, ainda presente no histórico.
+    Recadastrar "Smart Fit" depois de excluí-la precisa devolver a MESMA
+    academia: com id novo, o histórico dela viraria "outra academia" para
+    sempre, e a referência pularia para a carga de outro lugar. */
+function idOrfao(nome){
+  const alvo=norm(nome),tds=store.tdays||{};
+  for(const dk of Object.keys(tds).sort().reverse())
+    for(const r of tds[dk]||[])
+      if(r.acad&&!acadPorId(r.acad)&&norm(r.acadNome||"")===alvo)return r.acad;
+  return "";
+}
+function adicionarAcademia(){
+  const nome=$("acadNome").value.trim().slice(0,ACAD_NOME_MAX);
+  if(!acadNomeValido(nome))return;
+  const a={id:idOrfao(nome)||uid(),nome};
+  store.academias=academias().concat([a]);
+  setAcadSel(a.id);          // quem cadastra uma academia acabou de dizer onde treina
+  $("acadNome").value="";
+  save();renderAcadLista();
+}
+$("acadAdd").onclick=adicionarAcademia;
+$("acadNome").addEventListener("keydown",e=>{if(e.key==="Enter")adicionarAcademia();});
+$("acadFechar").onclick=fecharAcademias;
+$("acadOverlay").onclick=e=>{if(e.target===$("acadOverlay"))fecharAcademias();};
+
+/* As academias no editor do treino. Nenhuma marcada = aparece em todas. */
+function renderTpAcads(){
+  const lista=academias(),wrap=$("tpAcadWrap");
+  wrap.style.display=lista.length?"block":"none";
+  if(!lista.length)return;
+  const sel=tpEditing.acads||[];
+  $("tpAcads").innerHTML=lista.map(a=>`<button type="button" data-tpacad="${esc(a.id)}" class="${sel.includes(a.id)?"on":""}">${esc(a.nome)}</button>`).join("");
+  $("tpAcadNota").textContent=sel.length?"Aparece só nas marcadas.":"Nenhuma marcada: aparece em todas as academias.";
+  $("tpAcads").querySelectorAll("[data-tpacad]").forEach(b=>b.onclick=()=>{
+    const id=b.dataset.tpacad,a=tpEditing.acads||(tpEditing.acads=[]);
+    const k=a.indexOf(id);if(k>-1)a.splice(k,1);else a.push(id);
+    renderTpAcads();
+  });
+}
+/** Os nomes das academias de um treino, para as listas. */
+function acadsTxt(w){return acadsDoTreino(w).map(id=>acadPorId(id).nome).join(", ");}
 
 /* protocolo de treino */
 const tprotoOverlay=$("tprotoOverlay"),tpEditOverlay=$("tpEditOverlay");
@@ -3665,7 +3883,8 @@ $("tpClose").onclick=()=>{tprotoOverlay.classList.remove("open");renderTreino();
 tprotoOverlay.onclick=e=>{if(e.target===tprotoOverlay){tprotoOverlay.classList.remove("open");renderTreino();}};
 function renderTpList(){
   const list=store.tprotocol||[];
-  $("tprotoList").innerHTML=list.length?list.map(w=>`<div class="proto-meal-row"><div><div class="n">${esc(w.nome)}</div><div class="m">Treino ${esc(w.cat||"")} · ${(w.ex||[]).length} exercícios · ${tpSeries(w)} séries</div></div><div class="acts"><button data-ted="${w.id}">Editar</button><button class="del" data-tdl="${w.id}">Excluir</button></div></div>`).join(""):'<div class="proto-empty" style="margin-bottom:12px">Nenhum treino cadastrado ainda.</div>';
+  const onde=w=>academias().length?` · ${acadsDoTreino(w).length?esc(acadsTxt(w)):"todas as academias"}`:"";
+  $("tprotoList").innerHTML=list.length?list.map(w=>`<div class="proto-meal-row"><div><div class="n">${esc(w.nome)}</div><div class="m">Treino ${esc(w.cat||"")} · ${(w.ex||[]).length} exercícios · ${tpSeries(w)} séries${onde(w)}</div></div><div class="acts"><button data-ted="${w.id}">Editar</button><button class="del" data-tdl="${w.id}">Excluir</button></div></div>`).join(""):'<div class="proto-empty" style="margin-bottom:12px">Nenhum treino cadastrado ainda.</div>';
   $("tprotoList").querySelectorAll("[data-ted]").forEach(b=>b.onclick=()=>openTpEditor(b.dataset.ted));
   $("tprotoList").querySelectorAll("[data-tdl]").forEach(b=>b.onclick=async()=>{if(await appConfirm("Excluir este treino do protocolo?",{okText:"Excluir"})){store.tprotocol=(store.tprotocol||[]).filter(x=>x.id!==b.dataset.tdl);save();renderTpList();}});
 }
@@ -3673,8 +3892,10 @@ $("tpNew").onclick=()=>openTpEditor(null);
 function tpSeries(w){return (w.ex||[]).reduce((a,e)=>a+(e.s||0),0);}
 function openTpEditor(id){
   tpEditId=id||null;
-  if(id){const w=(store.tprotocol||[]).find(x=>x.id===id);tpEditing={ex:JSON.parse(JSON.stringify(w.ex||[]))};$("tpTitle").textContent="Editar treino";$("tpName").value=w.nome;$("tpCat").value=w.cat||"A";}
-  else{tpEditing={ex:[]};$("tpTitle").textContent="Novo treino";$("tpName").value="";$("tpCat").value="A";}
+  if(id){const w=(store.tprotocol||[]).find(x=>x.id===id);tpEditing={ex:JSON.parse(JSON.stringify(w.ex||[])),acads:acadsDoTreino(w)};$("tpTitle").textContent="Editar treino";$("tpName").value=w.nome;$("tpCat").value=w.cat||"A";}
+  /* treino novo nasce na academia escolhida: é para ela que ele está sendo montado */
+  else{const sel=acadSel();tpEditing={ex:[],acads:sel?[sel]:[]};$("tpTitle").textContent="Novo treino";$("tpName").value="";$("tpCat").value="A";}
+  renderTpAcads();
   $("tpExName").value="";$("tpExS").value=4;$("tpExRest").value=90;$("tpExG").value="peito";renderSynChips();
   renderTpEx();tpEditOverlay.classList.add("open");
 }
@@ -3699,6 +3920,8 @@ $("tpSave").onclick=()=>{
   if(!nome)return appAlert("Dê um nome ao treino.");
   if(!tpEditing.ex.length)return appAlert("Adicione ao menos um exercício.");
   const data={id:tpEditId||uid(),nome,cat:$("tpCat").value,ex:tpEditing.ex};
+  const acads=(tpEditing.acads||[]).filter(id=>acadPorId(id));
+  if(acads.length)data.acads=acads;   // vazio = todas, e o treino fica com a forma de sempre
   store.tprotocol=store.tprotocol||[];
   if(tpEditId){const idx=store.tprotocol.findIndex(x=>x.id===tpEditId);if(idx>-1)store.tprotocol[idx]=data;else store.tprotocol.push(data);}
   else store.tprotocol.push(data);
@@ -4120,7 +4343,7 @@ function trPersist(){
     trSaveInputs();
     localStorage.setItem(RUNKEY,JSON.stringify({
       w:trS.w,start:trS.start,idx:trS.idx,logs:trS.logs,
-      away:trS.away||0,hiddenAt:trS.hiddenAt||0,
+      away:trS.away||0,hiddenAt:trS.hiddenAt||0,acad:trS.acad||"",acadNome:trS.acadNome||"",
       restEnd:trRestInt?trRestEnd:0,at:Date.now()
     }));
   }catch(e){}
@@ -4145,7 +4368,7 @@ function trRestore(){
      app. Se havia descanso correndo, o aviso ao voltar tem que ser a tela
      cheia, e não o pop-up de quem estava olhando. */
   trS={w:s.w,start:s.start||Date.now(),idx:Math.min(s.idx||0,s.w.ex.length-1),away:s.away||0,hiddenAt:0,
-       saiuNoDescanso:!!s.restEnd};
+       acad:s.acad||"",acadNome:s.acadNome||"",saiuNoDescanso:!!s.restEnd};
   const old=s.logs||[];
   trS.logs=trS.w.ex.map((e,i)=>{const cur=old[i]||[];return Array.from({length:e.s},(_,j)=>cur[j]||{kg:"",rep:"",rir:null});});
   if(s.hiddenAt)trS.away+=Math.max(0,Date.now()-s.hiddenAt); // tempo fora do app não é treino
@@ -4169,7 +4392,9 @@ function startTRun(wid){
   if(!(w.ex||[]).length){appAlert("Adicione exercícios a este treino primeiro (Montar / editar protocolo).");return;}
   beepInit(); // o toque que inicia o treino já libera o áudio do alarme
   notifPedir(); // e é o momento certo de pedir permissão de notificação
+  const acad=acadDaSessao(w);
   trS={w:JSON.parse(JSON.stringify(w)),start:Date.now(),idx:0,away:0,hiddenAt:0,
+       acad,acadNome:acad?acadPorId(acad).nome:"",
        logs:w.ex.map(e=>Array.from({length:e.s},()=>({kg:"",rep:"",rir:null})))};
   tRunOverlay.classList.add("open");
   renderTr();
@@ -4333,17 +4558,25 @@ function trSaveInputs(){
    Mostra carga e reps da vez anterior para saber quanto progredir.
    ============================================================ */
 let trPrevRef=null;
-function lastExSession(nome){
+/* Com academia, a referência é a da MESMA academia: o leg press de uma não
+   é o da outra, e a carga de lá enganaria. Não havendo, vale a de outra
+   academia, com o nome dela na tela (`outra`) — melhor um ponto de partida
+   dito de onde veio do que nenhum. Sem academia, é a última de qualquer
+   lugar, como sempre foi. */
+function lastExSession(nome,acad){
   const alvo=norm(nome||""),tds=store.tdays||{};
   const dias=Object.keys(tds).sort().reverse(); // datas ISO: ordem alfabética = cronológica
+  let deOutra=null;
   for(const dk of dias){
     const regs=tds[dk]||[];
     for(let i=regs.length-1;i>=0;i--){ // dentro do dia, o último registrado é o mais recente
       const ex=(regs[i].ex||[]).find(x=>norm(x.n)===alvo);
-      if(ex&&(ex.sets||[]).length)return {dk,sets:ex.sets,treino:regs[i].name};
+      if(!ex||!(ex.sets||[]).length)continue;
+      if(mesmaAcad(acad,regs[i].acad))return {dk,sets:ex.sets,treino:regs[i].name};
+      if(!deOutra)deOutra={dk,sets:ex.sets,treino:regs[i].name,outra:acadNomeDe(regs[i])};
     }
   }
-  return null;
+  return deOutra;
 }
 const kgTxt=v=>(Math.round((v||0)*10)/10).toString().replace(".",",");
 /* diferença de carga em relação à mesma série da última vez */
@@ -4351,7 +4584,9 @@ function trDelta(row){
   const chip=row.querySelector(".tp-d");if(!chip)return;
   const p=trPrevRef&&trPrevRef.sets[+row.dataset.i];
   const kg=parseFloat(row.querySelector(".ikg").value);
-  if(!p||!kg||kg<=0){chip.textContent="";chip.className="tp-d";return;}
+  /* Carga de outra academia é ponto de partida, não régua: medir "−40 kg"
+     contra outro aparelho seria a progressão que o feed se recusa a medir. */
+  if(!p||!kg||kg<=0||trPrevRef.outra){chip.textContent="";chip.className="tp-d";return;}
   const d=Math.round((kg-p.kg)*10)/10;
   chip.className="tp-d "+(d>0?"up":d<0?"down":"same");
   chip.textContent=d>0?`+${kgTxt(d)} kg`:d<0?`${kgTxt(d)} kg`:"mesma carga";
@@ -4359,7 +4594,8 @@ function trDelta(row){
 function renderTr(){
   const w=trS.w,e=w.ex[trS.idx],logs=trS.logs[trS.idx];
   $("trTitle").textContent=w.nome;
-  $("trProg").textContent=`Exercício ${trS.idx+1} de ${w.ex.length}`;
+  const onde=acadNomeDe(trS);
+  $("trProg").textContent=`Exercício ${trS.idx+1} de ${w.ex.length}${onde?" · "+onde:""}`;
   $("trExName").textContent=e.n;
   $("trPlan").textContent=`${e.s} séries · descanso ${fmtSec(e.rest||90)} · busque a falha entre 6–12 reps`;
   const av=$("trTrocado");
@@ -4370,8 +4606,11 @@ function renderTr(){
   };
   /* A referência da última vez segue o exercício que está sendo feito: comparar
      a carga de hoje no leg press com a do agachamento não diria nada. */
-  trPrevRef=lastExSession(e.n);
-  $("trSets").innerHTML=logs.map((l,i)=>{
+  trPrevRef=lastExSession(e.n,trS.acad);
+  /* Referência de outra academia: dita UMA vez, acima das séries. Dentro de
+     cada linha o nome partia a referência em duas em telas comuns. */
+  const refOutra=trPrevRef&&trPrevRef.outra?`<div class="tr-ref-outra">Primeira vez deste exercício na <b>${esc(acadNomeDe(trS))}</b>. As cargas de referência são da <b>${esc(trPrevRef.outra)}</b>, só como ponto de partida.</div>`:"";
+  $("trSets").innerHTML=refOutra+logs.map((l,i)=>{
     const p=trPrevRef&&trPrevRef.sets[i];
     return `<div class="tr-set" data-i="${i}">
     <div class="tsr1"><span class="snum">${i+1}</span><span class="sl">Série ${i+1}</span><span class="fld"><input class="ikg" type="number" inputmode="decimal" value="${l.kg||""}" placeholder="${p?kgTxt(p.kg):"0"}"><span class="un">kg</span></span><span class="fld"><input class="irep" type="number" inputmode="numeric" value="${l.rep||""}" placeholder="${p?p.rep:"0"}"><span class="un">reps</span></span></div>
@@ -4475,7 +4714,9 @@ $("trNext").onclick=()=>{
   const kcal=Math.round(netKcal(met,workMin)+netKcal(2,restMin));
   const avgTxt=rirN>0?(rirSum/rirN):null;
   const exDetail=trS.w.ex.map((e,i)=>({n:e.n,g:e.g||"outros",sec:(e.sec!==undefined?e.sec:synFor(e.g||"")),sets:(trS.logs[i]||[]).filter(l=>(l.kg||0)>0&&(l.rep||0)>0).map(l=>({kg:l.kg,rep:l.rep,rir:l.rir}))})).filter(x=>x.sets.length);
-  tToday().push({id:uid(),name:trS.w.nome,min,kcal,vol:Math.round(vol),intens:label,rir:avgTxt!==null?Math.round(avgTxt*10)/10:null,ex:exDetail});
+  const reg={id:uid(),name:trS.w.nome,min,kcal,vol:Math.round(vol),intens:label,rir:avgTxt!==null?Math.round(avgTxt*10)/10:null,ex:exDetail};
+  if(trS.acad){reg.acad=trS.acad;reg.acadNome=acadNomeDe(trS);}
+  tToday().push(reg);
   clearInterval(trInt);stopRest();trS=null;trPersist();tRunOverlay.classList.remove("open");
   audioSession("auto");
   save();renderTreino();render();renderInicio();
@@ -4940,7 +5181,7 @@ async function resetData(){
   const comConta=!!(cloudEnabled&&user&&user.email);
   const r=await askDanger({
     ico:"⚠️",title:"Excluir dados",
-    msg:"Você está prestes a <b>excluir os dados da sua conta</b>: dieta, protocolos, treinos, pesos e objetivo. Você vai <b>perder todo o seu progresso</b> e o app voltará ao primeiro acesso (sua conta e login continuam existindo).<br><br>Isso apaga também a cópia salva na nuvem, e <b>não dá para desfazer</b>.<br><br><b>Tem certeza de que deseja continuar?</b>",
+    msg:"Você está prestes a <b>excluir os dados da sua conta</b>: dieta, protocolos, treinos, academias, pesos e objetivo. Você vai <b>perder todo o seu progresso</b> e o app voltará ao primeiro acesso (sua conta e login continuam existindo).<br><br>Isso apaga também a cópia salva na nuvem, e <b>não dá para desfazer</b>.<br><br><b>Tem certeza de que deseja continuar?</b>",
     confirm:"Sim, excluir tudo",
     pw:comConta
   });
@@ -4958,6 +5199,7 @@ async function resetData(){
   }
   trDiscardRun();
   store=blankStore();
+  setAcadSel("");   // a academia escolhida era do que acabou de ser apagado
   localStorage.setItem(KEY,JSON.stringify(store));
   $("getdInput").value="";
   promptedSetup=false;onboarding=false;selectedObj=null;viewKey=todayKey();
@@ -5031,7 +5273,7 @@ async function startSync(){
     const snap=await getDoc(ref);
     if(snap.exists()){ applyRemote(snap.data()); setOwner(user.uid); }
     else {
-      if(getOwner()!==user.uid){ trDiscardRun(); store=blankStore(); localStorage.setItem(KEY,JSON.stringify(store)); $("getdInput").value=""; render(); }
+      if(getOwner()!==user.uid){ trDiscardRun(); store=blankStore(); setAcadSel(""); localStorage.setItem(KEY,JSON.stringify(store)); $("getdInput").value=""; render(); }
       setOwner(user.uid);
       await pushRemote(true);
     }
@@ -5058,12 +5300,18 @@ function goalsParaNuvem(g){
 function applyRemote(data){
   applyingRemote=true;
   const meu=(store&&store.goals&&store.goals.exogLocal)?EXOG_CAMPOS.reduce((o,k)=>{if(store.goals[k]!==undefined)o[k]=store.goals[k];return o;},{}):null;
-  store={getd:data.getd||0,days:data.days||{},custom:data.custom||[],goals:data.goals||{},liquids:data.liquids||{},protocol:data.protocol||[],weights:data.weights||[],tprotocol:data.tprotocol||[],tdays:data.tdays||{},passos:data.passos||{}};
+  store={getd:data.getd||0,days:data.days||{},custom:data.custom||[],goals:data.goals||{},liquids:data.liquids||{},protocol:data.protocol||[],weights:data.weights||[],tprotocol:data.tprotocol||[],tdays:data.tdays||{},passos:data.passos||{},
+    /* Campo AUSENTE quer dizer aparelho com versão anterior às academias: ele
+       grava o documento inteiro sem merge e sem o campo. Aceitar isso como
+       "lista vazia" apagaria as academias de todos os aparelhos. Esta versão
+       sempre manda o campo, mesmo vazio. */
+    academias:Array.isArray(data.academias)?data.academias:((store&&store.academias)||[])};
   if(meu)Object.assign(store.goals,meu);
   viewKey=todayKey();realToday=todayKey();
   localStorage.setItem(KEY,JSON.stringify(store));
   $("getdInput").value=store.getd>0?store.getd:"";
   render();
+  renderTreino();   // academias e protocolo vindos de outro aparelho
   applyingRemote=false;
   setSyncDot("ok","Sincronizado");
 }
@@ -5073,7 +5321,7 @@ function pushRemote(immediate){
   clearTimeout(pushTimer);
   const doPush=async()=>{
     setSyncDot("saving","Salvando…");
-    try{ await setDoc(doc(db,"users",user.uid),{getd:store.getd,days:store.days,custom:store.custom||[],goals:goalsParaNuvem(store.goals),liquids:store.liquids||{},protocol:store.protocol||[],weights:store.weights||[],tprotocol:store.tprotocol||[],tdays:store.tdays||{},passos:store.passos||{},writer:DEVICE,updatedAt:serverTimestamp()}); setSyncDot("ok","Sincronizado"); }
+    try{ await setDoc(doc(db,"users",user.uid),{getd:store.getd,days:store.days,custom:store.custom||[],goals:goalsParaNuvem(store.goals),liquids:store.liquids||{},protocol:store.protocol||[],weights:store.weights||[],tprotocol:store.tprotocol||[],tdays:store.tdays||{},passos:store.passos||{},academias:store.academias||[],writer:DEVICE,updatedAt:serverTimestamp()}); setSyncDot("ok","Sincronizado"); }
     catch(e){ setSyncDot("err","Salvo local"); }
   };
   if(immediate)return doPush();
