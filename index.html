@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v41";
+window.APP_RELEASE = "tresults-v42";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -3029,7 +3029,7 @@ let currentView=null;
 let qtyUnit="g";
 let selectedObj=null, promptedSetup=false, onboarding=false;
 
-function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.days){s.custom=s.custom||[];s.goals=s.goals||{};s.liquids=s.liquids||{};s.protocol=s.protocol||[];s.weights=s.weights||[];s.tprotocol=s.tprotocol||[];s.tdays=s.tdays||{};s.passos=s.passos||{};s.academias=s.academias||[];return s;}}catch(e){}return {getd:0,days:{},custom:[],goals:{},liquids:{},protocol:[],weights:[],tprotocol:[],tdays:{},passos:{},academias:[]};}
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.days){s.custom=s.custom||[];s.goals=s.goals||{};s.liquids=s.liquids||{};s.protocol=s.protocol||[];s.weights=s.weights||[];s.tprotocol=s.tprotocol||[];s.tdays=s.tdays||{};s.passos=s.passos||{};return s;}}catch(e){}return {getd:0,days:{},custom:[],goals:{},liquids:{},protocol:[],weights:[],tprotocol:[],tdays:{},passos:{}};}
 function blankStore(){return {getd:0,days:{},custom:[],goals:{},liquids:{},protocol:[],weights:[],tprotocol:[],tdays:{},passos:{},academias:[]};}
 const OWNER_KEY="cutting.owner";
 const getOwner=()=>localStorage.getItem(OWNER_KEY);
@@ -3919,7 +3919,11 @@ $("tpSave").onclick=()=>{
   const nome=$("tpName").value.trim();
   if(!nome)return appAlert("Dê um nome ao treino.");
   if(!tpEditing.ex.length)return appAlert("Adicione ao menos um exercício.");
-  const data={id:tpEditId||uid(),nome,cat:$("tpCat").value,ex:tpEditing.ex};
+  /* Parte do treino que existia: campo que esta versão não conhece (gravado
+     por uma mais nova) continua nele, em vez de sumir ao salvar. */
+  const antigo=tpEditId?(store.tprotocol||[]).find(x=>x.id===tpEditId):null;
+  const data=Object.assign({},antigo||{},{id:tpEditId||uid(),nome,cat:$("tpCat").value,ex:tpEditing.ex});
+  delete data.acads;
   const acads=(tpEditing.acads||[]).filter(id=>acadPorId(id));
   if(acads.length)data.acads=acads;   // vazio = todas, e o treino fica com a forma de sempre
   store.tprotocol=store.tprotocol||[];
@@ -5231,7 +5235,8 @@ if(cloudEnabled){
     user=u;
     if(u){
       // retoma o treino já: não espera a nuvem responder (academia costuma ter sinal ruim)
-      fillUser(); if(userName())trRestore();
+      // só se o aparelho é desta conta: senão o treino da conta anterior abriria para esta
+      fillUser(); if(userName()&&getOwner()===u.uid)trRestore();
       startSync();
     }
     else { stopSync(); promptedSetup=false; showView("login"); }
@@ -5271,7 +5276,12 @@ async function startSync(){
   setSyncDot("saving","Sincronizando…");
   try{
     const snap=await getDoc(ref);
-    if(snap.exists()){ applyRemote(snap.data()); setOwner(user.uid); }
+    if(snap.exists()){
+      /* Outra conta neste celular: o treino em andamento e a academia
+         escolhida eram da anterior. */
+      if(getOwner()!==user.uid){ trDiscardRun(); setAcadSel(""); }
+      applyRemote(snap.data()); setOwner(user.uid);
+    }
     else {
       if(getOwner()!==user.uid){ trDiscardRun(); store=blankStore(); setAcadSel(""); localStorage.setItem(KEY,JSON.stringify(store)); $("getdInput").value=""; render(); }
       setOwner(user.uid);
@@ -5297,15 +5307,31 @@ function goalsParaNuvem(g){
   if(!g||!g.exogLocal)return g||{};
   const c=Object.assign({},g);EXOG_CAMPOS.forEach(k=>delete c[k]);return c;
 }
+/* Campos do documento da nuvem que esta versão conhece. O que vier além
+   disso foi gravado por uma versão mais nova do app: fica guardado em
+   store._nuvem e volta na próxima gravação, em vez de ser apagado — o
+   documento é gravado inteiro, sem merge. Precisa ser JSON simples. */
+const CAMPOS_NUVEM=["getd","days","custom","goals","liquids","protocol","weights","tprotocol","tdays","passos","academias","liqLog","writer","updatedAt"];
 function applyRemote(data){
   applyingRemote=true;
-  const meu=(store&&store.goals&&store.goals.exogLocal)?EXOG_CAMPOS.reduce((o,k)=>{if(store.goals[k]!==undefined)o[k]=store.goals[k];return o;},{}):null;
-  store={getd:data.getd||0,days:data.days||{},custom:data.custom||[],goals:data.goals||{},liquids:data.liquids||{},protocol:data.protocol||[],weights:data.weights||[],tprotocol:data.tprotocol||[],tdays:data.tdays||{},passos:data.passos||{},
-    /* Campo AUSENTE quer dizer aparelho com versão anterior às academias: ele
-       grava o documento inteiro sem merge e sem o campo. Aceitar isso como
-       "lista vazia" apagaria as academias de todos os aparelhos. Esta versão
-       sempre manda o campo, mesmo vazio. */
-    academias:Array.isArray(data.academias)?data.academias:((store&&store.academias)||[])};
+  /* Só herda do aparelho quem é dono dele. Com outra conta entrando neste
+     celular, nada do que ficou aqui — o exógeno (dado de saúde), as
+     academias, o histórico de líquidos — pode passar para ela. */
+  const local=(store&&user&&getOwner()===user.uid)?store:null;
+  const meu=(local&&local.goals&&local.goals.exogLocal)?EXOG_CAMPOS.reduce((o,k)=>{if(local.goals[k]!==undefined)o[k]=local.goals[k];return o;},{}):null;
+  const extra={};
+  Object.keys(data||{}).forEach(k=>{if(!CAMPOS_NUVEM.includes(k))extra[k]=data[k];});
+  store={getd:data.getd||0,days:data.days||{},custom:data.custom||[],goals:data.goals||{},liquids:data.liquids||{},protocol:data.protocol||[],weights:data.weights||[],tprotocol:data.tprotocol||[],tdays:data.tdays||{},passos:data.passos||{}};
+  /* Campo AUSENTE não é lista vazia: é aparelho com versão anterior, que
+     grava o documento inteiro sem o campo. Aceitar isso como vazio apagaria
+     as academias de todos os aparelhos. Vazio de verdade chega como []. */
+  const academias=Array.isArray(data.academias)?data.academias:(local?local.academias:undefined);
+  if(academias)store.academias=academias;
+  /* O horário de cada líquido. Antes ele não subia, e o store remontado aqui
+     o apagava a cada abertura do app. */
+  const liqLog=(data.liqLog&&typeof data.liqLog==="object")?data.liqLog:(local?local.liqLog:undefined);
+  if(liqLog)store.liqLog=liqLog;
+  if(Object.keys(extra).length)store._nuvem=extra;
   if(meu)Object.assign(store.goals,meu);
   viewKey=todayKey();realToday=todayKey();
   localStorage.setItem(KEY,JSON.stringify(store));
@@ -5321,7 +5347,12 @@ function pushRemote(immediate){
   clearTimeout(pushTimer);
   const doPush=async()=>{
     setSyncDot("saving","Salvando…");
-    try{ await setDoc(doc(db,"users",user.uid),{getd:store.getd,days:store.days,custom:store.custom||[],goals:goalsParaNuvem(store.goals),liquids:store.liquids||{},protocol:store.protocol||[],weights:store.weights||[],tprotocol:store.tprotocol||[],tdays:store.tdays||{},passos:store.passos||{},academias:store.academias||[],writer:DEVICE,updatedAt:serverTimestamp()}); setSyncDot("ok","Sincronizado"); }
+    const d=Object.assign({},store._nuvem||{},{getd:store.getd,days:store.days,custom:store.custom||[],goals:goalsParaNuvem(store.goals),liquids:store.liquids||{},protocol:store.protocol||[],weights:store.weights||[],tprotocol:store.tprotocol||[],tdays:store.tdays||{},passos:store.passos||{},writer:DEVICE,updatedAt:serverTimestamp()});
+    /* Quem não sabe não envia: lista que este aparelho nunca recebeu não sobe
+       como vazia por cima da de outro aparelho. */
+    if(Array.isArray(store.academias))d.academias=store.academias;
+    if(store.liqLog&&typeof store.liqLog==="object")d.liqLog=store.liqLog;
+    try{ await setDoc(doc(db,"users",user.uid),d); setSyncDot("ok","Sincronizado"); }
     catch(e){ setSyncDot("err","Salvo local"); }
   };
   if(immediate)return doPush();

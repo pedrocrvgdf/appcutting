@@ -250,7 +250,9 @@ tem teste:
   tira `EXOG_CAMPOS`; e `applyRemote` **guarda os campos locais antes de
   trocar o `store`** e os devolve depois, senão a primeira sincronização
   vinda de outro aparelho apagaria a escolha daqui. O número do GETD sobe
-  normalmente: é só um número.
+  normalmente: é só um número. Isso vale só para o **dono do aparelho**
+  (`cutting.owner`): outra conta entrando no mesmo celular não herda nada
+  disso (veja "A nuvem").
 - Consequência que vale saber: em outro celular o objetivo chega sem o
   exógeno, e se ele for salvo lá o GETD volta a ser calculado sem o efeito.
   É o preço de não subir o dado, e a chave diz isso na tela.
@@ -496,6 +498,7 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 | Arquivo | Cobre |
 |---|---|
 | `tests/treino.spec.js` | Persistência da sessão, retomada após o app ser descartado, desconto do tempo fora do app |
+| `tests/nuvem.spec.js` | Sincronização: outra conta no celular não herda exógeno, academias, líquidos nem treino em andamento; campo ausente não apaga; quem não sabe não envia; campo de versão mais nova volta como chegou; histórico de líquidos sobe |
 | `tests/academias.spec.js` | Academias: sem cadastro o app fica igual, filtro por academia, treino novo nascendo na escolhida, sessão gravando onde foi, referência e selo na mesma academia, excluir sem apagar treino nem histórico, nuvem, 320px |
 | `tests/historico.spec.js` | Referência da última sessão, sugestões, indicador de progressão de carga |
 | `tests/interface.spec.js` | Zoom bloqueado, diálogos internos, layout em 390/320px, tema claro e escuro |
@@ -539,6 +542,7 @@ Chaves usadas no armazenamento local, úteis para montar cenários:
 | `cutting.owner` | UID do dono dos dados no aparelho |
 | `tresults.run` | Treino em andamento (some ao finalizar) |
 | `tresults.theme` | `light` / `dark` |
+| `tresults.acad` | Academia escolhida neste aparelho (vazio = Todas) |
 
 ---
 
@@ -614,12 +618,12 @@ ficou como próximo passo possível, não construído.
 - **Recadastrar uma academia excluída devolve a mesma** (`idOrfao`): o id é
   reaproveitado do histórico pelo nome. Com id novo, o histórico dela
   viraria "outra academia" para sempre.
-- **Campo `academias` ausente no documento da nuvem não é lista vazia**
-  (`applyRemote`): é aparelho com a versão anterior, que grava o documento
-  inteiro sem merge e sem o campo. Aceitar apagaria as academias de todos os
-  aparelhos. Esta versão sempre envia o campo, mesmo vazio. O que não dá para
-  evitar daqui: editar um treino num aparelho ainda na versão anterior tira
-  as academias daquele treino — some quando o aparelho atualiza.
+- **Campo `academias` ausente não é lista vazia**, nem no documento da nuvem
+  nem no aparelho (veja "A nuvem", abaixo): `load()` não inventa `[]`, e
+  `pushRemote` só envia a lista que o aparelho conhece. Vazio de verdade
+  (excluiu todas) sobe como `[]` e vale. O que não dá para evitar daqui:
+  editar um treino num aparelho ainda na v41 ou anterior tira as academias
+  daquele treino — some quando o aparelho atualiza.
 - **Excluir academia não apaga treino nem histórico.** O id sai dos treinos
   (id que não existe esconderia o treino de todas); o treino que era só dela
   passa a valer em todas; a sessão gravada mantém `acadNome`. Pede
@@ -630,6 +634,31 @@ ficou como próximo passo possível, não construído.
   série estimada por dia, de qualquer lugar. Separar seria o próximo passo,
   se o dono pedir.
 - Coberto em `tests/academias.spec.js`.
+
+### A nuvem: o documento é gravado inteiro
+
+`pushRemote` grava o documento do usuário **inteiro, sem merge**: quem grava por
+último ganha, e o que ele não mandou deixa de existir. Três regras saem disso, e
+cada uma tem teste em `tests/nuvem.spec.js`:
+
+- **Só herda do aparelho quem é dono dele** (`applyRemote`, `local`). O que é
+  guardado no aparelho e sobrevive à nuvem — exógeno (dado de saúde),
+  academias, histórico de líquidos — só fica se `cutting.owner` é a conta que
+  entrou. Antes, a segunda conta num celular herdava o clembuterol e a dose da
+  primeira. Na troca de conta, `startSync` descarta o treino em andamento e a
+  academia escolhida, e `onAuthStateChanged` só retoma o treino se o aparelho
+  é da conta.
+- **Campo ausente não é lista vazia, e quem não sabe não envia.** Aparelho com
+  versão anterior grava sem os campos novos; aceitar a ausência como vazio
+  apagaria o dado de todos os aparelhos. Vale para `academias` e `liqLog`.
+- **O que veio de uma versão mais nova volta como chegou** (`CAMPOS_NUVEM`,
+  `store._nuvem`): campo que esta versão não conhece é guardado e reenviado,
+  em vez de apagado. Por isso campo novo de primeiro nível precisa ser JSON
+  simples (sem `Timestamp`), e quem acrescentar um campo ao documento precisa
+  pô-lo em `CAMPOS_NUVEM`. Pelo mesmo motivo `tpSave` parte do treino que
+  existia: campo de treino que esta versão não conhece continua nele.
+- **O histórico de líquidos (`liqLog`) sobe.** Antes ele ficava só no
+  aparelho, e o `store` remontado pela nuvem o apagava a cada abertura do app.
 
 ### Trocar o exercício no meio do treino
 
