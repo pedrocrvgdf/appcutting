@@ -76,6 +76,12 @@ test.describe('Academias', () => {
     expect(tela.chips, 'sem academia não há o que escolher').toBe(0);
     expect(tela.convite).toMatch(/mais de uma academia/i);
     expect(tela.cartoes).toBe(1);
+    expect(await page.textContent('#tprotoCards')).not.toMatch(/academia/i);
+    await page.evaluate(() => document.getElementById('tOpenProtocol').click());
+    await page.waitForSelector('#tprotoOverlay.open');
+    expect(await page.textContent('#tprotoList'), 'a lista do protocolo não muda para quem não usa academia').not.toMatch(/academia/i);
+    await page.evaluate(() => document.getElementById('tpClose').click());
+    await page.waitForTimeout(150);
 
     // e a sessão sai sem campo de academia, como sempre saiu
     await iniciar(page, 'w1');
@@ -117,7 +123,7 @@ test.describe('Academias', () => {
   });
 
   test('nome vazio ou repetido não vira academia', async ({ page }) => {
-    await abrirApp(page, estado({ academias: [A1] }));
+    await abrirApp(page, estado({ academias: [A1, A2] }));
     await irTreino(page);
     await page.evaluate(() => document.getElementById('acadEditar').click());
     await page.waitForSelector('#acadOverlay.open');
@@ -129,11 +135,15 @@ test.describe('Academias', () => {
     await page.waitForTimeout(200);
 
     // maiúscula e acento não fazem outra academia
-    await page.fill('#acadNome', 'SMART fit');
-    await page.evaluate(() => document.getElementById('acadAdd').click());
-    await page.waitForSelector('#appDlgOverlay.open');
-    expect(await page.textContent('#appDlgMsg')).toMatch(/já tem/i);
-    expect(await page.evaluate(() => __t.store.academias.length)).toBe(1);
+    for (const nome of ['SMART fit', 'academia do predio']) {
+      await page.fill('#acadNome', nome);
+      await page.evaluate(() => document.getElementById('acadAdd').click());
+      await page.waitForSelector('#appDlgOverlay.open');
+      expect(await page.textContent('#appDlgMsg')).toMatch(/já tem/i);
+      await page.evaluate(() => document.getElementById('appDlgOk').click());
+      await page.waitForTimeout(200);
+    }
+    expect(await page.evaluate(() => __t.store.academias.length)).toBe(2);
   });
 
   test('cada academia mostra os treinos dela e os que valem em todas', async ({ page }) => {
@@ -206,6 +216,7 @@ test.describe('Academias', () => {
     // desmarcando tudo, o treino volta a valer em todas, com a forma de sempre
     await page.evaluate(id => document.querySelector(`#tprotoList [data-ted="${id}"]`).click(), w.id);
     await page.waitForSelector('#tpEditOverlay.open');
+    expect(await marcadas(), 'reabrir mostra o que estava marcado').toEqual(['a1', 'a2']);
     await page.evaluate(() => document.querySelectorAll('#tpAcads [data-tpacad].on').forEach(b => b.click()));
     expect(await page.textContent('#tpAcadNota')).toMatch(/aparece em todas/);
     await page.evaluate(() => document.getElementById('tpSave').click());
@@ -299,6 +310,9 @@ test.describe('Academias', () => {
     }));
     expect(ref.ph).toBe('60');
     expect(ref.txt).toMatch(/^anterior/);
+    expect(await page.evaluate(() => !!document.querySelector('#trSets .tr-ref-outra'))).toBe(false);
+    await preencherSerie(page, 0, 62.5, 10);
+    expect(await page.evaluate(() => document.querySelector('#trSets .tr-set[data-i="0"] .tp-d').textContent)).toBe('+2,5 kg');
   });
 
   test('sem histórico nesta academia, usa o da outra e diz de onde veio', async ({ page }) => {
@@ -313,7 +327,13 @@ test.describe('Academias', () => {
       txt: document.querySelector('#trSets .tsprev .tp-t').textContent,
     }));
     expect(ref.ph).toBe('100');
-    expect(ref.txt, 'carga de outra academia precisa dizer de onde veio').toMatch(/^em Academia do prédio/);
+    expect(ref.txt).toMatch(/^anterior/);
+    const aviso = await page.evaluate(() => document.querySelector('#trSets .tr-ref-outra')?.textContent || '');
+    expect(aviso, 'carga de outra academia precisa dizer de onde veio').toMatch(/Smart Fit.*Academia do prédio/);
+
+    // e não vira régua: "−40 kg" contra outro aparelho seria progressão inventada
+    await preencherSerie(page, 0, 60, 10);
+    expect(await page.evaluate(() => document.querySelector('#trSets .tr-set[data-i="0"] .tp-d').textContent)).toBe('');
   });
 
   test('histórico de antes das academias continua servindo de referência', async ({ page }) => {
@@ -321,13 +341,23 @@ test.describe('Academias', () => {
        Se elas deixassem de casar, a pessoa perderia a referência inteira. */
     await abrirApp(page, estado({
       sel: 'a1',
-      tdays: { [diaISO(3)]: [sessao('s1', 'Treino A', 70)] },
+      tdays: {
+        [diaISO(5)]: [sessao('s1', 'Treino A', 70)],
+        // mais recente, mas de outra academia: não pode passar na frente
+        [diaISO(2)]: [sessao('s2', 'Treino A', 100, { acad: 'a2', acadNome: 'Academia do prédio' })],
+      },
     }));
     await irTreino(page);
     await iniciar(page, 'w1');
-    const txt = await page.evaluate(() => document.querySelector('#trSets .tsprev .tp-t').textContent);
-    expect(txt).toMatch(/^anterior/);
-    expect(await page.evaluate(() => __t.lastExSession('Supino reto', 'a1').sets[0].kg)).toBe(70);
+    const ref = await page.evaluate(() => ({
+      ph: document.querySelector('#trSets .ikg').placeholder,
+      txt: document.querySelector('#trSets .tsprev .tp-t').textContent,
+      aviso: !!document.querySelector('#trSets .tr-ref-outra'),
+    }));
+    expect(ref.ph).toBe('70');
+    expect(ref.txt).toMatch(/^anterior/);
+    expect(ref.aviso).toBe(false);
+    expect(await page.evaluate(() => __t.lastExSession('Supino reto', 'a1').outra)).toBeUndefined();
   });
 
   test('sem academia, a referência é a última de qualquer lugar, como sempre foi', async ({ page }) => {
@@ -433,6 +463,205 @@ test.describe('Academias', () => {
     expect(await page.textContent('#fdFeed .fd-card .fd-nome .h')).toMatch(/Smart Fit/);
   });
 
+  test('editar um treino sem tocar nas academias as mantém', async ({ page }) => {
+    /* tpSave remonta o treino do zero: sem carregar acads, trocar uma série
+       faria o treino de uma academia aparecer em todas, sem aviso. */
+    await abrirApp(page, estado({ tprotocol: [treino('w2', 'Pernas no smith', ['a1'])] }));
+    await irTreino(page);
+    await page.evaluate(() => document.getElementById('tOpenProtocol').click());
+    await page.evaluate(() => document.querySelector('#tprotoList [data-ted="w2"]').click());
+    await page.waitForSelector('#tpEditOverlay.open');
+    await page.fill('#tpName', 'Pernas no smith (nova)');
+    await page.evaluate(() => document.getElementById('tpSave').click());
+    await page.waitForTimeout(150);
+    const w = await page.evaluate(() => __t.store.tprotocol[0]);
+    expect(w.nome).toBe('Pernas no smith (nova)');
+    expect(w.acads).toEqual(['a1']);
+  });
+
+  test('com "Todas", treino de uma academia só grava ela; de duas, não grava nenhuma', async ({ page }) => {
+    await abrirApp(page, estado({
+      tprotocol: [treino('w2', 'Pernas no smith', ['a2']), treino('w4', 'Costas', ['a1', 'a2'])],
+    }));
+    await irTreino(page);
+    await iniciar(page, 'w2');
+    await preencherSerie(page, 0, 60, 10, 1);
+    await finalizar(page);
+    await iniciar(page, 'w4');
+    await preencherSerie(page, 0, 60, 10, 1);
+    await finalizar(page);
+    const [a, b] = await hoje(page);
+    expect([a.acad, a.acadNome]).toEqual(['a2', 'Academia do prédio']);
+    expect('acad' in b, 'treino de duas academias, com "Todas": não se sabe onde, e não se inventa').toBe(false);
+  });
+
+  test('restaurado com outra academia escolhida, a referência continua a de onde o treino começou', async ({ page, context }) => {
+    await abrirApp(page, estado({
+      sel: 'a2',
+      tdays: {
+        [diaISO(5)]: [sessao('s1', 'Treino A', 60, { acad: 'a2', acadNome: 'Academia do prédio' })],
+        [diaISO(2)]: [sessao('s2', 'Treino A', 100, { acad: 'a1', acadNome: 'Smart Fit' })],
+      },
+    }));
+    await irTreino(page);
+    await iniciar(page, 'w1');
+    await page.waitForTimeout(500);
+    const storage = await page.evaluate(() => {
+      const o = {};
+      for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); o[k] = localStorage.getItem(k); }
+      return o;
+    });
+    storage['tresults.acad'] = 'a1';
+    await page.close();
+    const nova = await context.newPage();
+    await abrirApp(nova, storage);
+    await nova.waitForSelector('#trSets .tr-set', { timeout: 10000 });
+    const ref = await nova.evaluate(() => ({
+      ph: document.querySelector('#trSets .ikg').placeholder,
+      txt: document.querySelector('#trSets .tsprev .tp-t').textContent,
+    }));
+    expect(ref.ph).toBe('60');
+    expect(ref.txt).toMatch(/^anterior/);
+  });
+
+  test('histórico de antes das academias continua dando progressão no feed', async ({ page }) => {
+    /* Sessão sem academia casa com qualquer uma. Sem isso, ao cadastrar a
+       primeira academia, todo treino viraria "primeira vez nesta academia". */
+    await abrirApp(page, estado({
+      tdays: {
+        [diaISO(6)]: [sessao('s1', 'Treino A', 50)],
+        [diaISO(1)]: [sessao('s3', 'Treino A', 55, { acad: 'a1', acadNome: 'Smart Fit' })],
+      },
+    }));
+    expect(await page.textContent('#fdFeed .fd-card .fd-prog')).toBe('+10% de carga');
+    await page.evaluate(() => document.querySelector('#fdFeed [data-fdver="s3"]').click());
+    await page.waitForSelector('#sessaoOverlay.open');
+    expect(await page.textContent('#ssCorpo .tp-d')).toBe('+5 kg');
+  });
+
+  test('treino novo numa academia diz "primeira vez deste treino", não "nesta academia"', async ({ page }) => {
+    await abrirApp(page, estado({
+      tdays: {
+        [diaISO(4)]: [sessao('s1', 'Treino A', 50, { acad: 'a1', acadNome: 'Smart Fit' })],
+        [diaISO(2)]: [sessao('s2', 'Treino A', 80, { acad: 'a2', acadNome: 'Academia do prédio' })],
+        [diaISO(1)]: [sessao('s3', 'Treino B', 60, { acad: 'a2', acadNome: 'Academia do prédio' })],
+      },
+    }));
+    const selos = await page.evaluate(() =>
+      [...document.querySelectorAll('#fdFeed .fd-card')].map(c => c.querySelector('.fd-prog')?.textContent.trim()));
+    expect(selos[0]).toBe('primeira vez deste treino');
+    expect(selos[1]).toBe('primeira vez nesta academia');
+    await page.evaluate(() => document.querySelector('#fdFeed [data-fdver="s2"]').click());
+    await page.waitForSelector('#sessaoOverlay.open');
+    expect(await page.textContent('#ssSelo')).toMatch(/primeira vez nesta academia/);
+  });
+
+  test('a sessão inteira compara com a mesma sessão que o selo, mesmo com uma vazia no meio', async ({ page }) => {
+    /* Finalizar sem preencher nada grava {vol:0, ex:[]}. O selo pula essa
+       sessão; a comparação exercício a exercício precisa pular também. */
+    await abrirApp(page, estado({
+      tdays: {
+        [diaISO(6)]: [sessao('s1', 'Treino A', 50, { acad: 'a1', acadNome: 'Smart Fit' })],
+        [diaISO(3)]: [{ id: 's2', name: 'Treino A', min: 5, kcal: 20, vol: 0, intens: 'moderada', rir: null, ex: [], acad: 'a1', acadNome: 'Smart Fit' }],
+        [diaISO(1)]: [sessao('s3', 'Treino A', 55, { acad: 'a1', acadNome: 'Smart Fit' })],
+      },
+    }));
+    await page.evaluate(() => document.querySelector('#fdFeed [data-fdver="s3"]').click());
+    await page.waitForSelector('#sessaoOverlay.open');
+    expect(await page.textContent('#ssSelo')).toMatch(/\+10% de carga/);
+    expect(await page.textContent('#ssCorpo .tp-d')).toBe('+5 kg');
+  });
+
+  test('recadastrar uma academia excluída devolve o histórico dela', async ({ page }) => {
+    await abrirApp(page, estado({
+      academias: [A2],   // a Smart Fit (a1) foi excluída
+      tdays: {
+        [diaISO(5)]: [sessao('s1', 'Treino A', 60, { acad: 'a1', acadNome: 'Smart Fit' })],
+        [diaISO(2)]: [sessao('s2', 'Treino A', 100, { acad: 'a2', acadNome: 'Academia do prédio' })],
+      },
+    }));
+    await irTreino(page);
+    await page.evaluate(() => document.getElementById('acadMais').click());
+    await page.waitForSelector('#acadOverlay.open');
+    await page.fill('#acadNome', 'smart fit');
+    await page.evaluate(() => document.getElementById('acadAdd').click());
+    await page.waitForTimeout(150);
+    expect(await page.evaluate(() => __t.store.academias.map(a => a.id))).toEqual(['a2', 'a1']);
+    await page.evaluate(() => document.getElementById('acadFechar').click());
+    await page.waitForTimeout(150);
+    await iniciar(page, 'w1');
+    expect(await page.evaluate(() => document.querySelector('#trSets .ikg').placeholder)).toBe('60');
+  });
+
+  test('renomear e tocar em Concluir grava o nome; nome repetido segura o pop-up', async ({ page }) => {
+    await abrirApp(page, estado());
+    await irTreino(page);
+    await page.evaluate(() => document.getElementById('acadEditar').click());
+    await page.waitForSelector('#acadOverlay.open');
+
+    // só a caixa: é a mesma academia, não "nome repetido"
+    await page.evaluate(() => document.querySelector('[data-acadren="a1"]').click());
+    await page.fill('#acadRenIn', 'SMART FIT');
+    await page.evaluate(() => document.querySelector('[data-acadok]').click());
+    await page.waitForTimeout(150);
+    expect(await page.evaluate(() => document.getElementById('appDlgOverlay').classList.contains('open'))).toBe(false);
+    expect(await page.evaluate(() => __t.store.academias[0].nome)).toBe('SMART FIT');
+
+    // o digitado sobrevive a adicionar outra no meio, e Concluir grava
+    await page.evaluate(() => document.querySelector('[data-acadren="a1"]').click());
+    await page.fill('#acadRenIn', 'Smart Fit Asa Sul');
+    await page.fill('#acadNome', 'Terceira');
+    await page.evaluate(() => document.getElementById('acadAdd').click());
+    await page.waitForTimeout(150);
+    expect(await page.inputValue('#acadRenIn')).toBe('Smart Fit Asa Sul');
+    await page.evaluate(() => document.getElementById('acadFechar').click());
+    await page.waitForTimeout(150);
+    expect(await page.evaluate(() => __t.store.academias.map(a => a.nome))).toEqual(['Smart Fit Asa Sul', 'Academia do prédio', 'Terceira']);
+
+    // nome que já existe: avisa e não fecha
+    await page.evaluate(() => document.getElementById('acadEditar').click());
+    await page.waitForSelector('#acadOverlay.open');
+    await page.evaluate(() => document.querySelector('[data-acadren="a1"]').click());
+    await page.fill('#acadRenIn', 'Terceira');
+    await page.evaluate(() => document.getElementById('acadFechar').click());
+    await page.waitForSelector('#appDlgOverlay.open');
+    await page.evaluate(() => document.getElementById('appDlgOk').click());
+    await page.waitForTimeout(200);
+    expect(await page.evaluate(() => document.getElementById('acadOverlay').classList.contains('open'))).toBe(true);
+    expect(await page.evaluate(() => __t.store.academias[0].nome)).toBe('Smart Fit Asa Sul');
+  });
+
+  test('aparelho com a versão antiga não apaga as academias pela nuvem', async ({ page }) => {
+    /* A versão anterior grava o documento inteiro sem o campo. Ausente não é
+       "lista vazia"; vazia de verdade (outro aparelho excluiu tudo) vale. */
+    await abrirApp(page, estado());
+    await page.evaluate(() => {
+      const s = JSON.parse(JSON.stringify(__t.store));
+      delete s.academias;
+      __t.applyRemote(s);
+    });
+    expect(await page.evaluate(() => __t.store.academias.map(a => a.id))).toEqual(['a1', 'a2']);
+    await page.evaluate(() => {
+      const s = JSON.parse(JSON.stringify(__t.store));
+      s.academias = [];
+      __t.applyRemote(s);
+    });
+    expect(await page.evaluate(() => __t.store.academias)).toEqual([]);
+  });
+
+  test('excluir os dados limpa também a academia escolhida', async ({ page }) => {
+    await abrirApp(page, estado({ sel: 'a1' }));
+    await page.evaluate(() => __t.setUser(null));   // modo local: sem senha a conferir
+    await page.evaluate(() => document.querySelector('#tabbar [data-tab="perfil"]').click());
+    await page.waitForTimeout(250);
+    await page.evaluate(() => document.getElementById('pfReset').click());
+    await page.waitForSelector('#dangerOverlay.open', { timeout: 5000 });
+    await page.evaluate(() => document.getElementById('dgConfirm').click());
+    await page.waitForTimeout(400);
+    expect(await page.evaluate(() => localStorage.getItem('tresults.acad'))).toBeNull();
+    expect(await page.evaluate(() => __t.store.academias)).toEqual([]);
+  });
+
   test('voltar na confirmação não exclui nada', async ({ page }) => {
     await abrirApp(page, estado());
     await irTreino(page);
@@ -490,7 +719,28 @@ test.describe('Academias', () => {
       return { alto: t.getBoundingClientRect().height, larg: t.scrollWidth <= t.clientWidth + 1 };
     });
     expect(linha.larg).toBe(true);
-    expect(linha.alto).toBeLessThan(40);
+    expect(linha.alto, 'a referência cabe numa linha só').toBeLessThan(24);
     expect(await largura()).toBeLessThanOrEqual(320);
+  });
+
+  test('em 320px, o nome da academia no feed não passa por cima da seta', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    const longo = { id: 'a3', nome: 'Academia Corpo em Movimento Unidade Asa Norte' };
+    await abrirApp(page, estado({
+      academias: [A1, A2, longo],
+      tdays: {
+        [diaISO(1)]: [sessao('s1', 'Treino A', 50, { acad: 'a3', acadNome: longo.nome })],
+        [diaISO(2)]: [sessao('s2', 'Treino A', 50, { acad: 'a2', acadNome: A2.nome })],
+      },
+    }));
+    const r = await page.evaluate(() => ({
+      larg: document.documentElement.scrollWidth,
+      cartoes: [...document.querySelectorAll('#fdFeed .fd-card')].map(c => ({
+        fimH: c.querySelector('.fd-nome .h').getBoundingClientRect().right,
+        chev: c.querySelector('.chev').getBoundingClientRect().left,
+      })),
+    }));
+    expect(r.larg).toBeLessThanOrEqual(320);
+    for (const c of r.cartoes) expect(c.fimH).toBeLessThanOrEqual(c.chev);
   });
 });

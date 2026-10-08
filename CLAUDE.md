@@ -602,15 +602,33 @@ ficou como próximo passo possível, não construído.
   press de uma não é o da outra. **Registro sem academia casa com qualquer
   uma** — sem isso, ao cadastrar a primeira academia, o histórico inteiro
   deixaria de servir de referência. Sem nada na mesma academia,
-  `lastExSession` devolve a de outra **com o nome dela** (`outra`), e a linha
-  diz "em Smart Fit" no lugar de "anterior"; o selo do feed diz
-  **"primeira vez nesta academia"** (`fdSoEmOutra`), nunca "primeira vez deste
-  treino" para um treino que já foi feito. `abrirSessao` usa a mesma regra do
-  selo para comparar exercício a exercício.
+  `lastExSession` devolve a de outra **com o nome dela** (`outra`): o aviso
+  `.tr-ref-outra` diz de onde vêm as cargas, **uma vez, acima das séries** —
+  dentro de cada linha o nome partia a referência em duas — e o selo de
+  diferença por série (`trDelta`) **some**, porque carga de outro aparelho é
+  ponto de partida, não régua. O selo do feed diz **"primeira vez nesta
+  academia"** (`fdSoEmOutra`), nunca "primeira vez deste treino" para um
+  treino que já foi feito. `abrirSessao` compara com **a mesma sessão que o
+  selo usou** (`pr.j`): com dois critérios, uma sessão vazia no meio fazia o
+  selo dizer "+10%" e a comparação sumir.
+- **Recadastrar uma academia excluída devolve a mesma** (`idOrfao`): o id é
+  reaproveitado do histórico pelo nome. Com id novo, o histórico dela
+  viraria "outra academia" para sempre.
+- **Campo `academias` ausente no documento da nuvem não é lista vazia**
+  (`applyRemote`): é aparelho com a versão anterior, que grava o documento
+  inteiro sem merge e sem o campo. Aceitar apagaria as academias de todos os
+  aparelhos. Esta versão sempre envia o campo, mesmo vazio. O que não dá para
+  evitar daqui: editar um treino num aparelho ainda na versão anterior tira
+  as academias daquele treino — some quando o aparelho atualiza.
 - **Excluir academia não apaga treino nem histórico.** O id sai dos treinos
   (id que não existe esconderia o treino de todas); o treino que era só dela
   passa a valer em todas; a sessão gravada mantém `acadNome`. Pede
   `appConfirm`, não senha: nada se perde.
+- **Renomear não se perde:** tocar em Concluir ou fora do pop-up grava o
+  que foi digitado (`salvarRen`), e nome repetido segura o pop-up aberto.
+- O gráfico de evolução (Progresso) **ainda mistura academias**: é a melhor
+  série estimada por dia, de qualquer lugar. Separar seria o próximo passo,
+  se o dono pedir.
 - Coberto em `tests/academias.spec.js`.
 
 ### Trocar o exercício no meio do treino
