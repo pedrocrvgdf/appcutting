@@ -26,6 +26,8 @@ window.__t={
   gastoDia, passosDia, baseSemRotina, kmAtividades, TACO, localList,
   academias, acadSel, acadDaSessao, treinoNaAcad, fdTodas, fdProgressao, fdSoEmOutra,
   startSync:()=>startSync(),
+  listaProtocolos, protDoTreino, protPorId, protAberto, protNomeDe, mesmoTreino, treinosDoProt, PROT_PADRAO, T_SUG,
+  EQUIP, EQUIP_ID, EX_EQUIP, EX_POR_GRUPO_: EX_POR_GRUPO, exEquip, equipFalta, equipFaltam,
   /* Trocar quem está logado, para alcançar o modo local — onde não há conta e
      portanto não há senha a conferir. */
   setUser:u=>{user=u;},

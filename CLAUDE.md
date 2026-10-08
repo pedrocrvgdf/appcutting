@@ -499,6 +499,8 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 |---|---|
 | `tests/treino.spec.js` | Persistência da sessão, retomada após o app ser descartado, desconto do tempo fora do app |
 | `tests/nuvem.spec.js` | Sincronização: outra conta no celular não herda exógeno, academias, líquidos nem treino em andamento; campo ausente não apaga; quem não sabe não envia; campo de versão mais nova volta como chegou; histórico de líquidos sobe |
+| `tests/protocolos.spec.js` | Protocolos com nome: "Meu protocolo" virtual sem regravar nada, criar/renomear/excluir, sugestão que preenche ou cria, mover treino, selo que não mistura dois "Treino A", sessão com `tid`/`prot`, nuvem com versão anterior |
+| `tests/inventario.spec.js` | Inventário: catálogo inteiro reconhecido, "não informado" sem aviso, gravação por toque, aviso no cartão/treino/editor, troca com o que tem primeiro, "Tem, sim" sem matar o descanso, alternativas, nome desconhecido sem aviso |
 | `tests/academias.spec.js` | Academias: sem cadastro o app fica igual, filtro por academia, treino novo nascendo na escolhida, sessão gravando onde foi, referência e selo na mesma academia, excluir sem apagar treino nem histórico, nuvem, 320px |
 | `tests/historico.spec.js` | Referência da última sessão, sugestões, indicador de progressão de carga |
 | `tests/interface.spec.js` | Zoom bloqueado, diálogos internos, layout em 390/320px, tema claro e escuro |
@@ -543,6 +545,7 @@ Chaves usadas no armazenamento local, úteis para montar cenários:
 | `tresults.run` | Treino em andamento (some ao finalizar) |
 | `tresults.theme` | `light` / `dark` |
 | `tresults.acad` | Academia escolhida neste aparelho (vazio = Todas) |
+| `tresults.prot` | Protocolo aberto na aba Treino neste aparelho |
 
 ---
 
@@ -581,9 +584,8 @@ Chaves usadas no armazenamento local, úteis para montar cenários:
 
 O dono pediu que o app entendesse que "nem todas as academias comportam todos
 os aparelhos": a pessoa cadastra as academias que frequenta (quantas forem) e
-cada uma tem o seu treino, ou o mesmo se repete onde der. Academia aqui é um
-**agrupamento de treinos**, não um inventário de aparelhos — o inventário
-ficou como próximo passo possível, não construído.
+cada uma tem o seu treino, ou o mesmo se repete onde der. A academia agrupa
+treinos (aqui) e tem um **inventário de aparelhos** (seção própria, abaixo).
 
 - **`store.academias = [{id, nome}]`** sincroniza como o resto (load,
   blankStore, applyRemote, pushRemote). **A escolhida é do aparelho**
@@ -635,6 +637,86 @@ ficou como próximo passo possível, não construído.
   se o dono pedir.
 - Coberto em `tests/academias.spec.js`.
 
+### Protocolos com nome
+
+O dono pediu que, ao abrir a aba Treino, aparecessem "os protocolos da pessoa,
+que ela possa batizar com o nome que bem entender". A aba mostra um bloco por
+protocolo (`renderProtLista`), **um aberto por vez**, com os cartões dos
+treinos dele; o aberto é lembrado no aparelho (`tresults.prot`) e, sem
+escolha, é o do último treino feito (`protAberto`).
+
+- **O protocolo de um treino fica no próprio treino** (`prot`, `protNome`); a
+  lista `store.tprotos=[{id,nome}]` guarda só nome e ordem. Motivo: aparelho
+  com versão anterior grava o documento inteiro e apaga campo novo de
+  primeiro nível, mas preserva campo dentro do treino. Se a lista se perder,
+  `listaProtocolos()` a reconstrói pelos treinos (por isso `protNome` vai em
+  cada treino, e renomear carimba todos).
+- **Quem já usava o app tem um protocolo virtual**, id fixo `"principal"`,
+  nome "Meu protocolo": os treinos sem `prot` são dele. **Nada é regravado ao
+  abrir o app**; a lista só vira dado (`materializarProtocolos`) quando a
+  pessoa cria, renomeia ou exclui protocolo, usa sugestão, ou salva treino
+  com dois ou mais protocolos. Id fixo para dois aparelhos não criarem cada
+  um o seu "Meu protocolo". O virtual vazio não é gravado: quem começa do
+  zero e cria "Hipertrofia" não ganha um "Meu protocolo" vazio de brinde.
+- **Nenhum caminho tira o `prot` de um treino.** `tpSave` só grava `prot`
+  quando há motivo (protocolo não é o principal, lista já materializada, ou o
+  treino já tinha); mover para o "Meu protocolo" grava `"principal"`. E
+  `applyRemote` devolve o `prot` local ao treino que chega **sem a chave**
+  (editado num aparelho antigo, que remonta o treino sem ela).
+- **A sessão grava `tid`, `prot` e `protNome`.** O selo de progressão e a
+  sessão inteira comparam o **mesmo treino** (`mesmoTreino`): mesmo `tid`
+  (sobrevive a renomear o treino), ou mesmo nome no mesmo protocolo. Sem
+  isso, "Treino A" de dois protocolos com exercícios diferentes seria
+  comparado como se fosse um. Sessão de antes conta como do principal.
+- **A referência da última carga (`lastExSession`) não muda**: ela segue o
+  exercício e a academia, de qualquer protocolo — supino é supino.
+- Excluir protocolo apaga **os treinos dele** (com `appConfirm`, não senha:
+  é o nível de excluir treino) e **não toca no histórico**; o feed passa a
+  dizer o nome do protocolo da sessão (`fdProtTxt`), que não existe mais.
+  Recriar com o mesmo nome devolve o id (`protOrfao`), como academias.
+- Sugestão pronta: com o protocolo aberto **vazio**, ela o preenche; com
+  treinos nele, vira protocolo **novo com o nome dela** ("… 2" se repetir).
+- O nome do protocolo só aparece no histórico com dois ou mais protocolos.
+- Coberto em `tests/protocolos.spec.js`.
+
+### Inventário de aparelhos por academia
+
+Cada academia guarda o que ela **não** tem: `academias[i].faltam=[ids]`.
+Ausente = "não informado", que se comporta como "tem tudo": o app só avisa
+depois que a pessoa disser o que falta. O pop-up (`#equipOverlay`) abre todo
+marcado e a pessoa desmarca; cada toque grava na hora; abrir e fechar sem
+tocar não grava nada. Guardar o que falta faz aparelho novo no catálogo
+nascer "tem" — sem aviso falso para quem já tinha marcado.
+
+- **O aparelho sai do nome do exercício** (`EX_EQUIP`, `exEquip`): regras por
+  trecho do nome sem acento, da mais específica para a mais geral, primeira
+  que casa — o mesmo casamento das demonstrações (`exMatch`). Cada regra dá
+  **alternativas** (serve uma ou outra; dentro de uma, todos juntos;
+  alternativa vazia = peso do corpo). **O aviso só aparece quando todas as
+  alternativas têm algo faltando** (`equipFalta`).
+- **Nome que o catálogo não reconhece nunca recebe aviso** (`null`), e
+  "máquina"/"articulado" no nome sem regra própria também vira `null`: é uma
+  máquina que o catálogo não conhece. Faltar aviso é o app de antes; aviso
+  falso ensina a ignorar o aviso. Na dúvida, mais alternativas, ou `null`.
+- O catálogo (`EQUIP`, 44 aparelhos em 7 grupos; `EX_EQUIP`, 255 regras) saiu
+  de dois levantamentos independentes, conciliados, e é conferido por teste:
+  todo nome de `EX_POR_GRUPO` e `T_SUG` é reconhecido, todo id existe, todo
+  aparelho é usado. Ids são imutáveis (o rótulo pode mudar). Sem cardio.
+- **Usos**, e só estes: aviso no cartão do treino com academia escolhida
+  (`pcFalta`); faixa no treino em andamento (`#trFalta`, `pintarFalta`) com
+  "Trocar" e "Tem, sim"; a troca de exercício em três faixas (o que tem, o
+  que o app não sabe, o que falta — este marcado e **ainda tocável**); nota
+  no editor (`renderTpEquip`); estado na lista de academias. **Avisa, nunca
+  esconde, reordena treino nem troca sozinho.**
+- **"Tem, sim" chama só `pintarFalta()`, nunca `renderTr()`**: `renderTr`
+  termina em `stopRest()` e mataria o descanso. Existe teste.
+- Exercício trocado (`e.orig`) não avisa: foi escolhido numa lista que já
+  mostrava o que falta. "Desfazer" traz o aviso de volta.
+- Id de aparelho que esta versão não conhece fica guardado e é ignorado na
+  conta. Excluir a academia leva a lista de aparelhos junto; recadastrar
+  devolve o id (`idOrfao`) mas começa "não informado".
+- Coberto em `tests/inventario.spec.js`.
+
 ### A nuvem: o documento é gravado inteiro
 
 `pushRemote` grava o documento do usuário **inteiro, sem merge**: quem grava por
@@ -650,7 +732,8 @@ cada uma tem teste em `tests/nuvem.spec.js`:
   é da conta.
 - **Campo ausente não é lista vazia, e quem não sabe não envia.** Aparelho com
   versão anterior grava sem os campos novos; aceitar a ausência como vazio
-  apagaria o dado de todos os aparelhos. Vale para `academias` e `liqLog`.
+  apagaria o dado de todos os aparelhos. Vale para `academias`, `liqLog` e
+  `tprotos`.
 - **O que veio de uma versão mais nova volta como chegou** (`CAMPOS_NUVEM`,
   `store._nuvem`): campo que esta versão não conhece é guardado e reenviado,
   em vez de apagado. Por isso campo novo de primeiro nível precisa ser JSON

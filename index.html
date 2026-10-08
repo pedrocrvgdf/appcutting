@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v42";
+window.APP_RELEASE = "tresults-v43";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -715,6 +715,40 @@ window.APP_RELEASE = "tresults-v42";
   .acad-primeira:active{transform:scale(.97)}
   .acad-row .in{flex:1;min-width:0}
   .tp-acad-nota{display:block;margin:6px 0 0 2px}
+  /* Protocolos na aba Treino: um bloco por protocolo, um aberto por vez */
+  .prot-lista{display:flex;flex-direction:column;gap:8px}
+  .prot-bloco{border-radius:18px;box-shadow:inset 0 0 0 1px var(--line);background:var(--surface)}
+  .prot-bloco.aberto{background:var(--bg)}
+  .prot-cab{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:13px 14px;min-height:48px}
+  button.prot-cab:active{transform:scale(.985)}
+  .prot-nome{flex:1;min-width:0;font-size:15px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .prot-n{flex:none;font-size:11.5px;font-weight:700;color:var(--muted);white-space:nowrap}
+  .prot-cab .chev{width:16px;height:16px;flex:none;stroke:var(--ink);fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;opacity:.45;transition:transform .2s}
+  .prot-bloco.aberto .prot-cab .chev{transform:rotate(90deg)}
+  .prot-corpo{padding:0 10px 10px}
+  .prot-editar{display:flex;align-items:center;justify-content:center;gap:5px;margin-top:10px}
+  .prot-q{min-width:0;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .prot-titulo{font-family:var(--display);font-size:20px;font-weight:800}
+  .prot-del{color:var(--warn)}
+  /* Inventário */
+  .pcfalta{font-size:11.5px;font-weight:700;color:var(--warn);margin-top:4px;line-height:1.35}
+  .acad-equip{display:block;margin-top:4px;padding:2px 0;font-size:12px;font-weight:700;color:var(--muted);text-align:left}
+  .acad-equip.vazio{color:var(--primary)}
+  .equip-atalhos{display:flex;gap:8px;margin:2px 0 6px}
+  .equip-atalhos button{font-size:12.5px;font-weight:700;padding:7px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+  .equip-grupo{display:block;margin:14px 0 6px 2px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .equip-conta{display:block;margin:12px 0 0 2px}
+  .tp-equip-nota{display:block;margin:6px 0 0 2px;color:var(--warn);line-height:1.45}
+  .tr-falta{display:none;flex-direction:column;gap:8px;font-size:12.5px;line-height:1.45;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin:0 0 10px;overflow-wrap:anywhere}
+  .tr-falta.on{display:flex}
+  .tr-falta .tf-acts{display:flex;gap:8px}
+  .tr-falta button{flex:1;font-size:12.5px;font-weight:700;padding:8px 10px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--primary)}
+  .tr-falta button:active,.equip-atalhos button:active{transform:scale(.97)}
+  .sub-op.falta{color:var(--muted)}
+  .sub-op .tag.falta{color:var(--warn)}
+  .troca-inv{display:flex;flex-direction:column;gap:8px;font-size:12.5px;line-height:1.45;color:var(--muted);margin:10px 0 4px;padding:10px 12px;border:1px dashed var(--line);border-radius:14px}
+  .troca-inv b{color:var(--ink)}
+  .troca-inv button{align-self:flex-start;font-size:12.5px;font-weight:700;color:var(--primary);padding:4px 0}
   .tr-ref-outra{font-size:12px;line-height:1.5;color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:9px 12px;margin-bottom:10px;overflow-wrap:anywhere}
   .tr-ref-outra b{color:var(--ink)}
   .mmwrap{display:flex;gap:26px;justify-content:center;align-items:flex-start;padding:8px 0 4px}
@@ -1695,8 +1729,9 @@ window.APP_RELEASE = "tresults-v42";
       </div>
       <div id="tTabProto">
         <div class="acad-bar" id="acadBar"></div>
-        <div class="proto-cards" id="tprotoCards"></div>
-        <button class="btn secondary" id="tOpenProtocol" style="margin-top:10px">＋ Montar / editar protocolo de treino</button>
+        <!-- os protocolos, um aberto por vez; #tprotoCards e #tOpenProtocol nascem dentro do aberto -->
+        <div class="prot-lista" id="protLista"></div>
+        <button class="btn secondary" id="protNovo" style="margin-top:10px">＋ Novo protocolo</button>
         <button class="btn secondary" id="tSugBtn" style="margin-top:8px">✨ Ver sugestões de treino</button>
       </div>
       <div id="tTabAvulso" style="display:none">
@@ -1757,6 +1792,7 @@ window.APP_RELEASE = "tresults-v42";
       <input class="in" id="trocaNome" type="text" placeholder="Escreva o nome" autocomplete="off">
     </div>
     <div class="sub-lista" id="trocaLista"></div>
+    <div class="troca-inv" id="trocaInv"></div>
     <button class="btn" id="trocaOk">Trocar por hoje</button>
     <button class="btn secondary" id="trocaFechar">Cancelar</button>
   </div>
@@ -1869,6 +1905,7 @@ window.APP_RELEASE = "tresults-v42";
     <div class="tr-ex" id="trExName"></div>
     <div class="tr-plan" id="trPlan"></div>
     <div class="tr-trocado" id="trTrocado"></div>
+    <div class="tr-falta" id="trFalta"></div>
     <div class="tr-links">
       <button class="howlink" id="trHow">🎬 Como fazer este exercício</button>
       <button class="howlink" id="trTrocar">🔁 Trocar exercício</button>
@@ -1908,11 +1945,38 @@ window.APP_RELEASE = "tresults-v42";
 <!-- PROTOCOLO DE TREINO -->
 <div class="overlay" id="tprotoOverlay">
   <div class="modal">
-    <h3>Meu protocolo de treino</h3>
-    <p style="font-size:13px;color:var(--muted);margin:0 0 14px">Cadastre seus treinos (A, B, C…) uma vez. Depois, é um toque para registrar o treino do dia e somar o gasto.</p>
+    <label class="lbl" for="tpProtNome">Protocolo</label>
+    <input class="in prot-titulo" id="tpProtNome" type="text" maxlength="40" autocomplete="off" enterkeyhint="done" aria-label="Nome do protocolo">
+    <p style="font-size:13px;color:var(--muted);margin:10px 0 14px">Cadastre os treinos deste protocolo (A, B, C…) uma vez. Depois, é um toque para registrar o treino do dia. Para trocar o nome, toque nele.</p>
     <div id="tprotoList"></div>
     <button id="tpNew" class="btn secondary">＋ Novo treino</button>
+    <button id="tpSugAqui" class="btn secondary" style="display:none">✨ Preencher com uma sugestão</button>
     <button id="tpClose" class="btn">Concluir</button>
+    <button id="tpProtDel" class="btn secondary prot-del" style="display:none">Excluir este protocolo</button>
+  </div>
+</div>
+
+<!-- NOVO PROTOCOLO: só o nome; os treinos vêm depois, no pop-up dele -->
+<div class="overlay" id="protNovoOverlay" style="z-index:100">
+  <div class="modal" style="max-width:440px">
+    <h3 style="margin-bottom:4px">Novo protocolo</h3>
+    <p class="gw-sub">Dê um nome que você reconheça de relance na academia.</p>
+    <div class="field"><label class="lbl" for="protNovoNome">Nome do protocolo</label><input class="in" id="protNovoNome" type="text" maxlength="40" placeholder="Ex.: Hipertrofia, Viagem, Em casa" autocomplete="off" enterkeyhint="done"></div>
+    <button class="btn" id="protNovoOk" style="margin-top:12px">Criar protocolo</button>
+    <button class="btn secondary" id="protNovoVoltar">Voltar</button>
+  </div>
+</div>
+
+<!-- APARELHOS DE UMA ACADEMIA — acima de "Minhas academias" (100) e da troca
+     de exercício (107), abaixo do diálogo de confirmação (130). -->
+<div class="overlay" id="equipOverlay" style="z-index:108">
+  <div class="modal" style="max-width:480px">
+    <h3 id="equipTitulo" style="margin-bottom:4px">Aparelhos</h3>
+    <p class="gw-sub">Toque para desmarcar o que esta academia não tem. O app avisa no treino quando um exercício precisa de um aparelho que falta, e na troca mostra primeiro o que dá para fazer aqui. Exercício com o peso do corpo, ou com um nome que o app não reconhece, nunca recebe aviso.</p>
+    <div class="equip-atalhos"><button type="button" id="equipTudo">Tem de tudo</button><button type="button" id="equipNada">Desmarcar tudo</button></div>
+    <div id="equipGrupos"></div>
+    <p class="campo-nota equip-conta" id="equipConta"></p>
+    <button class="btn" id="equipFechar">Concluir</button>
   </div>
 </div>
 
@@ -1939,10 +2003,16 @@ window.APP_RELEASE = "tresults-v42";
         <select class="in" id="tpCat"><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>Livre</option></select>
       </div>
     </div>
+    <div id="tpProtWrap" style="display:none">
+      <label class="lbl" style="margin:16px 0 6px">Protocolo deste treino</label>
+      <div class="synchips" id="tpProts"></div>
+      <p class="campo-nota tp-acad-nota">O histórico deste treino vem junto.</p>
+    </div>
     <div id="tpAcadWrap" style="display:none">
       <label class="lbl" style="margin:16px 0 6px">Academias onde dá para fazer este treino</label>
       <div class="synchips" id="tpAcads"></div>
       <p class="campo-nota tp-acad-nota" id="tpAcadNota"></p>
+      <p class="campo-nota tp-equip-nota" id="tpEquipNota" style="display:none"></p>
     </div>
     <label class="lbl" style="margin:16px 0 6px">Grupos trabalhados neste treino</label>
     <div class="mm" id="tpMap"></div>
@@ -3030,7 +3100,7 @@ let qtyUnit="g";
 let selectedObj=null, promptedSetup=false, onboarding=false;
 
 function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.days){s.custom=s.custom||[];s.goals=s.goals||{};s.liquids=s.liquids||{};s.protocol=s.protocol||[];s.weights=s.weights||[];s.tprotocol=s.tprotocol||[];s.tdays=s.tdays||{};s.passos=s.passos||{};return s;}}catch(e){}return {getd:0,days:{},custom:[],goals:{},liquids:{},protocol:[],weights:[],tprotocol:[],tdays:{},passos:{}};}
-function blankStore(){return {getd:0,days:{},custom:[],goals:{},liquids:{},protocol:[],weights:[],tprotocol:[],tdays:{},passos:{},academias:[]};}
+function blankStore(){return {getd:0,days:{},custom:[],goals:{},liquids:{},protocol:[],weights:[],tprotocol:[],tdays:{},passos:{},academias:[],tprotos:[]};}
 const OWNER_KEY="cutting.owner";
 const getOwner=()=>localStorage.getItem(OWNER_KEY);
 const setOwner=uid=>localStorage.setItem(OWNER_KEY,uid||"");
@@ -3127,7 +3197,7 @@ function fdProgressao(lista,i){
     const p=lista[j].w;
     /* Na mesma academia: o volume do mesmo treino em aparelhos diferentes
        não se compara. Registro sem academia casa com qualquer uma. */
-    if(p.name===at.name&&p.vol&&mesmaAcad(at.acad,p.acad))return {pct:(at.vol/p.vol-1)*100,de:p.vol,dia:lista[j].dia,j};
+    if(mesmoTreino(at,p)&&p.vol&&mesmaAcad(at.acad,p.acad))return {pct:(at.vol/p.vol-1)*100,de:p.vol,dia:lista[j].dia,j};
   }
   return null;
 }
@@ -3136,7 +3206,7 @@ function fdProgressao(lista,i){
 function fdSoEmOutra(lista,i){
   const at=lista[i].w;
   if(!at.vol||!at.acad)return false;
-  for(let j=i+1;j<lista.length;j++){const p=lista[j].w;if(p.name===at.name&&p.vol)return true;}
+  for(let j=i+1;j<lista.length;j++){const p=lista[j].w;if(mesmoTreino(at,p)&&p.vol)return true;}
   return false;
 }
 
@@ -3204,13 +3274,13 @@ function renderInicio(){
     const forca=!!(w.ex&&w.ex.length);
     const pr=fdProgressao(todas,i);
     const series=forca?w.ex.reduce((a,e)=>a+(e.sets||[]).length,0):0;
-    const onde=acadNomeDe(w);
+    const onde=acadNomeDe(w),prot=fdProtTxt(w);
 
     html+=`<div class="fd-card" data-fd="${esc(w.id)}">
       <button class="fd-top" data-fdtoggle="${esc(w.id)}">
         <span class="fd-ico">${forca?FD_ICO_FORCA:FD_ICO_CARDIO}</span>
         <span class="fd-nome"><span class="n">${esc(w.name)}</span>
-          <span class="h">${forca?`${w.ex.length} exercícios · ${series} séries${onde?` · ${esc(onde)}`:""}`:(w.km?`${kgTxt(w.km)} km${w.inc?` · ${kgTxt(w.inc)}% de inclinação`:""}${w.ganho?` · ${r0(w.ganho)} m de ganho`:""}`:"registro manual")}</span></span>
+          <span class="h">${forca?`${prot?`${esc(prot)} · `:""}${w.ex.length} exercícios · ${series} séries${onde?` · ${esc(onde)}`:""}`:(w.km?`${kgTxt(w.km)} km${w.inc?` · ${kgTxt(w.inc)}% de inclinação`:""}${w.ganho?` · ${r0(w.ganho)} m de ganho`:""}`:"registro manual")}</span></span>
         <svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
       </button>
       <div class="fd-stats">
@@ -3259,8 +3329,8 @@ function abrirSessao(id){
   };
 
   $("ssTitulo").textContent=w.name;
-  const onde=acadNomeDe(w);
-  $("ssSub").textContent=`${fdRotuloDia(dia)} · ${r0(w.min)} min · ${r0(w.kcal)} kcal${onde?" · "+onde:""}`;
+  const onde=acadNomeDe(w),prot=fdProtTxt(w);
+  $("ssSub").textContent=`${fdRotuloDia(dia)}${prot?" · "+prot:""} · ${r0(w.min)} min · ${r0(w.kcal)} kcal${onde?" · "+onde:""}`;
   $("ssSelo").innerHTML=(w.ex&&w.ex.length)?fdSelo(pr,!pr&&fdSoEmOutra(lista,i)):"";
   $("ssCorpo").innerHTML=(w.ex||[]).map(e=>{
     const antes=antDe(e.n);
@@ -3601,21 +3671,13 @@ function renderTreino(){
   $("tGastoSub").innerHTML=store.getd<=0?`Configure seu objetivo na Alimentação`
     :(ps&&ps.calculavel)?`GETD sem a rotina <b>${r0(baseSemRotina())}</b> + passos <b>${r0(ps.kcal)}</b> + treino <b>${r0(burn)}</b> kcal`
     :`GETD <b>${r0(store.getd)}</b> + treino <b>${r0(burn)}</b> kcal`;
-  // cards do protocolo, só os que cabem na academia escolhida
+  // a academia escolhida e os protocolos, com os cartões do aberto
   renderAcadBar();
-  const todos=store.tprotocol||[],sel=acadSel();
-  const list=todos.filter(w=>treinoNaAcad(w,sel));
-  /* Com "Todas" escolhida, o cartão diz a academia do treino que tem uma:
-     é o único lugar em que a pessoa vê tudo junto. */
-  const onde=w=>(!sel&&acadsDoTreino(w).length)?` · ${esc(acadsTxt(w))}`:"";
-  $("tprotoCards").innerHTML=list.length?list.map(w=>`<button class="proto-card" data-tw="${w.id}"><div><div class="pccat">Treino ${esc(w.cat||"")}</div><div class="pcname">${esc(w.nome)}</div><div class="pcmac">${(w.ex||[]).length} exercícios · ${tpSeries(w)} séries${onde(w)}</div></div><span class="pckcal">▶ Iniciar</span></button>`).join("")
-    :todos.length?`<div class="proto-empty">Nenhum treino marcado para <b>${esc((acadPorId(sel)||{}).nome||"")}</b> ainda. Monte um para ela, ou marque esta academia num treino que você já tem, em "Montar / editar protocolo".</div>`
-    :'<div class="proto-empty">Você ainda não montou seu protocolo de treino. Toque abaixo para cadastrar (ex.: Treino A, B, C) — depois é um toque para iniciar o treino do dia.</div>';
-  $("tprotoCards").querySelectorAll("[data-tw]").forEach(b=>b.onclick=()=>startTRun(b.dataset.tw));
+  renderProtLista();
   // treinos de hoje
   const td=((store.tdays||{})[todayKey()])||[];
   $("tCount").textContent=td.length+(td.length===1?" treino":" treinos");
-  $("tTodayList").innerHTML=td.length?td.map(w=>`<div class="proto-meal-row"><div><div class="n">${esc(w.name)}</div><div class="m">${r0(w.min)} min${w.km?` · ${kgTxt(w.km)} km`:""}${w.inc?` · ${kgTxt(w.inc)}% de inclinação`:""}${w.ganho?` · ${r0(w.ganho)} m de ganho`:""} · ${r0(w.kcal)} kcal${w.intens?` · ${w.intens}`:""}${w.rir!=null?` · RIR médio ${w.rir}`:""}${w.vol?` · ${r0(w.vol)} kg movimentados`:""}${acadNomeDe(w)?` · ${esc(acadNomeDe(w))}`:""}</div></div><div class="acts"><button class="del" data-tdel="${w.id}">Excluir</button></div></div>`).join(""):'<div class="proto-empty">Nenhum treino registrado hoje.</div>';
+  $("tTodayList").innerHTML=td.length?td.map(w=>`<div class="proto-meal-row"><div><div class="n">${esc(w.name)}</div><div class="m">${r0(w.min)} min${w.km?` · ${kgTxt(w.km)} km`:""}${w.inc?` · ${kgTxt(w.inc)}% de inclinação`:""}${w.ganho?` · ${r0(w.ganho)} m de ganho`:""} · ${r0(w.kcal)} kcal${w.intens?` · ${w.intens}`:""}${w.rir!=null?` · RIR médio ${w.rir}`:""}${w.vol?` · ${r0(w.vol)} kg movimentados`:""}${acadNomeDe(w)?` · ${esc(acadNomeDe(w))}`:""}${fdProtTxt(w)?` · ${esc(fdProtTxt(w))}`:""}</div></div><div class="acts"><button class="del" data-tdel="${w.id}">Excluir</button></div></div>`).join(""):'<div class="proto-empty">Nenhum treino registrado hoje.</div>';
   $("tTodayList").querySelectorAll("[data-tdel]").forEach(b=>b.onclick=()=>{
     store.tdays[todayKey()]=tToday().filter(x=>x.id!==b.dataset.tdel);save();renderTreino();render();renderInicio();
   });
@@ -3638,8 +3700,8 @@ function maybeTIntro(){
   $("tIntroMsg").textContent="";
   $("tIntroOverlay").classList.add("open");
 }
-$("tIntroSug").onclick=()=>{$("tIntroOverlay").classList.remove("open");openTSug();};
-$("tIntroProto").onclick=()=>{$("tIntroOverlay").classList.remove("open");openTProtocol();};
+$("tIntroSug").onclick=()=>{$("tIntroOverlay").classList.remove("open");openTSug(sugDestinoPadrao());};
+$("tIntroProto").onclick=()=>{$("tIntroOverlay").classList.remove("open");openTProtocol(protAberto());};
 $("tIntroOverlay").onclick=e=>{if(e.target===$("tIntroOverlay"))$("tIntroOverlay").classList.remove("open");};
 /* ---- Substitutos por grupo muscular ----
    Servem à troca de exercício DURANTE o treino: aparelho ocupado, fila grande,
@@ -3685,20 +3747,28 @@ const T_SUG=[
     {n:"Mesa flexora",g:"posterior",s:3},{n:"Elevação pélvica",g:"gluteo",s:3},{n:"Panturrilha em pé",g:"panturrilha",s:4}]}
   ]}
 ];
-function openTSug(){
+/* Sugestão com o protocolo aberto VAZIO o preenche; com treinos nele, ela vira
+   um protocolo novo, com o nome dela. Antes, as sugestões se empilhavam todas
+   num protocolo só. */
+let tSugDestino=null;
+function sugDestinoPadrao(){const a=protAberto();return treinosDoProt(a).length?null:a;}
+function openTSug(destino){
+  tSugDestino=(destino&&protPorId(destino))?destino:null;
   const obj=(store.goals||{}).objetivo||"cutting",cutting=obj!=="bulking";
-  $("tSugSub").innerHTML=cutting
+  $("tSugSub").innerHTML=(cutting
     ?'Para o seu objetivo de <b>cutting</b>: descansos de <b>60 s</b> para manter o gasto alto e preservar músculo no déficit. Busque a falha entre 6–12 reps.'
-    :'Para o seu objetivo de <b>bulking</b>: descansos de <b>90 s</b> para render mais carga e maximizar o estímulo. Busque a falha entre 6–12 reps.';
+    :'Para o seu objetivo de <b>bulking</b>: descansos de <b>90 s</b> para render mais carga e maximizar o estímulo. Busque a falha entre 6–12 reps.')
+    +(!tSugDestino&&(store.tprotocol||[]).length?' Cada sugestão entra como um protocolo novo, com o nome dela — dá para renomear depois.':'');
+  const rotulo=tSugDestino?`Colocar em “${esc(protPorId(tSugDestino).nome)}”`:"Usar este protocolo";
   $("tSugList").innerHTML=T_SUG.map(p=>{
     const totEx=p.w.reduce((a,w)=>a+w.ex.length,0);
     const ws=p.w.map(w=>'<div class="pm-item"><div><span class="pn">'+esc(w.nome)+'</span><div class="pm-mac">'+w.ex.map(e=>esc(e.n)).join(" · ")+"</div></div></div>").join("");
-    return '<div class="tsug-card"><div class="pcname">'+p.nome+(p.id==="abc"?' <span class="badge-rec">Recomendado</span>':"")+'</div><div class="pcmac" style="margin-top:2px">'+p.w.length+" treinos · "+totEx+" exercícios · "+p.freq+'</div><p class="tsug-desc">'+p.desc+"</p>"+ws+'<button class="btn" data-usesug="'+p.id+'" style="margin-top:12px">Usar este protocolo</button></div>';
+    return '<div class="tsug-card"><div class="pcname">'+p.nome+(p.id==="abc"?' <span class="badge-rec">Recomendado</span>':"")+'</div><div class="pcmac" style="margin-top:2px">'+p.w.length+" treinos · "+totEx+" exercícios · "+p.freq+'</div><p class="tsug-desc">'+p.desc+"</p>"+ws+'<button class="btn" data-usesug="'+p.id+'" style="margin-top:12px">'+rotulo+'</button></div>';
   }).join("");
-  $("tSugList").querySelectorAll("[data-usesug]").forEach(b=>b.onclick=()=>useTSug(b.dataset.usesug));
+  $("tSugList").querySelectorAll("[data-usesug]").forEach(b=>b.onclick=()=>useTSug(b.dataset.usesug,tSugDestino));
   $("tSugOverlay").classList.add("open");
 }
-function useTSug(pid){
+function useTSug(pid,destino){
   const p=T_SUG.find(x=>x.id===pid);if(!p)return;
   const obj=(store.goals||{}).objetivo||"cutting";
   const rest=obj==="bulking"?90:60;
@@ -3706,15 +3776,27 @@ function useTSug(pid){
   /* Quem escolheu uma academia e pegou uma sugestão está montando o treino
      DELA: sem isto, o protocolo novo apareceria em todas. */
   const sel=acadSel();
-  p.w.forEach(w=>{store.tprotocol.push(Object.assign({id:uid(),nome:w.nome,cat:w.cat,ex:w.ex.map(e=>({n:e.n,s:e.s,rest,g:e.g,sec:synFor(e.g)}))},sel?{acads:[sel]}:{}));});
+  let alvo,nome,carimbar;
+  if(destino&&protPorId(destino)){
+    alvo=destino;nome=protPorId(destino).nome;
+    carimbar=destino!==PROT_PADRAO||protMaterializado();   // quem nunca mexeu em protocolo fica com a forma de sempre
+  }else{
+    materializarProtocolos();
+    nome=protNomeLivre(p.nome);alvo=protOrfao(nome)||uid();
+    store.tprotos.push({id:alvo,nome});carimbar=true;
+  }
+  p.w.forEach(w=>{store.tprotocol.push(Object.assign({id:uid(),nome:w.nome,cat:w.cat,ex:w.ex.map(e=>({n:e.n,s:e.s,rest,g:e.g,sec:synFor(e.g)}))},sel?{acads:[sel]}:{},carimbar?{prot:alvo,protNome:nome}:{}));});
+  setProtAberto(alvo);
   save();
   $("tSugOverlay").classList.remove("open");
+  if(tprotoOverlay.classList.contains("open"))renderTpList();
   renderTreino();
-  showCongrats(sel?`Protocolo adicionado em ${acadPorId(sel).nome} — bom treino!`:"Protocolo adicionado — bom treino!");
+  const onde=sel?` na ${acadPorId(sel).nome}`:"";
+  showCongrats(destino?`Treinos colocados em “${nome}”${onde} — bom treino!`:`Protocolo “${nome}” criado${onde} — bom treino!`);
 }
 $("tSugClose").onclick=()=>$("tSugOverlay").classList.remove("open");
 $("tSugOverlay").onclick=e=>{if(e.target===$("tSugOverlay"))$("tSugOverlay").classList.remove("open");};
-$("tSugBtn").onclick=openTSug;
+$("tSugBtn").onclick=()=>openTSug(sugDestinoPadrao());
 
 /* ============================================================
    ACADEMIAS
@@ -3759,6 +3841,13 @@ function acadNomeDe(reg){const a=acadPorId(reg&&reg.acad);return a?a.nome:((reg&
     existir, ou feito em "Todas") casa com qualquer uma: senão, ao cadastrar a
     primeira academia, o histórico inteiro deixaria de servir de referência. */
 function mesmaAcad(a,b){return !a||!b||a===b;}
+/** É o mesmo treino? Mesmo `tid` (sobrevive a renomear o treino), ou mesmo nome
+    no mesmo protocolo. Sessão de antes dos protocolos conta como do "Meu
+    protocolo", que é onde os treinos dela estão. */
+function mesmoTreino(a,b){
+  if(a.tid&&b.tid&&a.tid===b.tid)return true;
+  return a.name===b.name&&(a.prot||PROT_PADRAO)===(b.prot||PROT_PADRAO);
+}
 
 function renderAcadBar(){
   const el=$("acadBar");if(!el)return;
@@ -3805,8 +3894,12 @@ function renderAcadLista(){
   $("acadLista").innerHTML=lista.length?lista.map(a=>{
     if(a.id===acadRen)return `<div class="proto-meal-row acad-row"><input class="in" id="acadRenIn" type="text" maxlength="${ACAD_NOME_MAX}" value="${esc(acadRenTxt!=null?acadRenTxt:a.nome)}" autocomplete="off" enterkeyhint="done"><div class="acts"><button data-acadok="${esc(a.id)}">Salvar</button><button data-acadvolta="1">Voltar</button></div></div>`;
     const n=prot.filter(w=>acadsDoTreino(w).includes(a.id)).length;
-    return `<div class="proto-meal-row acad-row"><div><div class="n">${esc(a.nome)}</div><div class="m">${n?n+(n===1?" treino marcado":" treinos marcados"):"nenhum treino marcado ainda"}</div></div><div class="acts"><button data-acadren="${esc(a.id)}">Renomear</button><button class="del" data-acaddel="${esc(a.id)}">Excluir</button></div></div>`;
+    return `<div class="proto-meal-row acad-row"><div><div class="n">${esc(a.nome)}</div><div class="m">${n?n+(n===1?" treino marcado":" treinos marcados"):"nenhum treino marcado ainda"}</div><button type="button" class="acad-equip${Array.isArray(a.faltam)?"":" vazio"}" data-acadequip="${esc(a.id)}">${esc(equipEstadoTxt(a))}</button></div><div class="acts"><button data-acadren="${esc(a.id)}">Renomear</button><button class="del" data-acaddel="${esc(a.id)}">Excluir</button></div></div>`;
   }).join(""):'<div class="proto-empty" style="margin-bottom:12px">Nenhuma academia cadastrada ainda.</div>';
+  $("acadLista").querySelectorAll("[data-acadequip]").forEach(b=>b.onclick=()=>{
+    if(acadRen&&!salvarRen())return;
+    abrirEquip(b.dataset.acadequip);
+  });
   $("acadLista").querySelectorAll("[data-acadren]").forEach(b=>b.onclick=()=>{
     if(acadRen&&!salvarRen())return;   // a que estava aberta não se perde
     acadRen=b.dataset.acadren;acadRenTxt=null;renderAcadLista();
@@ -3821,7 +3914,7 @@ function renderAcadLista(){
   }
   $("acadLista").querySelectorAll("[data-acaddel]").forEach(b=>b.onclick=async()=>{
     const a=acadPorId(b.dataset.acaddel);if(!a)return;
-    if(!await appConfirm(`Excluir a academia "${a.nome}"? Nenhum treino é apagado: os que eram só dela passam a aparecer em todas, e o histórico continua dizendo onde cada sessão foi.`,{okText:"Excluir"}))return;
+    if(!await appConfirm(`Excluir a academia "${a.nome}"? Nenhum treino é apagado: os que eram só dela passam a aparecer em todas, e o histórico continua dizendo onde cada sessão foi. A lista de aparelhos dela sai junto.`,{okText:"Excluir"}))return;
     /* Tirar a academia dos treinos também: um id que não existe mais
        esconderia o treino de todas as academias. */
     (store.tprotocol||[]).forEach(w=>{if(w.acads){w.acads=w.acads.filter(id=>id!==a.id);if(!w.acads.length)delete w.acads;}});
@@ -3865,36 +3958,673 @@ function renderTpAcads(){
   const sel=tpEditing.acads||[];
   $("tpAcads").innerHTML=lista.map(a=>`<button type="button" data-tpacad="${esc(a.id)}" class="${sel.includes(a.id)?"on":""}">${esc(a.nome)}</button>`).join("");
   $("tpAcadNota").textContent=sel.length?"Aparece só nas marcadas.":"Nenhuma marcada: aparece em todas as academias.";
+  renderTpEquip();
   $("tpAcads").querySelectorAll("[data-tpacad]").forEach(b=>b.onclick=()=>{
     const id=b.dataset.tpacad,a=tpEditing.acads||(tpEditing.acads=[]);
     const k=a.indexOf(id);if(k>-1)a.splice(k,1);else a.push(id);
     renderTpAcads();
   });
 }
+/* O protocolo no editor: só aparece com dois ou mais. Escolha única. */
+function renderTpProts(){
+  const lista=listaProtocolos(),wrap=$("tpProtWrap");
+  wrap.style.display=lista.length>1?"block":"none";
+  if(lista.length<2)return;
+  $("tpProts").innerHTML=lista.map(p=>`<button type="button" data-tpprot="${esc(p.id)}" class="${p.id===tpEditing.prot?"on":""}">${esc(p.nome)}</button>`).join("");
+  $("tpProts").querySelectorAll("[data-tpprot]").forEach(b=>b.onclick=()=>{tpEditing.prot=b.dataset.tpprot;renderTpProts();});
+}
 /** Os nomes das academias de um treino, para as listas. */
 function acadsTxt(w){return acadsDoTreino(w).map(id=>acadPorId(id).nome).join(", ");}
+
+/* ============================================================
+   PROTOCOLOS
+
+   A pessoa pode ter mais de um protocolo, cada um com o nome que quiser
+   ("Hipertrofia", "Viagem", "Em casa"), e cada protocolo tem os seus treinos.
+
+   O protocolo de um treino fica NO PRÓPRIO TREINO (`prot` e `protNome`); a
+   lista `store.tprotos=[{id,nome}]` guarda só o nome e a ordem. É assim
+   porque um aparelho com a versão anterior grava o documento inteiro, sem
+   merge: ele apaga campo novo de primeiro nível, mas preserva campo novo
+   dentro do treino. Se a lista se perder, ela é reconstruída pelos treinos.
+
+   Quem já usava o app tem um protocolo VIRTUAL, de id fixo "principal" e
+   nome "Meu protocolo": os treinos sem `prot` são dele. Nada é regravado ao
+   abrir o app; a lista só vira dado (`materializarProtocolos`) quando a
+   pessoa mexe em protocolos. Id fixo, e não um sorteado na migração, para
+   dois aparelhos não criarem cada um o seu "Meu protocolo".
+   ============================================================ */
+const PROT_PADRAO="principal",PROT_PADRAO_NOME="Meu protocolo",PROT_NOME_MAX=40,PROT_KEY="tresults.prot";
+function protDoTreino(w){return (w&&w.prot)||PROT_PADRAO;}
+/** Os protocolos que a pessoa vê, na ordem. Nunca vazia. */
+function listaProtocolos(){
+  const out=[],visto=new Set(),tps=store.tprotocol||[],gu=Array.isArray(store.tprotos)?store.tprotos:[];
+  const add=(id,nome)=>{if(!id||visto.has(id))return;visto.add(id);out.push({id,nome:(nome||"").trim()||"Protocolo sem nome"});};
+  const nomePrincipal=()=>{const w=tps.find(x=>x.prot===PROT_PADRAO&&x.protNome);return w?w.protNome:PROT_PADRAO_NOME;};
+  if(tps.some(w=>!w.prot)&&!gu.some(p=>p.id===PROT_PADRAO))add(PROT_PADRAO,nomePrincipal());
+  gu.forEach(p=>add(p.id,p.nome));
+  tps.forEach(w=>{if(w.prot)add(w.prot,w.prot===PROT_PADRAO?nomePrincipal():w.protNome);});
+  if(!out.length)add(PROT_PADRAO,PROT_PADRAO_NOME);   // a tela sempre tem um protocolo
+  return out;
+}
+function protPorId(id){return id?listaProtocolos().find(p=>p.id===id)||null:null;}
+function treinosDoProt(id){return (store.tprotocol||[]).filter(w=>protDoTreino(w)===id);}
+function protMaterializado(){return Array.isArray(store.tprotos)&&store.tprotos.length>0;}
+/** Grava a lista que a pessoa está vendo. Só em ação dela. O "Meu protocolo"
+    virtual e vazio fica de fora: quem cria o primeiro protocolo não ganha um
+    bloco vazio de brinde. */
+function materializarProtocolos(){
+  const ant=Array.isArray(store.tprotos)?store.tprotos:[];
+  store.tprotos=listaProtocolos()
+    .filter(p=>!(p.id===PROT_PADRAO&&!ant.some(x=>x.id===PROT_PADRAO)&&!treinosDoProt(PROT_PADRAO).length))
+    .map(p=>Object.assign({},ant.find(x=>x.id===p.id)||{},{id:p.id,nome:p.nome}));
+}
+function protNomeValido(nome,ignorar){
+  if(!nome){appAlert("Escreva o nome do protocolo.");return false;}
+  if(listaProtocolos().some(p=>p.id!==ignorar&&norm(p.nome)===norm(nome))){appAlert("Você já tem um protocolo com esse nome.");return false;}
+  return true;
+}
+/** Id de um protocolo excluído com este nome, ainda no histórico: recriá-lo
+    devolve a comparação com as sessões dele, como `idOrfao` faz com academias. */
+function protOrfao(nome){
+  const alvo=norm(nome),tds=store.tdays||{};
+  for(const dk of Object.keys(tds).sort().reverse())
+    for(const r of tds[dk]||[])
+      if(r.prot&&!protPorId(r.prot)&&norm(r.protNome||"")===alvo)return r.prot;
+  return "";
+}
+/** Nome do protocolo de um registro: o atual, se ele existe; senão, o guardado. */
+function protNomeDe(reg){const p=protPorId((reg&&reg.prot)||PROT_PADRAO);return p?p.nome:((reg&&reg.protNome)||"");}
+/** O nome do protocolo só aparece no histórico quando ajuda: com dois ou
+    mais protocolos, ou quando o da sessão não existe mais. */
+function fdProtTxt(w){
+  if(!w||!(w.ex&&w.ex.length))return "";
+  if(listaProtocolos().length>1||(w.prot&&!protPorId(w.prot)))return protNomeDe(w);
+  return "";
+}
+/** O protocolo aberto na aba Treino: o escolhido neste aparelho; sem
+    escolha, o do último treino feito; senão, o primeiro. */
+function protAberto(){
+  const lista=listaProtocolos();
+  let id="";try{id=localStorage.getItem(PROT_KEY)||"";}catch(e){}
+  if(lista.some(p=>p.id===id))return id;
+  for(const it of fdTodas()){
+    const w=it.w;if(!w.ex||!w.ex.length)continue;
+    const t=w.tid&&(store.tprotocol||[]).find(x=>x.id===w.tid);
+    const pid=t?protDoTreino(t):(w.prot||PROT_PADRAO);
+    if(lista.some(p=>p.id===pid))return pid;
+  }
+  return lista[0].id;
+}
+function setProtAberto(id){try{if(id)localStorage.setItem(PROT_KEY,id);else localStorage.removeItem(PROT_KEY);}catch(e){}}
+/** Nome livre a partir de outro: "Divisão A/B/C", "Divisão A/B/C 2"… */
+function protNomeLivre(base){
+  const usados=new Set(listaProtocolos().map(p=>norm(p.nome)));
+  let n=base,i=2;while(usados.has(norm(n)))n=`${base} ${i++}`;
+  return n.slice(0,PROT_NOME_MAX);
+}
+const CHEV='<svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>';
+/** Os protocolos na aba Treino: um bloco por protocolo, um aberto por vez,
+    e os cartões dos treinos do aberto — filtrados pela academia escolhida. */
+function renderProtLista(){
+  const el=$("protLista");if(!el)return;
+  const lista=listaProtocolos(),aberto=protAberto(),sel=acadSel(),varios=lista.length>1;
+  el.innerHTML=`<div class="acad-topo"><span class="lbl">Seus protocolos</span></div>`+lista.map(p=>{
+    const ws=treinosDoProt(p.id),vis=ws.filter(w=>treinoNaAcad(w,sel)),ab=p.id===aberto;
+    const n=vis.length?vis.length+(vis.length===1?" treino":" treinos"):(ws.length?"nenhum para esta academia":"nenhum treino");
+    const miolo=`<span class="prot-nome">${esc(p.nome)}</span><span class="prot-n">${n}</span>`;
+    const cab=varios?`<button type="button" class="prot-cab" data-protabrir="${esc(p.id)}" aria-expanded="${ab}">${miolo}${CHEV}</button>`:`<div class="prot-cab">${miolo}</div>`;
+    const corpo=ab?`<div class="prot-corpo"><div class="proto-cards" id="tprotoCards"></div><button class="btn secondary prot-editar" id="tOpenProtocol">${ws.length?"Editar":"＋ Montar"} <span class="prot-q">“${esc(p.nome)}”</span></button></div>`:"";
+    return `<div class="prot-bloco${ab?" aberto":""}" data-prot="${esc(p.id)}">${cab}${corpo}</div>`;
+  }).join("");
+  el.querySelectorAll("[data-protabrir]").forEach(b=>b.onclick=()=>{
+    if(b.dataset.protabrir===aberto)return;   // sempre há um aberto: o treino continua a um toque
+    setProtAberto(b.dataset.protabrir);renderTreino();
+  });
+  $("tOpenProtocol").onclick=()=>openTProtocol(aberto);
+
+  // os cartões do protocolo aberto, só os que cabem na academia escolhida
+  const todos=treinosDoProt(aberto);
+  const list=todos.filter(w=>treinoNaAcad(w,sel));
+  /* Com "Todas" escolhida, o cartão diz a academia do treino que tem uma:
+     é o único lugar em que a pessoa vê tudo junto. */
+  const onde=w=>(!sel&&acadsDoTreino(w).length)?` · ${esc(acadsTxt(w))}`:"";
+  const nomeAcad=esc((acadPorId(sel)||{}).nome||"");
+  $("tprotoCards").innerHTML=list.length?list.map(w=>`<button class="proto-card" data-tw="${w.id}"><div><div class="pccat">Treino ${esc(w.cat||"")}</div><div class="pcname">${esc(w.nome)}</div><div class="pcmac">${(w.ex||[]).length} exercícios · ${tpSeries(w)} séries${onde(w)}</div>${pcFalta(w,sel)}</div><span class="pckcal">▶ Iniciar</span></button>`).join("")
+    :todos.length?(varios
+      ?`<div class="proto-empty">Nenhum treino de <b>${esc(protPorId(aberto).nome)}</b> marcado para <b>${nomeAcad}</b> ainda. Monte um para ela, ou marque esta academia num treino que você já tem, no botão logo abaixo.</div>`
+      :`<div class="proto-empty">Nenhum treino marcado para <b>${nomeAcad}</b> ainda. Monte um para ela, ou marque esta academia num treino que você já tem, no botão logo abaixo.</div>`)
+    :(store.tprotocol||[]).length
+      ?'<div class="proto-empty">Você ainda não montou este protocolo. Toque abaixo para cadastrar os treinos (ex.: Treino A, B, C) — depois é um toque para iniciar o do dia.</div>'
+      :'<div class="proto-empty">Você ainda não montou seu protocolo de treino. Toque abaixo para cadastrar (ex.: Treino A, B, C) — depois é um toque para iniciar o treino do dia.</div>';
+  $("tprotoCards").querySelectorAll("[data-tw]").forEach(b=>b.onclick=()=>startTRun(b.dataset.tw));
+}
+
+/* Criar protocolo: só o nome; os treinos vêm no pop-up dele. */
+function abrirProtNovo(){
+  $("protNovoNome").value="";
+  $("protNovoOverlay").classList.add("open");
+  setTimeout(()=>{try{$("protNovoNome").focus();}catch(e){}},260);
+}
+function criarProtocolo(){
+  const nome=$("protNovoNome").value.trim().slice(0,PROT_NOME_MAX);
+  if(!protNomeValido(nome))return;
+  materializarProtocolos();
+  const id=protOrfao(nome)||uid();
+  store.tprotos.push({id,nome});
+  setProtAberto(id);save();
+  $("protNovoOverlay").classList.remove("open");
+  renderTreino();
+  openTProtocol(id);
+}
+$("protNovo").onclick=abrirProtNovo;
+$("protNovoOk").onclick=criarProtocolo;
+$("protNovoNome").addEventListener("keydown",e=>{if(e.key==="Enter")criarProtocolo();});
+$("protNovoVoltar").onclick=()=>$("protNovoOverlay").classList.remove("open");
+$("protNovoOverlay").onclick=e=>{if(e.target===$("protNovoOverlay"))$("protNovoOverlay").classList.remove("open");};
+
+/* ============================================================
+   INVENTÁRIO DE APARELHOS POR ACADEMIA
+
+   Cada academia guarda o que ela NÃO tem: `academias[i].faltam=[ids]`.
+   Ausente = "não informado", e se comporta como "tem tudo": o app só avisa
+   depois que a pessoa disser o que falta. Guardar o que falta, e não o que
+   tem, faz aparelho novo no catálogo nascer "tem" — sem aviso falso para
+   quem já tinha marcado a academia.
+
+   O aparelho é deduzido do NOME do exercício (`EX_EQUIP`): regras por
+   trecho do nome sem acento, da mais específica para a mais geral, como as
+   demonstrações (`EX_ALIAS`/`exMatch`); vale a primeira que casa. Cada regra
+   dá ALTERNATIVAS: serve uma ou outra, e dentro de uma vão todos juntos;
+   alternativa vazia é "dá para fazer só com o corpo". O aviso só aparece
+   quando TODAS as alternativas têm algo faltando. Nome que o catálogo não
+   reconhece nunca recebe aviso: faltar aviso é o app de antes; aviso falso
+   ensina a ignorar o aviso.
+
+   O inventário avisa; ele nunca esconde, reordena treino nem troca
+   exercício sozinho.
+
+   Catálogo montado por dois levantamentos independentes, conciliados, e
+   conferido contra todos os nomes de EX_POR_GRUPO e T_SUG (existe teste).
+   ============================================================ */
+const EQUIP_GRUPOS=["Pesos livres", "Bancos e suportes", "Máquinas de pernas", "Máquinas de tronco", "Cabos e polias", "Peso do corpo", "Acessórios"];
+const EQUIP=[
+ {id:"barra",nome:"Barra e anilhas",grupo:"Pesos livres"},
+ {id:"halteres",nome:"Halteres",grupo:"Pesos livres"},
+ {id:"kettlebell",nome:"Kettlebell",grupo:"Pesos livres"},
+ {id:"caneleira",nome:"Caneleiras",grupo:"Pesos livres"},
+ {id:"banco_reto",nome:"Banco reto",grupo:"Bancos e suportes"},
+ {id:"banco_regulavel",nome:"Banco regulável",grupo:"Bancos e suportes"},
+ {id:"est_supino_reto",nome:"Banco de supino reto (com suporte da barra)",grupo:"Bancos e suportes"},
+ {id:"est_supino_incl",nome:"Banco de supino inclinado (com suporte da barra)",grupo:"Bancos e suportes"},
+ {id:"est_supino_decl",nome:"Banco de supino declinado (com suporte da barra)",grupo:"Bancos e suportes"},
+ {id:"gaiola",nome:"Gaiola / rack de agachamento",grupo:"Bancos e suportes"},
+ {id:"smith",nome:"Smith",grupo:"Bancos e suportes"},
+ {id:"banco_scott",nome:"Banco Scott",grupo:"Bancos e suportes"},
+ {id:"banco_lombar",nome:"Banco de lombar (hiperextensão)",grupo:"Bancos e suportes"},
+ {id:"prancha_abdominal",nome:"Prancha de abdominal (banco declinado)",grupo:"Bancos e suportes"},
+ {id:"leg_press",nome:"Leg press",grupo:"Máquinas de pernas"},
+ {id:"hack",nome:"Hack machine",grupo:"Máquinas de pernas"},
+ {id:"extensora",nome:"Cadeira extensora",grupo:"Máquinas de pernas"},
+ {id:"mesa_flexora",nome:"Mesa flexora",grupo:"Máquinas de pernas"},
+ {id:"cadeira_flexora",nome:"Cadeira flexora",grupo:"Máquinas de pernas"},
+ {id:"flexora_pe",nome:"Flexora em pé",grupo:"Máquinas de pernas"},
+ {id:"abdutora",nome:"Cadeira abdutora",grupo:"Máquinas de pernas"},
+ {id:"adutora",nome:"Cadeira adutora",grupo:"Máquinas de pernas"},
+ {id:"maq_gluteo",nome:"Glúteo máquina (coice)",grupo:"Máquinas de pernas"},
+ {id:"maq_pelvica",nome:"Máquina de elevação pélvica",grupo:"Máquinas de pernas"},
+ {id:"panturrilha_pe",nome:"Panturrilha em pé (máquina)",grupo:"Máquinas de pernas"},
+ {id:"panturrilha_sentado",nome:"Panturrilha sentado (máquina)",grupo:"Máquinas de pernas"},
+ {id:"supino_maquina",nome:"Supino máquina (articulado)",grupo:"Máquinas de tronco"},
+ {id:"peck_deck",nome:"Peck deck (voador)",grupo:"Máquinas de tronco"},
+ {id:"desenv_maquina",nome:"Desenvolvimento máquina",grupo:"Máquinas de tronco"},
+ {id:"remada_maquina",nome:"Remada máquina (articulada)",grupo:"Máquinas de tronco"},
+ {id:"cavalinho",nome:"Remada cavalinho (máquina)",grupo:"Máquinas de tronco"},
+ {id:"biceps_maquina",nome:"Rosca bíceps máquina",grupo:"Máquinas de tronco"},
+ {id:"triceps_maquina",nome:"Tríceps máquina",grupo:"Máquinas de tronco"},
+ {id:"abdominal_maquina",nome:"Abdominal máquina",grupo:"Máquinas de tronco"},
+ {id:"crossover",nome:"Crossover (duas torres)",grupo:"Cabos e polias"},
+ {id:"polia",nome:"Polia simples (uma torre, alta e baixa)",grupo:"Cabos e polias"},
+ {id:"puxador",nome:"Puxador (pulley alto)",grupo:"Cabos e polias"},
+ {id:"remada_baixa",nome:"Remada baixa (polia baixa, sentado)",grupo:"Cabos e polias"},
+ {id:"barra_fixa",nome:"Barra fixa",grupo:"Peso do corpo"},
+ {id:"paralelas",nome:"Paralelas",grupo:"Peso do corpo"},
+ {id:"graviton",nome:"Graviton (barra e paralela assistidas)",grupo:"Peso do corpo"},
+ {id:"trx",nome:"TRX (fita de suspensão)",grupo:"Peso do corpo"},
+ {id:"roda",nome:"Roda abdominal",grupo:"Acessórios"},
+ {id:"elastico",nome:"Elásticos (miniband, superband)",grupo:"Acessórios"},
+];
+const EQUIP_ID=Object.fromEntries(EQUIP.map(e=>[e.id,e]));
+const EX_EQUIP=[
+ [["supino", "inclinad", "smith"],[["smith", "banco_regulavel"]]],   // Supino inclinado no Smith
+ [["supino", "smith"],[["smith", "banco_reto"], ["smith", "banco_regulavel"]]],   // Supino no Smith
+ [["smith"],[["smith"]]],   // Agachamento smith
+ [["cross"],[["crossover"]]],   // Crossover
+ [["graviton"],[["graviton"]]],   // Barra no graviton
+ [["kettle"],[["kettlebell"]]],   // Swing com kettlebell
+ [["caneleira"],[["caneleira"]]],   // Coice com caneleira
+ [["elastico"],[["elastico"]]],   // Abdução com elástico
+ [["miniband"],[["elastico"]]],   // Abdução com miniband
+ [["trx"],[["trx"]]],   // Remada no TRX
+ [["supino", "maquina"],[["supino_maquina"]]],   // Supino máquina
+ [["supino", "articulad"],[["supino_maquina"]]],   // Supino articulado
+ [["supino", "vertical"],[["supino_maquina"]]],   // Supino vertical
+ [["supino", "inclinad", "halter"],[["halteres", "banco_regulavel"], ["halteres", "est_supino_incl"]]],   // Supino inclinado com halter
+ [["supino", "declinad", "halter"],[["halteres", "est_supino_decl"]]],   // Supino declinado com halter
+ [["supino", "halter"],[["halteres", "banco_reto"], ["halteres", "banco_regulavel"], ["halteres", "est_supino_reto"]]],   // Supino reto com halter
+ [["supino", "inclinad"],[["barra", "est_supino_incl"], ["barra", "gaiola", "banco_regulavel"]]],   // Supino inclinado
+ [["supino", "declinad"],[["barra", "est_supino_decl"]]],   // Supino declinado
+ [["supino"],[["barra", "est_supino_reto"], ["barra", "gaiola", "banco_reto"], ["barra", "gaiola", "banco_regulavel"]]],   // Supino reto
+ [["crucifixo", "invers", "maquina"],[["peck_deck"]]],   // Crucifixo inverso na máquina
+ [["crucifixo", "invers", "deck"],[["peck_deck"]]],   // Crucifixo inverso no peck deck
+ [["crucifixo", "invers", "voador"],[["peck_deck"]]],   // Crucifixo inverso no voador
+ [["crucifixo", "invers", "cabo"],[["crossover"], ["polia"]]],   // Crucifixo inverso no cabo
+ [["crucifixo", "invers", "polia"],[["crossover"], ["polia"]]],   // Crucifixo inverso na polia
+ [["crucifixo", "invers", "halter"],[["halteres"]]],   // Crucifixo inverso com halter
+ [["crucifixo", "invers"],[["halteres"], ["peck_deck"], ["crossover"], ["polia"]]],   // Crucifixo inverso
+ [["crucifixo", "maquina"],[["peck_deck"]]],   // Crucifixo máquina
+ [["crucifixo", "cabo"],[["crossover"]]],   // Crucifixo no cabo
+ [["crucifixo", "polia"],[["crossover"]]],   // Crucifixo na polia
+ [["crucifixo", "inclinad"],[["halteres", "banco_regulavel"], ["halteres", "est_supino_incl"]]],   // Crucifixo inclinado
+ [["crucifixo", "declinad"],[["halteres", "est_supino_decl"]]],   // Crucifixo declinado
+ [["crucifixo"],[["halteres", "banco_reto"], ["halteres", "banco_regulavel"], ["halteres", "est_supino_reto"]]],   // Crucifixo
+ [["voador"],[["peck_deck"]]],   // Voador
+ [["deck"],[["peck_deck"]]],   // Peck deck
+ [["flexao", "punho"],[["barra"], ["halteres"]]],   // Flexão de punho
+ [["flexao", "joelho"],[["mesa_flexora"], ["cadeira_flexora"], ["flexora_pe"]]],   // Flexão de joelho
+ [["flexao", "plantar"],[["panturrilha_pe"], ["panturrilha_sentado"], ["leg_press"], ["hack"], ["smith"], ["halteres"]]],   // Flexão plantar
+ [["flexao"],[[]]],   // Flexão de braço
+ [["mergulho", "maquina"],[["triceps_maquina"]]],   // Mergulho máquina
+ [["mergulho", "banco"],[["banco_reto"], ["banco_regulavel"], []]],   // Mergulho no banco
+ [["mergulho"],[["paralelas"], ["graviton"]]],   // Mergulho
+ [["triceps", "maquina"],[["triceps_maquina"]]],   // Tríceps máquina
+ [["triceps", "coice", "cabo"],[["crossover"], ["polia"]]],   // Tríceps coice no cabo
+ [["triceps", "coice", "polia"],[["crossover"], ["polia"]]],   // Tríceps coice na polia
+ [["triceps", "coice"],[["halteres"]]],   // Tríceps coice
+ [["frances", "corda"],[["crossover"], ["polia"]]],   // Tríceps francês na corda
+ [["frances", "polia"],[["crossover"], ["polia"]]],   // Tríceps francês na polia
+ [["frances", "cabo"],[["crossover"], ["polia"]]],   // Tríceps francês no cabo
+ [["frances", "halter"],[["halteres"]]],   // Tríceps francês com halter
+ [["frances", "barra"],[["barra"]]],   // Tríceps francês com barra
+ [["frances"],[["halteres"], ["barra"]]],   // Tríceps francês
+ [["testa", "halter"],[["halteres", "banco_reto"], ["halteres", "banco_regulavel"]]],   // Tríceps testa com halter
+ [["testa", "barra"],[["barra", "banco_reto"], ["barra", "banco_regulavel"]]],   // Tríceps testa com barra W
+ [["testa"],[["barra", "banco_reto"], ["barra", "banco_regulavel"], ["halteres", "banco_reto"], ["halteres", "banco_regulavel"]]],   // Tríceps testa
+ [["triceps", "paralela"],[["paralelas"], ["graviton"]]],   // Tríceps paralela
+ [["triceps", "banco"],[["banco_reto"], ["banco_regulavel"], []]],   // Tríceps banco
+ [["triceps", "halter"],[["halteres"]]],   // Tríceps com halter
+ [["triceps", "corda"],[["crossover"], ["polia"], ["puxador"]]],   // Tríceps corda
+ [["triceps", "pulley"],[["crossover"], ["polia"], ["puxador"]]],   // Tríceps pulley
+ [["triceps", "barra"],[["crossover"], ["polia"], ["puxador"]]],   // Tríceps barra
+ [["triceps"],[["crossover"], ["polia"], ["puxador"], ["halteres"]]],   // Tríceps unilateral
+ [["pullover", "cabo"],[["crossover"], ["polia"], ["puxador"]]],   // Pullover no cabo
+ [["pullover", "polia"],[["crossover"], ["polia"], ["puxador"]]],   // Pullover na polia
+ [["pullover", "corda"],[["crossover"], ["polia"], ["puxador"]]],   // Pullover na corda
+ [["pullover", "barra"],[["barra", "banco_reto"], ["barra", "banco_regulavel"]]],   // Pullover com barra
+ [["pullover"],[["halteres", "banco_reto"], ["halteres", "banco_regulavel"]]],   // Pullover
+ [["puxada", "estendid"],[["crossover"], ["polia"], ["puxador"]]],   // Puxada com braços estendidos
+ [["puxada"],[["puxador"], ["crossover"], ["polia"]]],   // Puxada frente
+ [["puxador"],[["puxador"]]],   // Puxador frente
+ [["pulldown"],[["puxador"], ["crossover"], ["polia"]]],   // Pulldown
+ [["pull", "down"],[["puxador"], ["crossover"], ["polia"]]],   // Pull down
+ [["face", "pull"],[["crossover"], ["polia"]]],   // Face pull
+ [["remada", "alta", "cabo"],[["crossover"], ["polia"]]],   // Remada alta no cabo
+ [["remada", "alta", "polia"],[["crossover"], ["polia"]]],   // Remada alta na polia
+ [["remada", "alta", "halter"],[["halteres"]]],   // Remada alta com halter
+ [["remada", "alta", "barra"],[["barra"]]],   // Remada alta com barra
+ [["remada", "alta"],[["barra"], ["halteres"], ["crossover"], ["polia"]]],   // Remada alta
+ [["cavalinho", "maquina"],[["cavalinho"]]],   // Remada cavalinho máquina
+ [["cavalinho"],[["cavalinho"], ["barra"]]],   // Remada cavalinho
+ [["remada", "invertida"],[["smith"], ["barra", "gaiola"], ["trx"]]],   // Remada invertida
+ [["australiana"],[["smith"], ["barra", "gaiola"], ["trx"]]],   // Barra australiana
+ [["remada", "maquina"],[["remada_maquina"]]],   // Remada máquina
+ [["remada", "articulad"],[["remada_maquina"]]],   // Remada articulada
+ [["remada", "cabo"],[["remada_baixa"], ["crossover"], ["polia"]]],   // Remada no cabo
+ [["remada", "polia"],[["remada_baixa"], ["crossover"], ["polia"]]],   // Remada na polia
+ [["remada", "baixa"],[["remada_baixa"], ["crossover"], ["polia"]]],   // Remada baixa
+ [["remada", "triangulo"],[["remada_baixa"], ["crossover"], ["polia"]]],   // Remada triângulo
+ [["remada", "sentad"],[["remada_baixa"], ["remada_maquina"], ["crossover"], ["polia"]]],   // Remada sentada
+ [["remada", "unilateral"],[["halteres"]]],   // Remada unilateral
+ [["serrote"],[["halteres"]]],   // Serrote
+ [["remada", "curvada", "halter"],[["halteres"]]],   // Remada curvada com halteres
+ [["remada", "curvada", "barra"],[["barra"]]],   // Remada curvada com barra
+ [["remada", "curvada"],[["barra"], ["halteres"]]],   // Remada curvada
+ [["remada", "halter"],[["halteres"]]],   // Remada com halter
+ [["remada"],[["barra"], ["halteres"], ["remada_baixa"], ["remada_maquina"], ["cavalinho"]]],   // Remada aberta
+ [["desenvolvimento", "maquina"],[["desenv_maquina"]]],   // Desenvolvimento máquina
+ [["desenvolvimento", "articulad"],[["desenv_maquina"]]],   // Desenvolvimento articulado
+ [["arnold"],[["halteres"]]],   // Arnold press
+ [["desenvolvimento", "halter"],[["halteres"]]],   // Desenvolvimento com halter
+ [["desenvolvimento", "barra"],[["barra", "gaiola"]]],   // Desenvolvimento com barra
+ [["desenvolvimento", "militar"],[["barra", "gaiola"]]],   // Desenvolvimento militar
+ [["desenvolvimento", "nuca"],[["barra", "gaiola"]]],   // Desenvolvimento por trás da nuca
+ [["desenvolvimento"],[["halteres"], ["desenv_maquina"], ["barra", "gaiola"]]],   // Desenvolvimento
+ [["elevacao", "lateral", "cabo"],[["crossover"], ["polia"]]],   // Elevação lateral no cabo
+ [["elevacao", "lateral", "polia"],[["crossover"], ["polia"]]],   // Elevação lateral na polia
+ [["elevacao", "lateral", "halter"],[["halteres"]]],   // Elevação lateral com halter
+ [["elevacao", "lateral"],[["halteres"], ["crossover"], ["polia"]]],   // Elevação lateral
+ [["elevacao", "frontal", "cabo"],[["crossover"], ["polia"]]],   // Elevação frontal no cabo
+ [["elevacao", "frontal", "polia"],[["crossover"], ["polia"]]],   // Elevação frontal na polia
+ [["elevacao", "frontal", "halter"],[["halteres"]]],   // Elevação frontal com halter
+ [["elevacao", "frontal", "barra"],[["barra"]]],   // Elevação frontal com barra
+ [["elevacao", "frontal", "anilha"],[["barra"]]],   // Elevação frontal com anilha
+ [["elevacao", "frontal"],[["halteres"], ["barra"], ["crossover"], ["polia"]]],   // Elevação frontal
+ [["encolhimento", "halter"],[["halteres"]]],   // Encolhimento com halter
+ [["encolhimento", "barra"],[["barra"]]],   // Encolhimento com barra
+ [["encolhimento"],[["halteres"], ["barra"]]],   // Encolhimento
+ [["rosca", "maquina"],[["biceps_maquina"]]],   // Rosca máquina
+ [["scott", "maquina"],[["biceps_maquina"]]],   // Scott máquina
+ [["biceps", "maquina"],[["biceps_maquina"]]],   // Bíceps máquina
+ [["scott", "halter"],[["halteres", "banco_scott"]]],   // Rosca scott com halter
+ [["scott"],[["barra", "banco_scott"], ["halteres", "banco_scott"]]],   // Rosca scott
+ [["rosca", "cabo"],[["remada_baixa"], ["crossover"], ["polia"]]],   // Rosca no cabo
+ [["rosca", "polia"],[["remada_baixa"], ["crossover"], ["polia"]]],   // Rosca na polia
+ [["rosca", "corda"],[["remada_baixa"], ["crossover"], ["polia"]]],   // Rosca martelo na corda
+ [["rosca", "concentrada"],[["halteres"]]],   // Rosca concentrada
+ [["rosca", "inclinad"],[["halteres", "banco_regulavel"]]],   // Rosca inclinada
+ [["rosca", "martelo"],[["halteres"]]],   // Rosca martelo
+ [["rosca", "halter"],[["halteres"]]],   // Rosca direta com halter
+ [["rosca", "barra"],[["barra"]]],   // Rosca com barra W
+ [["rosca", "inversa"],[["barra"], ["halteres"]]],   // Rosca inversa
+ [["rosca", "punho"],[["barra"], ["halteres"]]],   // Rosca de punho
+ [["rosca", "alternada"],[["halteres"]]],   // Rosca alternada
+ [["rosca", "simultanea"],[["halteres"]]],   // Rosca simultânea
+ [["rosca", "direta"],[["barra"]]],   // Rosca direta
+ [["rosca"],[["barra"], ["halteres"]]],   // Rosca 21
+ [["biceps", "cabo"],[["remada_baixa"], ["crossover"], ["polia"]]],   // Bíceps no cabo
+ [["biceps", "polia"],[["remada_baixa"], ["crossover"], ["polia"]]],   // Bíceps na polia
+ [["biceps"],[["barra"], ["halteres"]]],   // Bíceps
+ [["farmer"],[["halteres"], ["kettlebell"]]],   // Farmer walk
+ [["fazendeiro"],[["halteres"], ["kettlebell"]]],   // Caminhada do fazendeiro
+ [["panturrilha", "leg"],[["leg_press"]]],   // Panturrilha no leg press
+ [["panturrilha", "hack"],[["hack"]]],   // Panturrilha no hack
+ [["panturrilha", "sentad"],[["panturrilha_sentado"], ["smith"], ["halteres"]]],   // Panturrilha sentado
+ [["soleo"],[["panturrilha_sentado"], ["smith"], ["halteres"]]],   // Sóleo
+ [["gemeos", "sentad"],[["panturrilha_sentado"], ["smith"], ["halteres"]]],   // Gêmeos sentado
+ [["panturrilha", "halter"],[["halteres"]]],   // Panturrilha com halter
+ [["panturrilha", "em pe"],[["panturrilha_pe"], ["smith"], ["halteres"]]],   // Panturrilha em pé
+ [["panturrilha", "maquina"],[["panturrilha_pe"], ["panturrilha_sentado"]]],   // Panturrilha máquina
+ [["panturrilha"],[["panturrilha_pe"], ["panturrilha_sentado"], ["leg_press"], ["hack"], ["smith"], ["halteres"]]],   // Panturrilha unilateral
+ [["gemeos"],[["panturrilha_pe"], ["panturrilha_sentado"], ["leg_press"], ["hack"], ["smith"], ["halteres"]]],   // Gêmeos
+ [["hack"],[["hack"]]],   // Hack machine
+ [["agachamento", "maquina"],[["hack"]]],   // Agachamento máquina
+ [["bulgaro", "halter"],[["halteres"]]],   // Búlgaro com halter
+ [["bulgaro", "barra"],[["barra", "gaiola"]]],   // Búlgaro com barra
+ [["bulgaro"],[["halteres"], []]],   // Búlgaro
+ [["agachamento", "sumo", "barra"],[["barra", "gaiola"]]],   // Agachamento sumô com barra
+ [["terra", "sumo"],[["barra"]]],   // Terra sumô
+ [["sumo", "halter"],[["halteres"]]],   // Agachamento sumô com halter
+ [["sumo"],[["halteres"], ["kettlebell"]]],   // Sumô
+ [["goblet"],[["halteres"], ["kettlebell"]]],   // Agachamento goblet
+ [["agachamento", "halter"],[["halteres"]]],   // Agachamento com halteres
+ [["agachamento", "corp"],[[]]],   // Agachamento com peso corporal
+ [["agachamento", "sem peso"],[[]]],   // Agachamento sem peso
+ [["agachamento"],[["barra", "gaiola"]]],   // Agachamento livre
+ [["leg", "press"],[["leg_press"]]],   // Leg press
+ [["extensora"],[["extensora"]]],   // Cadeira extensora
+ [["extensao", "joelho"],[["extensora"]]],   // Extensão de joelho
+ [["afundo", "halter"],[["halteres"]]],   // Afundo com halter
+ [["afundo", "barra"],[["barra", "gaiola"]]],   // Afundo com barra
+ [["afundo"],[["halteres"], ["barra", "gaiola"], []]],   // Afundo
+ [["avanco", "halter"],[["halteres"]]],   // Avanço com halter
+ [["avanco", "barra"],[["barra", "gaiola"]]],   // Avanço com barra
+ [["avanco"],[["halteres"], ["barra", "gaiola"], []]],   // Avanço
+ [["passada", "halter"],[["halteres"]]],   // Passada com halteres
+ [["passada", "barra"],[["barra", "gaiola"]]],   // Passada com barra
+ [["passada"],[["halteres"], ["barra", "gaiola"], []]],   // Passada
+ [["flexora", "cabo"],[["crossover"], ["polia"]]],   // Flexora no cabo
+ [["flexora", "polia"],[["crossover"], ["polia"]]],   // Flexora na polia
+ [["mesa", "flexora"],[["mesa_flexora"]]],   // Mesa flexora
+ [["cadeira", "flexora"],[["cadeira_flexora"]]],   // Cadeira flexora
+ [["flexora", "em pe"],[["flexora_pe"]]],   // Flexora em pé
+ [["flexora", "deitad"],[["mesa_flexora"]]],   // Flexora deitada
+ [["flexora", "sentad"],[["cadeira_flexora"]]],   // Flexora sentada
+ [["flexora"],[["mesa_flexora"], ["cadeira_flexora"], ["flexora_pe"]]],   // Flexora unilateral
+ [["stiff", "halter"],[["halteres"]]],   // Stiff com halter
+ [["stiff", "barra"],[["barra"]]],   // Stiff com barra
+ [["stiff"],[["barra"], ["halteres"]]],   // Stiff
+ [["romeno", "halter"],[["halteres"]]],   // Terra romeno com halter
+ [["romeno"],[["barra"], ["halteres"]]],   // Terra romeno
+ [["terra", "halter"],[["halteres"]]],   // Terra com halter
+ [["terra"],[["barra"]]],   // Levantamento terra
+ [["bom", "dia"],[["barra", "gaiola"]]],   // Bom dia
+ [["good", "morning"],[["barra", "gaiola"]]],   // Good morning
+ [["hiperextens"],[["banco_lombar"]]],   // Hiperextensão
+ [["superman"],[[]]],   // Superman
+ [["lombar"],[["banco_lombar"]]],   // Lombar
+ [["pelvica", "maquina"],[["maq_pelvica"]]],   // Elevação pélvica máquina
+ [["thrust", "maquina"],[["maq_pelvica"]]],   // Hip thrust máquina
+ [["pelvica", "halter"],[["halteres"]]],   // Elevação pélvica com halter
+ [["pelvica"],[["barra"], ["maq_pelvica"]]],   // Elevação pélvica
+ [["thrust"],[["barra"], ["maq_pelvica"]]],   // Hip thrust
+ [["elevacao", "quadril"],[["barra"], ["maq_pelvica"]]],   // Elevação de quadril
+ [["ponte"],[[]]],   // Ponte de glúteo
+ [["abdu", "cabo"],[["crossover"], ["polia"]]],   // Abdução no cabo
+ [["abdu", "polia"],[["crossover"], ["polia"]]],   // Abdução na polia
+ [["abdutor"],[["abdutora"]]],   // Cadeira abdutora
+ [["abducao"],[["abdutora"], ["crossover"], ["polia"], ["caneleira"], ["elastico"]]],   // Abdução
+ [["adut", "cabo"],[["crossover"], ["polia"]]],   // Adutor no cabo
+ [["adut", "polia"],[["crossover"], ["polia"]]],   // Adutor na polia
+ [["aducao", "cabo"],[["crossover"], ["polia"]]],   // Adução no cabo
+ [["aducao", "polia"],[["crossover"], ["polia"]]],   // Adução na polia
+ [["adutor"],[["adutora"]]],   // Cadeira adutora
+ [["aducao"],[["adutora"], ["crossover"], ["polia"], ["caneleira"]]],   // Adução
+ [["coice", "cabo"],[["crossover"], ["polia"]]],   // Coice no cabo
+ [["coice", "polia"],[["crossover"], ["polia"]]],   // Coice na polia
+ [["coice", "maquina"],[["maq_gluteo"]]],   // Coice na máquina
+ [["coice"],[["caneleira"], ["maq_gluteo"], ["crossover"], ["polia"]]],   // Coice
+ [["glute", "cabo"],[["crossover"], ["polia"]]],   // Glúteo no cabo
+ [["glute", "polia"],[["crossover"], ["polia"]]],   // Glúteo na polia
+ [["glute", "maquina"],[["maq_gluteo"]]],   // Glúteo máquina
+ [["glute"],[["maq_gluteo"], ["caneleira"], ["crossover"], ["polia"]]],   // Glúteo 4 apoios
+ [["abdominal", "maquina"],[["abdominal_maquina"]]],   // Abdominal máquina
+ [["abdominal", "cabo"],[["crossover"], ["polia"]]],   // Abdominal no cabo
+ [["abdominal", "polia"],[["crossover"], ["polia"]]],   // Abdominal na polia
+ [["abdominal", "corda"],[["crossover"], ["polia"]]],   // Abdominal na corda
+ [["crunch", "cabo"],[["crossover"], ["polia"]]],   // Crunch no cabo
+ [["crunch", "polia"],[["crossover"], ["polia"]]],   // Crunch na polia
+ [["roda"],[["roda"]]],   // Abdominal na roda
+ [["rodinha"],[["roda"]]],   // Abdominal na rodinha
+ [["rollout"],[["roda"], ["barra"]]],   // Rollout
+ [["abdominal", "declinad"],[["prancha_abdominal"]]],   // Abdominal declinado
+ [["elevacao", "perna", "barra"],[["barra_fixa"]]],   // Elevação de pernas na barra
+ [["elevacao", "perna", "paralela"],[["paralelas"]]],   // Elevação de pernas na paralela
+ [["elevacao", "perna", "suspens"],[["barra_fixa"], ["paralelas"]]],   // Elevação de pernas suspenso
+ [["elevacao", "perna"],[["barra_fixa"], ["paralelas"], []]],   // Elevação de pernas
+ [["elevacao", "joelho"],[["barra_fixa"], ["paralelas"], []]],   // Elevação de joelhos
+ [["infra", "barra"],[["barra_fixa"]]],   // Abdominal infra na barra
+ [["infra", "paralela"],[["paralelas"]]],   // Abdominal infra na paralela
+ [["infra", "suspens"],[["barra_fixa"], ["paralelas"]]],   // Infra suspenso
+ [["infra"],[[]]],   // Abdominal infra
+ [["abdominal"],[[]]],   // Abdominal
+ [["crunch"],[[]]],   // Crunch
+ [["prancha"],[[]]],   // Prancha lateral
+ [["barra", "fixa"],[["barra_fixa"], ["graviton"]]],   // Barra fixa
+ [["barra", "supinad"],[["barra_fixa"], ["graviton"]]],   // Barra supinada
+ [["barra", "pronad"],[["barra_fixa"], ["graviton"]]],   // Barra pronada
+ [["pull up"],[["barra_fixa"], ["graviton"]]],   // Pull up
+ [["chin up"],[["barra_fixa"], ["graviton"]]],   // Chin up
+ [["paralela"],[["paralelas"], ["graviton"]]],   // Paralela
+ [["swing"],[["kettlebell"], ["halteres"]]],   // Swing
+ [["halter"],[["halteres"]]],   // Arranco com halter
+ [["cabo"],[["crossover"], ["polia"]]],   // Rotação de tronco no cabo
+ [["polia"],[["crossover"], ["polia"]]],   // Extensão de quadril na polia
+ [["pulley"],[["puxador"], ["crossover"], ["polia"]]],   // Extensão no pulley
+ [["anilha"],[["barra"]]],   // Rotação com anilha
+];
+
+/** De que aparelho o exercício precisa. null = não sei (nunca avisa). */
+function exEquip(nome){
+  const nn=norm(nome||"");
+  for(const [ch,req] of EX_EQUIP){
+    if(!ch.every(k=>nn.includes(k)))continue;
+    /* "máquina"/"articulado" no nome, sem regra própria: é uma máquina que o
+       catálogo não conhece, e herdar o aparelho da regra geral avisaria errado. */
+    if(/maquina|articulad/.test(nn)&&!ch.some(k=>/maquina|articulad/.test(k)))return null;
+    return req;
+  }
+  return null;
+}
+/** O que falta na academia, só com ids que esta versão conhece. null = não informado. */
+function equipFaltam(acadId){const a=acadPorId(acadId);return (a&&Array.isArray(a.faltam))?a.faltam.filter(id=>EQUIP_ID[id]):null;}
+/** null = não avisa. Senão {ids: o que falta, na ordem do catálogo; melhor: a
+    alternativa que precisa de menos coisa para valer}. */
+function equipFalta(nome,acadId){
+  const f=equipFaltam(acadId);if(!f||!f.length)return null;
+  const req=exEquip(nome);if(!req||!req.length)return null;
+  const fs=new Set(f),alts=req.map(alt=>alt.filter(id=>fs.has(id)));
+  if(alts.some(m=>!m.length))return null;   // alguma forma de fazer está inteira
+  const u=new Set(alts.flat());
+  return {ids:EQUIP.filter(e=>u.has(e.id)).map(e=>e.id),melhor:alts.reduce((a,b)=>b.length<a.length?b:a)};
+}
+const equipCurto=id=>EQUIP_ID[id].nome.replace(/\s*\(.*\)$/,"");
+/** "A", "A e B", "A, B e C" — com conj " nem " para frase negativa. */
+function listaTxt(xs,conj){if(xs.length<2)return xs[0]||"";return xs.slice(0,-1).join(", ")+(conj||" e ")+xs[xs.length-1];}
+/** O aviso no cartão do treino, com academia escolhida. */
+function pcFalta(w,acadId){
+  if(!acadId)return "";
+  const xs=(w.ex||[]).filter(e=>equipFalta(e.n,acadId)).map(e=>e.n);
+  if(!xs.length)return "";
+  return `<div class="pcfalta">Sem aparelho aqui para: ${esc(xs.slice(0,2).join(", "))}${xs.length>2?` e mais ${xs.length-2}`:""}</div>`;
+}
+/** A linha da academia no pop-up "Minhas academias". */
+function equipEstadoTxt(a){
+  if(!Array.isArray(a.faltam))return "Aparelhos não informados ›";
+  const f=a.faltam.filter(id=>EQUIP_ID[id]);
+  if(!f.length)return "Tem todos os aparelhos da lista ›";
+  const ns=EQUIP.filter(e=>f.includes(e.id)).map(e=>equipCurto(e.id));
+  return `Não tem: ${ns.slice(0,2).join(", ")}${ns.length>2?` e mais ${ns.length-2}`:""} ›`;
+}
+
+/* O pop-up de aparelhos. Cada toque grava na hora; abrir e fechar sem tocar
+   não grava nada (a academia continua "não informada"). */
+let equipAcad=null,equipAoFechar=null;
+function abrirEquip(acadId,aoFechar){
+  if(!acadPorId(acadId))return;
+  equipAcad=acadId;equipAoFechar=aoFechar||null;
+  pintarEquip();
+  $("equipOverlay").classList.add("open");
+}
+function pintarEquip(){
+  const a=acadPorId(equipAcad);if(!a)return;
+  $("equipTitulo").textContent=`Aparelhos da ${a.nome}`;
+  const f=new Set(Array.isArray(a.faltam)?a.faltam:[]);
+  $("equipGrupos").innerHTML=EQUIP_GRUPOS.map(g=>`<div class="lbl equip-grupo">${esc(g)}</div><div class="synchips">${EQUIP.filter(e=>e.grupo===g).map(e=>`<button type="button" data-equip="${e.id}" class="${f.has(e.id)?"":"on"}" aria-pressed="${!f.has(e.id)}">${esc(e.nome)}</button>`).join("")}</div>`).join("");
+  const n=[...f].filter(id=>EQUIP_ID[id]).length,N=EQUIP.length;
+  $("equipConta").textContent=!Array.isArray(a.faltam)?"Ainda não informado — com tudo marcado, o app não avisa nada."
+    :n?`Faltam ${n} de ${N}.`:`Tem todos os ${N} da lista.`;
+  $("equipGrupos").querySelectorAll("[data-equip]").forEach(b=>b.onclick=()=>equipGravar(f=>f.includes(b.dataset.equip)?f.filter(x=>x!==b.dataset.equip):f.concat([b.dataset.equip])));
+}
+/** Aplica uma mudança no que falta, relendo a academia AGORA: outro aparelho
+    pode tê-la excluído enquanto o pop-up estava aberto. */
+function equipGravar(fn){
+  const a=acadPorId(equipAcad);
+  if(!a){fecharEquip();appAlert("Esta academia foi excluída em outro aparelho.");return;}
+  const ant=Array.isArray(a.faltam)?a.faltam:[];
+  const desconhecidos=ant.filter(id=>!EQUIP_ID[id]);   // de versão mais nova: ficam
+  const conh=fn(ant.filter(id=>EQUIP_ID[id]));
+  a.faltam=EQUIP.filter(e=>conh.includes(e.id)).map(e=>e.id).concat(desconhecidos);
+  save();pintarEquip();
+}
+function fecharEquip(){
+  $("equipOverlay").classList.remove("open");
+  const cb=equipAoFechar;equipAoFechar=null;equipAcad=null;
+  if(cb)cb();
+  if($("acadOverlay").classList.contains("open"))renderAcadLista();
+  renderTreino();
+}
+/** A nuvem mudou com o pop-up aberto: redesenha, ou fecha se a academia sumiu. */
+function equipRevisar(){
+  if(!$("equipOverlay").classList.contains("open"))return;
+  if(acadPorId(equipAcad))pintarEquip();
+  else{fecharEquip();appAlert("Esta academia foi excluída em outro aparelho.");}
+}
+$("equipTudo").onclick=()=>equipGravar(()=>[]);
+$("equipNada").onclick=async()=>{
+  const a=acadPorId(equipAcad);if(!a)return;
+  if(!await appConfirm(`Desmarcar todos os aparelhos da ${a.nome}? O app passa a avisar em todo exercício que pede aparelho.`,{okText:"Desmarcar"}))return;
+  equipGravar(()=>EQUIP.map(e=>e.id));
+};
+$("equipFechar").onclick=fecharEquip;
+$("equipOverlay").onclick=e=>{if(e.target===$("equipOverlay"))fecharEquip();};
+
+/* No editor do treino: onde vai faltar aparelho. Academias consideradas: as
+   marcadas; sem nenhuma marcada, todas as que têm inventário com falta. */
+function renderTpEquip(){
+  const el=$("tpEquipNota");if(!el||!tpEditing)return;
+  const marc=(tpEditing.acads||[]).filter(id=>acadPorId(id));
+  const alvo=marc.length?marc:academias().filter(a=>Array.isArray(a.faltam)&&a.faltam.length).map(a=>a.id);
+  const frases=alvo.map(id=>{
+    const xs=(tpEditing.ex||[]).filter(e=>equipFalta(e.n,id)).map(e=>e.n);
+    return xs.length?`Na <b>${esc(acadPorId(id).nome)}</b> falta aparelho para ${esc(listaTxt(xs))}.`:"";
+  }).filter(Boolean);
+  el.innerHTML=frases.length?frases.join(" ")+" Dá para salvar assim e trocar na hora do treino.":"";
+  el.style.display=frases.length?"":"none";
+}
 
 /* protocolo de treino */
 const tprotoOverlay=$("tprotoOverlay"),tpEditOverlay=$("tpEditOverlay");
 let tpEditing=null,tpEditId=null;
-$("tOpenProtocol").onclick=openTProtocol;
-function openTProtocol(){renderTpList();tprotoOverlay.classList.add("open");}
-$("tpClose").onclick=()=>{tprotoOverlay.classList.remove("open");renderTreino();};
-tprotoOverlay.onclick=e=>{if(e.target===tprotoOverlay){tprotoOverlay.classList.remove("open");renderTreino();}};
+let tpProtAtual=PROT_PADRAO;   // o protocolo aberto no pop-up
+function openTProtocol(id){
+  tpProtAtual=(id&&protPorId(id))?id:protAberto();
+  $("tpProtNome").value=protPorId(tpProtAtual).nome;
+  renderTpList();tprotoOverlay.classList.add("open");
+}
+/** Grava o nome que está no título. Falso quando o nome não vale (o aviso já
+    apareceu): fechar não pode descartar calado o que foi digitado. */
+function salvarNomeProt(){
+  const p=protPorId(tpProtAtual);if(!p)return true;
+  const nome=$("tpProtNome").value.trim().slice(0,PROT_NOME_MAX);
+  if(nome===p.nome)return true;
+  if(!protNomeValido(nome,p.id))return false;
+  materializarProtocolos();
+  const g=store.tprotos.find(x=>x.id===p.id);
+  if(g)g.nome=nome;else store.tprotos.push({id:p.id,nome});
+  // o nome vai também nos treinos: é por ele que a lista se refaz se se perder
+  treinosDoProt(p.id).forEach(w=>{w.prot=p.id;w.protNome=nome;});
+  save();return true;
+}
+function fecharProtocolo(){
+  if(!salvarNomeProt())return;
+  tprotoOverlay.classList.remove("open");renderTreino();
+}
+$("tpClose").onclick=fecharProtocolo;
+tprotoOverlay.onclick=e=>{if(e.target===tprotoOverlay)fecharProtocolo();};
+$("tpProtNome").addEventListener("keydown",e=>{if(e.key==="Enter"){if(salvarNomeProt())$("tpProtNome").blur();}});
+$("tpSugAqui").onclick=()=>{if(salvarNomeProt())openTSug(tpProtAtual);};
+$("tpProtDel").onclick=async()=>{
+  const p=protPorId(tpProtAtual);if(!p)return;
+  const ws=treinosDoProt(p.id);
+  const msg=ws.length
+    ?`Excluir o protocolo "${p.nome}" e ${ws.length===1?"o treino dele":`os ${ws.length} treinos dele`}? As sessões que você já fez continuam no Início e no Progresso.`
+    :`Excluir o protocolo "${p.nome}"? Ele não tem treinos.`;
+  if(!await appConfirm(msg,{okText:"Excluir"}))return;
+  materializarProtocolos();
+  const ids=new Set(ws.map(w=>w.id));
+  store.tprotocol=(store.tprotocol||[]).filter(w=>!ids.has(w.id));
+  store.tprotos=store.tprotos.filter(x=>x.id!==p.id);
+  let g="";try{g=localStorage.getItem(PROT_KEY)||"";}catch(e){}
+  if(g===p.id)setProtAberto("");
+  save();tprotoOverlay.classList.remove("open");renderTreino();
+};
 function renderTpList(){
-  const list=store.tprotocol||[];
+  const list=treinosDoProt(tpProtAtual);
+  $("tpSugAqui").style.display=list.length?"none":"";
+  $("tpProtDel").style.display=listaProtocolos().length>1?"":"none";
   const onde=w=>academias().length?` · ${acadsDoTreino(w).length?esc(acadsTxt(w)):"todas as academias"}`:"";
   $("tprotoList").innerHTML=list.length?list.map(w=>`<div class="proto-meal-row"><div><div class="n">${esc(w.nome)}</div><div class="m">Treino ${esc(w.cat||"")} · ${(w.ex||[]).length} exercícios · ${tpSeries(w)} séries${onde(w)}</div></div><div class="acts"><button data-ted="${w.id}">Editar</button><button class="del" data-tdl="${w.id}">Excluir</button></div></div>`).join(""):'<div class="proto-empty" style="margin-bottom:12px">Nenhum treino cadastrado ainda.</div>';
-  $("tprotoList").querySelectorAll("[data-ted]").forEach(b=>b.onclick=()=>openTpEditor(b.dataset.ted));
+  $("tprotoList").querySelectorAll("[data-ted]").forEach(b=>b.onclick=()=>{if(salvarNomeProt())openTpEditor(b.dataset.ted);});
   $("tprotoList").querySelectorAll("[data-tdl]").forEach(b=>b.onclick=async()=>{if(await appConfirm("Excluir este treino do protocolo?",{okText:"Excluir"})){store.tprotocol=(store.tprotocol||[]).filter(x=>x.id!==b.dataset.tdl);save();renderTpList();}});
 }
-$("tpNew").onclick=()=>openTpEditor(null);
+$("tpNew").onclick=()=>{if(salvarNomeProt())openTpEditor(null);};
 function tpSeries(w){return (w.ex||[]).reduce((a,e)=>a+(e.s||0),0);}
 function openTpEditor(id){
   tpEditId=id||null;
-  if(id){const w=(store.tprotocol||[]).find(x=>x.id===id);tpEditing={ex:JSON.parse(JSON.stringify(w.ex||[])),acads:acadsDoTreino(w)};$("tpTitle").textContent="Editar treino";$("tpName").value=w.nome;$("tpCat").value=w.cat||"A";}
-  /* treino novo nasce na academia escolhida: é para ela que ele está sendo montado */
-  else{const sel=acadSel();tpEditing={ex:[],acads:sel?[sel]:[]};$("tpTitle").textContent="Novo treino";$("tpName").value="";$("tpCat").value="A";}
+  if(id){const w=(store.tprotocol||[]).find(x=>x.id===id);tpEditing={ex:JSON.parse(JSON.stringify(w.ex||[])),acads:acadsDoTreino(w),prot:protDoTreino(w)};$("tpTitle").textContent="Editar treino";$("tpName").value=w.nome;$("tpCat").value=w.cat||"A";}
+  /* treino novo nasce na academia escolhida e no protocolo aberto: é para eles que está sendo montado */
+  else{const sel=acadSel();tpEditing={ex:[],acads:sel?[sel]:[],prot:tpProtAtual};$("tpTitle").textContent="Novo treino";$("tpName").value="";$("tpCat").value="A";}
+  renderTpProts();
   renderTpAcads();
   $("tpExName").value="";$("tpExS").value=4;$("tpExRest").value=90;$("tpExG").value="peito";renderSynChips();
   renderTpEx();tpEditOverlay.classList.add("open");
@@ -3907,6 +4637,7 @@ function renderTpEx(){
   $("tpExList").querySelectorAll(".how[data-how]").forEach(b=>b.onclick=()=>openHow(tpEditing.ex[+b.dataset.how].n));
   $("tpExList").querySelectorAll(".rm[data-i]").forEach(b=>b.onclick=()=>{tpEditing.ex.splice(+b.dataset.i,1);renderTpEx();});
   paintTpMap();
+  renderTpEquip();
 }
 $("tpExAdd").onclick=()=>{
   const n=$("tpExName").value.trim(),s=parseInt($("tpExS").value)||0,rest=parseInt($("tpExRest").value)||90,g=$("tpExG").value;
@@ -3926,10 +4657,18 @@ $("tpSave").onclick=()=>{
   delete data.acads;
   const acads=(tpEditing.acads||[]).filter(id=>acadPorId(id));
   if(acads.length)data.acads=acads;   // vazio = todas, e o treino fica com a forma de sempre
+  /* O protocolo. Quem nunca mexeu em protocolo continua gravando o treino com
+     a forma de sempre; e nenhum caminho TIRA o `prot` de um treino — mover
+     para o "Meu protocolo" grava "principal". */
+  const alvo=protPorId(tpEditing.prot)?tpEditing.prot:tpProtAtual;
+  if(listaProtocolos().length>1)materializarProtocolos();
+  if(alvo!==PROT_PADRAO||protMaterializado()||(antigo&&"prot" in antigo)){data.prot=alvo;data.protNome=protPorId(alvo).nome;}
+  const movido=!!antigo&&protDoTreino(antigo)!==alvo;
   store.tprotocol=store.tprotocol||[];
   if(tpEditId){const idx=store.tprotocol.findIndex(x=>x.id===tpEditId);if(idx>-1)store.tprotocol[idx]=data;else store.tprotocol.push(data);}
   else store.tprotocol.push(data);
   save();tpEditOverlay.classList.remove("open");renderTpList();renderTreino();
+  if(movido)showCongrats(`Treino movido para “${protPorId(alvo).nome}”.`);
 };
 /* ---- execução do treino ---- */
 const tRunOverlay=$("tRunOverlay");
@@ -4348,6 +5087,7 @@ function trPersist(){
     localStorage.setItem(RUNKEY,JSON.stringify({
       w:trS.w,start:trS.start,idx:trS.idx,logs:trS.logs,
       away:trS.away||0,hiddenAt:trS.hiddenAt||0,acad:trS.acad||"",acadNome:trS.acadNome||"",
+      prot:trS.prot||"",protNome:trS.protNome||"",
       restEnd:trRestInt?trRestEnd:0,at:Date.now()
     }));
   }catch(e){}
@@ -4372,7 +5112,9 @@ function trRestore(){
      app. Se havia descanso correndo, o aviso ao voltar tem que ser a tela
      cheia, e não o pop-up de quem estava olhando. */
   trS={w:s.w,start:s.start||Date.now(),idx:Math.min(s.idx||0,s.w.ex.length-1),away:s.away||0,hiddenAt:0,
-       acad:s.acad||"",acadNome:s.acadNome||"",saiuNoDescanso:!!s.restEnd};
+       acad:s.acad||"",acadNome:s.acadNome||"",
+       prot:s.prot||protDoTreino(s.w),protNome:s.protNome||"",   // treino salvo pela versão anterior também retoma
+       saiuNoDescanso:!!s.restEnd};
   const old=s.logs||[];
   trS.logs=trS.w.ex.map((e,i)=>{const cur=old[i]||[];return Array.from({length:e.s},(_,j)=>cur[j]||{kg:"",rep:"",rir:null});});
   if(s.hiddenAt)trS.away+=Math.max(0,Date.now()-s.hiddenAt); // tempo fora do app não é treino
@@ -4396,9 +5138,10 @@ function startTRun(wid){
   if(!(w.ex||[]).length){appAlert("Adicione exercícios a este treino primeiro (Montar / editar protocolo).");return;}
   beepInit(); // o toque que inicia o treino já libera o áudio do alarme
   notifPedir(); // e é o momento certo de pedir permissão de notificação
-  const acad=acadDaSessao(w);
+  const acad=acadDaSessao(w),prot=protDoTreino(w);
   trS={w:JSON.parse(JSON.stringify(w)),start:Date.now(),idx:0,away:0,hiddenAt:0,
        acad,acadNome:acad?acadPorId(acad).nome:"",
+       prot,protNome:(protPorId(prot)||{}).nome||w.protNome||"",
        logs:w.ex.map(e=>Array.from({length:e.s},()=>({kg:"",rep:"",rir:null})))};
   tRunOverlay.classList.add("open");
   renderTr();
@@ -4633,6 +5376,7 @@ function renderTr(){
     row.querySelectorAll("input").forEach(inp=>inp.addEventListener("input",()=>{trSaveInputs();trDelta(row);trPersistSoon();}));
     trDelta(row);
   });
+  pintarFalta();
   stopRest();restLabel();
   $("trNext").textContent=trS.idx===w.ex.length-1?"Finalizar treino ✓":"Próximo exercício ›";
   $("trPrev").style.display=trS.idx>0?"flex":"none";
@@ -4648,25 +5392,69 @@ function renderTr(){
    trocado: sem isso, semanas depois, o histórico pareceria dizer que o treino
    mudou. Séries e descanso continuam os do prescrito — trocar de aparelho não
    é trocar de plano. */
-function abrirTroca(){
+/* Com academia e inventário com falta, a lista vem em três faixas estáveis:
+   o que a academia tem, o que o app não sabe, e o que falta — este marcado e
+   ainda tocável (o cadastro pode estar errado). `preSel` (vindo do aviso
+   "Trocar") já escolhe o primeiro que dá para fazer. */
+function abrirTroca(preSel){
   if(!trS)return;
+  pintarTrocaLista(preSel===true,true);
+  $("trocaOverlay").classList.add("open");
+}
+function pintarTrocaLista(preSel,inicio){
   const e=trS.w.ex[trS.idx];
   const prescrito=e.orig||e.n;
-  $("trocaSub").innerHTML=`Prescrito: <b>${esc(prescrito)}</b>. Vale só para hoje — seu treino salvo continua igual.`;
-  $("trocaNome").value=e.orig?e.n:"";
+  const acad=trS.acad,a=acadPorId(acad),f=equipFaltam(acad);
+  const comInv=!!(f&&f.length);
+  $("trocaSub").innerHTML=`Prescrito: <b>${esc(prescrito)}</b>. Vale só para hoje — seu treino salvo continua igual.`+(comInv?` Primeiro o que a <b>${esc(a.nome)}</b> tem.`:"");
+  if(inicio)$("trocaNome").value=e.orig?e.n:"";
 
-  const opcoes=(EX_POR_GRUPO[e.g]||[]).filter(n=>norm(n)!==norm(prescrito));
+  let opcoes=(EX_POR_GRUPO[e.g]||[]).filter(n=>norm(n)!==norm(prescrito));
+  const falta=n=>comInv&&!!equipFalta(n,acad);
+  if(comInv){
+    const faixa=n=>falta(n)?2:(exEquip(n)===null?1:0);
+    opcoes=opcoes.map((n,i)=>({n,i,k:faixa(n)})).sort((x,y)=>x.k-y.k||x.i-y.i).map(x=>x.n);
+  }
+  let escolha=null;
+  if(preSel&&comInv)escolha=opcoes.find(n=>!falta(n)&&exEquip(n)!==null)||null;
+  const atual=n=>escolha?norm(n)===norm(escolha):(n===prescrito?!e.orig:(e.orig&&norm(e.n)===norm(n)));
+  const tagF='<span class="tag falta">sem aparelho aqui</span>';
   $("trocaLista").innerHTML=
-    `<button class="sub-op ${e.orig?"":"atual"}" data-sub="${esc(prescrito)}">${esc(prescrito)}<span class="tag">prescrito</span></button>`+
+    `<button class="sub-op ${atual(prescrito)?"atual":""}${falta(prescrito)?" falta":""}" data-sub="${esc(prescrito)}">${esc(prescrito)}<span class="tag${falta(prescrito)?" falta":""}">${falta(prescrito)?"prescrito · sem aparelho aqui":"prescrito"}</span></button>`+
     (opcoes.length
-      ? opcoes.map(n=>`<button class="sub-op ${e.orig&&norm(e.n)===norm(n)?"atual":""}" data-sub="${esc(n)}">${esc(n)}</button>`).join("")
+      ? opcoes.map(n=>`<button class="sub-op ${atual(n)?"atual":""}${falta(n)?" falta":""}" data-sub="${esc(n)}">${esc(n)}${falta(n)?tagF:""}</button>`).join("")
       : '<div class="sub-vazio">Não tenho substitutos guardados para este grupo — escreva o nome do que você vai fazer.</div>');
+  if(escolha)$("trocaNome").value=escolha;
 
   $("trocaLista").querySelectorAll("[data-sub]").forEach(b=>b.onclick=()=>{
     $("trocaNome").value=b.dataset.sub;
     $("trocaLista").querySelectorAll("[data-sub]").forEach(x=>x.classList.toggle("atual",x===b));
   });
-  $("trocaOverlay").classList.add("open");
+  // academia sem inventário: oferecer marcar os aparelhos, sem sair da troca
+  const inv=$("trocaInv");
+  if(a&&!Array.isArray(a.faltam)){
+    inv.innerHTML=`<span>Marque os aparelhos da <b>${esc(a.nome)}</b> e esta lista passa a mostrar primeiro o que dá para fazer lá.</span><button type="button" id="trocaInvBtn">Marcar aparelhos</button>`;
+    inv.style.display="";
+    $("trocaInvBtn").onclick=()=>abrirEquip(acad,()=>{if(trS&&$("trocaOverlay").classList.contains("open"))pintarTrocaLista(false,false);});
+  }else{inv.innerHTML="";inv.style.display="none";}
+}
+/** O aviso no treino em andamento: o exercício da vez precisa de um aparelho
+    que, pelo cadastro, a academia não tem. */
+function pintarFalta(){
+  const el=$("trFalta");if(!el||!trS)return;
+  const e=trS.w.ex[trS.idx];
+  /* Exercício trocado não avisa: a pessoa escolheu numa lista que já
+     mostrava o que falta. "Desfazer" traz o aviso de volta. */
+  const r=(trS.acad&&!e.orig)?equipFalta(e.n,trS.acad):null;
+  el.classList.toggle("on",!!r);
+  if(!r){el.innerHTML="";return;}
+  el.innerHTML=`<span class="tf-t">Pelo seu cadastro, a <b>${esc(acadNomeDe(trS))}</b> não tem <b>${esc(listaTxt(r.ids.map(equipCurto)," nem "))}</b>.</span><span class="tf-acts"><button type="button" id="trFaltaTrocar">Trocar</button><button type="button" id="trFaltaTem">Tem, sim</button></span>`;
+  $("trFaltaTrocar").onclick=()=>abrirTroca(true);
+  $("trFaltaTem").onclick=()=>{
+    const a=acadPorId(trS.acad);
+    if(a&&Array.isArray(a.faltam)){const tira=new Set(r.melhor);a.faltam=a.faltam.filter(id=>!tira.has(id));save();}
+    pintarFalta();   // nunca renderTr: ele termina em stopRest() e mataria o descanso
+  };
 }
 function aplicarTroca(){
   if(!trS)return;
@@ -4720,6 +5508,9 @@ $("trNext").onclick=()=>{
   const exDetail=trS.w.ex.map((e,i)=>({n:e.n,g:e.g||"outros",sec:(e.sec!==undefined?e.sec:synFor(e.g||"")),sets:(trS.logs[i]||[]).filter(l=>(l.kg||0)>0&&(l.rep||0)>0).map(l=>({kg:l.kg,rep:l.rep,rir:l.rir}))})).filter(x=>x.sets.length);
   const reg={id:uid(),name:trS.w.nome,min,kcal,vol:Math.round(vol),intens:label,rir:avgTxt!==null?Math.round(avgTxt*10)/10:null,ex:exDetail};
   if(trS.acad){reg.acad=trS.acad;reg.acadNome=acadNomeDe(trS);}
+  /* Qual treino, de qual protocolo: dois protocolos podem ter "Treino A" com
+     exercícios diferentes, e o selo de progressão não pode compará-los. */
+  reg.tid=trS.w.id;reg.prot=trS.prot||PROT_PADRAO;reg.protNome=protNomeDe(trS)||trS.protNome||"";
   tToday().push(reg);
   clearInterval(trInt);stopRest();trS=null;trPersist();tRunOverlay.classList.remove("open");
   audioSession("auto");
@@ -5203,7 +5994,7 @@ async function resetData(){
   }
   trDiscardRun();
   store=blankStore();
-  setAcadSel("");   // a academia escolhida era do que acabou de ser apagado
+  setAcadSel("");setProtAberto("");   // as escolhas eram do que acabou de ser apagado
   localStorage.setItem(KEY,JSON.stringify(store));
   $("getdInput").value="";
   promptedSetup=false;onboarding=false;selectedObj=null;viewKey=todayKey();
@@ -5279,11 +6070,11 @@ async function startSync(){
     if(snap.exists()){
       /* Outra conta neste celular: o treino em andamento e a academia
          escolhida eram da anterior. */
-      if(getOwner()!==user.uid){ trDiscardRun(); setAcadSel(""); }
+      if(getOwner()!==user.uid){ trDiscardRun(); setAcadSel(""); setProtAberto(""); }
       applyRemote(snap.data()); setOwner(user.uid);
     }
     else {
-      if(getOwner()!==user.uid){ trDiscardRun(); store=blankStore(); setAcadSel(""); localStorage.setItem(KEY,JSON.stringify(store)); $("getdInput").value=""; render(); }
+      if(getOwner()!==user.uid){ trDiscardRun(); store=blankStore(); setAcadSel(""); setProtAberto(""); localStorage.setItem(KEY,JSON.stringify(store)); $("getdInput").value=""; render(); }
       setOwner(user.uid);
       await pushRemote(true);
     }
@@ -5311,7 +6102,7 @@ function goalsParaNuvem(g){
    disso foi gravado por uma versão mais nova do app: fica guardado em
    store._nuvem e volta na próxima gravação, em vez de ser apagado — o
    documento é gravado inteiro, sem merge. Precisa ser JSON simples. */
-const CAMPOS_NUVEM=["getd","days","custom","goals","liquids","protocol","weights","tprotocol","tdays","passos","academias","liqLog","writer","updatedAt"];
+const CAMPOS_NUVEM=["getd","days","custom","goals","liquids","protocol","weights","tprotocol","tdays","passos","academias","liqLog","tprotos","writer","updatedAt"];
 function applyRemote(data){
   applyingRemote=true;
   /* Só herda do aparelho quem é dono dele. Com outra conta entrando neste
@@ -5321,7 +6112,17 @@ function applyRemote(data){
   const meu=(local&&local.goals&&local.goals.exogLocal)?EXOG_CAMPOS.reduce((o,k)=>{if(local.goals[k]!==undefined)o[k]=local.goals[k];return o;},{}):null;
   const extra={};
   Object.keys(data||{}).forEach(k=>{if(!CAMPOS_NUVEM.includes(k))extra[k]=data[k];});
-  store={getd:data.getd||0,days:data.days||{},custom:data.custom||[],goals:data.goals||{},liquids:data.liquids||{},protocol:data.protocol||[],weights:data.weights||[],tprotocol:data.tprotocol||[],tdays:data.tdays||{},passos:data.passos||{}};
+  /* O protocolo de cada treino deste aparelho. Treino que chega SEM a chave
+     `prot` foi editado num aparelho com a versão anterior, que remonta o
+     treino sem ela: o protocolo daqui volta para ele, em vez de o treino
+     cair no "Meu protocolo". */
+  const meusProt={};
+  ((local&&local.tprotocol)||[]).forEach(w=>{if(w&&w.prot)meusProt[w.id]={prot:w.prot,protNome:w.protNome};});
+  store={getd:data.getd||0,days:data.days||{},custom:data.custom||[],goals:data.goals||{},liquids:data.liquids||{},protocol:data.protocol||[],weights:data.weights||[],
+    tprotocol:(data.tprotocol||[]).map(w=>(w&&!("prot" in w)&&meusProt[w.id])?Object.assign({},w,meusProt[w.id]):w),
+    tdays:data.tdays||{},passos:data.passos||{}};
+  const tprotos=Array.isArray(data.tprotos)?data.tprotos:(local?local.tprotos:undefined);
+  if(tprotos)store.tprotos=tprotos;
   /* Campo AUSENTE não é lista vazia: é aparelho com versão anterior, que
      grava o documento inteiro sem o campo. Aceitar isso como vazio apagaria
      as academias de todos os aparelhos. Vazio de verdade chega como []. */
@@ -5337,7 +6138,11 @@ function applyRemote(data){
   localStorage.setItem(KEY,JSON.stringify(store));
   $("getdInput").value=store.getd>0?store.getd:"";
   render();
-  renderTreino();   // academias e protocolo vindos de outro aparelho
+  renderTreino();   // academias e protocolos vindos de outro aparelho
+  equipRevisar();   // pop-up de aparelhos aberto: redesenha, ou fecha se a academia sumiu
+  if(tprotoOverlay.classList.contains("open")&&!protPorId(tpProtAtual)){
+    tprotoOverlay.classList.remove("open");appAlert("Este protocolo foi excluído em outro aparelho.");
+  }
   applyingRemote=false;
   setSyncDot("ok","Sincronizado");
 }
@@ -5352,6 +6157,7 @@ function pushRemote(immediate){
        como vazia por cima da de outro aparelho. */
     if(Array.isArray(store.academias))d.academias=store.academias;
     if(store.liqLog&&typeof store.liqLog==="object")d.liqLog=store.liqLog;
+    if(Array.isArray(store.tprotos))d.tprotos=store.tprotos;
     try{ await setDoc(doc(db,"users",user.uid),d); setSyncDot("ok","Sincronizado"); }
     catch(e){ setSyncDot("err","Salvo local"); }
   };
