@@ -715,7 +715,7 @@ nascer "tem" — sem aviso falso para quem já tinha marcado.
   "máquina"/"articulado" no nome sem regra própria também vira `null`: é uma
   máquina que o catálogo não conhece. Faltar aviso é o app de antes; aviso
   falso ensina a ignorar o aviso. Na dúvida, mais alternativas, ou `null`.
-- O catálogo (`EQUIP`, 44 aparelhos em 7 grupos; `EX_EQUIP`, 255 regras) saiu
+- O catálogo (`EQUIP`, 44 aparelhos em 7 grupos; `EX_EQUIP`, 263 regras) saiu
   de dois levantamentos independentes, conciliados, e é conferido por teste:
   todo nome de `EX_POR_GRUPO` e `T_SUG` é reconhecido, todo id existe, todo
   aparelho é usado, e uma tabela de nomes que já deram aviso falso ("Flexão
