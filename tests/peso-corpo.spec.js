@@ -45,8 +45,8 @@ test.describe('Peso do corpo e tempo', () => {
     await digitar(page, `${serie(1)} .irep`, '12');
     await proximo(page);
     // prancha: segundos no lugar de reps
-    expect(await page.evaluate(s => !!document.querySelector(s), `${serie(0)} .iseg`)).toBe(true);
-    expect(await page.evaluate(s => !!document.querySelector(s), `${serie(0)} .irep`)).toBe(false);
+    expect(await visivel(page, `${serie(0)} .iseg`)).toBe(true);
+    expect(await visivel(page, `${serie(0)} .irep`)).toBe(false);
     await digitar(page, `${serie(0)} .iseg`, '45');
     await digitar(page, `${serie(1)} .iseg`, '40');
     await proximo(page);
@@ -125,18 +125,90 @@ test.describe('Peso do corpo e tempo', () => {
 
   test('quem faz o nome decide a cara da linha, e o que tem carga continua com carga', async ({ page }) => {
     await abrirApp(page, estadoBase());
-    const r = await page.evaluate(() => Object.fromEntries([
-      'Flexão de braço', 'Flexão com joelhos apoiados', 'Barra fixa', 'Mergulho', 'Abdominal', 'Abdominal infra',
-      'Abdominal na roda', 'Elevação de pernas', 'Prancha', 'Prancha lateral',
-      'Supino reto', 'Cadeira flexora', 'Mesa flexora', 'Flexão de punho', 'Abdominal na polia', 'Agachamento livre',
-    ].map(n => [n, __t.exTipo(n)])));
-    expect(r).toEqual({
+    /* Achou um nome classificado errado? Ponha na tabela. Os de baixo da
+       primeira linha em branco vieram da revisão: máquina, cabo, pegada e o
+       abdominal no banco declinado ("prancha") eram tratados como peso do
+       corpo ou como tempo. */
+    const esperado = {
       'Flexão de braço': 'corpo', 'Flexão com joelhos apoiados': 'corpo', 'Barra fixa': 'corpo', 'Mergulho': 'corpo',
       'Abdominal': 'corpo', 'Abdominal infra': 'corpo', 'Abdominal na roda': 'corpo', 'Elevação de pernas': 'corpo',
       'Prancha': 'tempo', 'Prancha lateral': 'tempo',
       'Supino reto': 'carga', 'Cadeira flexora': 'carga', 'Mesa flexora': 'carga', 'Flexão de punho': 'carga',
       'Abdominal na polia': 'carga', 'Agachamento livre': 'carga',
-    });
+
+      'Flexão de joelho': 'carga', 'Mergulho máquina': 'carga', 'Abdominal máquina': 'carga', 'Abdominal na corda': 'carga',
+      'Abdominal ajoelhado na polia': 'carga', 'Puxada pegada paralela': 'carga', 'Remada com pegada paralela': 'carga',
+      'Desenvolvimento pegada paralela': 'carga', 'Flexão lateral de tronco com halter': 'carga',
+      'Abdominal na prancha declinada': 'corpo', 'Abdominal na prancha': 'corpo', 'Prancha abdominal': 'tempo',
+      'Prancha com anilha': 'tempo', 'Barra fixa pegada supinada': 'corpo', 'Mergulho nas paralelas': 'corpo',
+    };
+    const r = await page.evaluate(n => Object.fromEntries(n.map(x => [x, __t.exTipo(x)])), Object.keys(esperado));
+    expect(r).toEqual(esperado);
+  });
+
+  test('prancha classificada errado vira reps com um toque, sem matar o descanso', async ({ page }) => {
+    await abrirApp(page, calistenia());
+    await iniciarTreino(page);
+    await proximo(page);   // prancha
+    await digitar(page, `${serie(0)} .iseg`, '45');
+    await clicar(page, '#trRest');
+    await page.waitForTimeout(150);
+    const fim = await page.evaluate(() => __t.trRestEnd);
+    await clicar(page, '#trEmReps');
+    await page.waitForTimeout(150);
+    expect(await visivel(page, `${serie(0)} .irep`)).toBe(true);
+    expect(await visivel(page, `${serie(0)} .iseg`)).toBe(false);
+    expect(await page.evaluate(() => __t.trRestEnd), 'o descanso continua').toBe(fim);
+    await digitar(page, `${serie(0)} .irep`, '20');
+    expect(await page.evaluate(() => __t.trS.logs[1][0]), 'os segundos escondidos não ficam').toMatchObject({ rep: 20, seg: 0 });
+  });
+
+  test('o que foi digitado antes de trocar o exercício não fica escondido na série', async ({ page }) => {
+    /* Prancha com 45 s, trocada por "Abdominal": a linha passa a mostrar só
+       reps, e os 45 s escondidos iam para o histórico ("até 45 s" num
+       abdominal). */
+    await abrirApp(page, calistenia());
+    await iniciarTreino(page);
+    await proximo(page);   // prancha
+    await digitar(page, `${serie(0)} .iseg`, '45');
+    await clicar(page, '#trTrocar'); await page.waitForTimeout(250);
+    await page.evaluate(() => { const c = document.getElementById('trocaNome'); c.value = 'Abdominal'; c.dispatchEvent(new Event('input', { bubbles: true })); });
+    await clicar(page, '#trocaOk'); await page.waitForTimeout(300);
+    await digitar(page, `${serie(1)} .irep`, '20');
+    await proximo(page);
+    const s = await page.evaluate(h => __t.store.tdays[h][0], hoje);
+    const abd = s.ex.find(e => e.n === 'Abdominal');
+    expect(abd.sets.map(x => [x.rep, x.seg || 0])).toEqual([[20, 0]]);
+  });
+
+  test('o selo não diz "primeira vez" para um treino feito antes com outra medida', async ({ page }) => {
+    const ses = (id, dia, sets) => ({ [dia]: [{ id, name: 'Calistenia', tid: 'wc', min: 20, kcal: 90, vol: 0, ex: [{ n: 'Prancha', g: 'abdomen', sets }] }] });
+    await abrirApp(page, calistenia({ tdays: { ...ses('s0', ontem, [{ kg: 0, rep: 0, seg: 60 }]), ...ses('s1', hoje, [{ kg: 0, rep: 20 }]) } }));
+    const selo = await page.evaluate(() => document.querySelector('#fdFeed .fd-card[data-fd="s1"] .fd-prog').textContent);
+    expect(selo).not.toContain('primeira vez');
+    expect(selo).toContain('medido de outro jeito');
+  });
+
+  test('exercício de carga feito com o kg em branco não vira a referência', async ({ page }) => {
+    /* Esquecer o kg uma vez apagava da tela a última carga de verdade. */
+    await abrirApp(page, estadoBase({ tdays: {
+      [diaISO(2)]: [{ id: 's0', name: 'Treino A', tid: 'w1', min: 40, kcal: 200, vol: 600, ex: [{ n: 'Supino reto', g: 'peito', sets: [{ kg: 60, rep: 10 }] }] }],
+      [ontem]: [{ id: 's1', name: 'Treino A', tid: 'w1', min: 40, kcal: 200, vol: 0, ex: [{ n: 'Supino reto', g: 'peito', sets: [{ kg: 0, rep: 10 }] }] }],
+    } }));
+    await iniciarTreino(page);
+    expect(await page.evaluate(s => document.querySelector(s).textContent, `${serie(0)} .tp-v`)).toBe('60 kg × 10');
+  });
+
+  test('o aviso do fim do descanso conta as séries de tempo', async ({ page }) => {
+    await abrirApp(page, calistenia());
+    await iniciarTreino(page);
+    await proximo(page);
+    await digitar(page, `${serie(0)} .iseg`, '45');
+    await clicar(page, '#trRest');
+    await page.evaluate(() => __t.forcarFimDoDescanso());
+    await page.waitForTimeout(300);
+    const txt = await page.evaluate(() => (document.getElementById('restPop') || {}).textContent + ' ' + (document.getElementById('restDone') || {}).textContent);
+    expect(txt, 'uma série de 45 s feita: a próxima é a 2').toMatch(/série 2 de 2/i);
   });
 
   test('exercício de carga feito sem carga também fica registrado', async ({ page }) => {

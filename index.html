@@ -645,7 +645,8 @@ window.APP_RELEASE = "tresults-v45";
   .tr-set .fld input.irep,.tr-set .fld input.iseg{width:80px;padding-left:8px}
   /* peso do corpo: a carga fica escondida até "+ carga" */
   .tr-set .fld.oculto{display:none}
-  .tr-maiscarga{display:block;margin:0 0 10px auto;padding:6px 12px;border:0;border-radius:999px;background:var(--surface);box-shadow:var(--sombra-sm);color:var(--primary);font:inherit;font-size:12px;font-weight:800;cursor:pointer}
+  .tr-botoes{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin:0 0 10px}
+  .tr-maiscarga{display:block;margin:0;padding:6px 12px;border:0;border-radius:999px;background:var(--surface);box-shadow:var(--sombra-sm);color:var(--primary);font:inherit;font-size:12px;font-weight:800;cursor:pointer}
   .tr-set .fld input:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-08);outline:none}
   .tr-set .fld .un{position:absolute;right:9px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:900;color:var(--muted);text-transform:uppercase;pointer-events:none}
   .tr-set .tsr2{display:flex;align-items:center;gap:10px;margin-top:10px}
@@ -3275,31 +3276,37 @@ function fdSessoes(){return fdTodas().slice(0,FD_MAX);}
 /* O que se compara entre duas sessões do mesmo treino: o volume em kg; sem
    carga nenhuma (treino só de peso do corpo), o total de reps, ou de
    segundos. Nunca um com o outro, e nunca um "volume" inventado. */
-function medidaSessao(w){
-  if((w.vol||0)>0)return {tipo:"carga",v:w.vol};
+function medidasSessao(w){
   let rep=0,seg=0;
   (w.ex||[]).forEach(e=>(e.sets||[]).forEach(x=>{rep+=x.rep||0;seg+=x.seg||0;}));
-  if(rep>0)return {tipo:"reps",v:rep};
-  if(seg>0)return {tipo:"tempo",v:seg};
-  return null;
+  const m={carga:w.vol||0,reps:rep,tempo:seg};
+  return (m.carga>0||m.reps>0||m.tempo>0)?m:null;
 }
+const medidaComum=(a,b)=>["carga","reps","tempo"].find(t=>a[t]>0&&b[t]>0)||null;
 function fdProgressao(lista,i){
-  const at=lista[i].w,m=medidaSessao(at);
+  const at=lista[i].w,m=medidasSessao(at);
   if(!m)return null;
+  let semComum=null;
   for(let j=i+1;j<lista.length;j++){
-    const p=lista[j].w,mp=medidaSessao(p);
+    const p=lista[j].w;
     /* Na mesma academia: o volume do mesmo treino em aparelhos diferentes
        não se compara. Registro sem academia casa com qualquer uma. */
-    if(mesmoTreino(at,p)&&mp&&mp.tipo===m.tipo&&mesmaAcad(at.acad,p.acad))return {pct:(m.v/mp.v-1)*100,de:mp.v,dia:lista[j].dia,j,tipo:m.tipo};
+    if(!mesmoTreino(at,p)||!mesmaAcad(at.acad,p.acad))continue;
+    const mp=medidasSessao(p);if(!mp)continue;
+    const t=medidaComum(m,mp);
+    if(t)return {pct:(m[t]/mp[t]-1)*100,de:mp[t],dia:lista[j].dia,j,tipo:t};
+    /* Já foi feito, mas medido de outro jeito (só segundos contra só
+       carga): nada a comparar, e também não é "primeira vez". */
+    if(!semComum)semComum={pct:null,dia:lista[j].dia,j,tipo:null};
   }
-  return null;
+  return semComum;
 }
 /** Sem anterior nesta academia, mas o treino já foi feito em outra? Então o
     selo não pode dizer "primeira vez deste treino": seria mentira. */
 function fdSoEmOutra(lista,i){
-  const at=lista[i].w,m=medidaSessao(at);
-  if(!m||!at.acad)return false;
-  for(let j=i+1;j<lista.length;j++){const p=lista[j].w,mp=medidaSessao(p);if(mesmoTreino(at,p)&&mp&&mp.tipo===m.tipo)return true;}
+  const at=lista[i].w;
+  if(!medidasSessao(at)||!at.acad)return false;
+  for(let j=i+1;j<lista.length;j++){const p=lista[j].w;if(mesmoTreino(at,p)&&medidasSessao(p))return true;}
   return false;
 }
 
@@ -3316,6 +3323,7 @@ function fdRotuloDia(k){
 
 function fdSelo(pr,soEmOutra){
   if(!pr)return `<span class="fd-prog primeira"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>${soEmOutra?"primeira vez nesta academia":"primeira vez deste treino"}</span>`;
+  if(pr.pct===null)return '<span class="fd-prog igual"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg>medido de outro jeito da última vez</span>';
   const pct=Math.round(pr.pct);
   const de=pr.tipo==="reps"?"de reps":pr.tipo==="tempo"?"de tempo":"de carga";
   const mesma=pr.tipo==="reps"?"mesmas reps":pr.tipo==="tempo"?"mesmo tempo":"mesma carga";
@@ -5409,7 +5417,7 @@ let restPopT=null;
 function abrirRestPop(){
   const p=$("restPop");if(!p||!trS)return;
   const e=trS.w.ex[trS.idx];
-  const feitas=(trS.logs[trS.idx]||[]).filter(l=>(l.kg||0)>0||(l.rep||0)>0).length;
+  const feitas=(trS.logs[trS.idx]||[]).filter(serieFeita).length;
   $("rpSub").textContent=`${e.n} · série ${Math.min(feitas+1,e.s)} de ${e.s}`;
   p.classList.remove("sair");p.classList.add("open");
   clearTimeout(restPopT);
@@ -5429,7 +5437,7 @@ function fecharRestPop(){
 function abrirRestDone(){
   const ov=$("restDone");if(!ov||!trS)return;
   const e=trS.w.ex[trS.idx];
-  const feitas=(trS.logs[trS.idx]||[]).filter(l=>(l.kg||0)>0||(l.rep||0)>0).length;
+  const feitas=(trS.logs[trS.idx]||[]).filter(serieFeita).length;
   $("rdEx").textContent=e.n;
   $("rdSet").textContent=`Série ${Math.min(feitas+1,e.s)} de ${e.s}`;
   ov.classList.add("open");
@@ -5502,9 +5510,9 @@ function trSaveInputs(){
   document.querySelectorAll("#trSets .tr-set").forEach(row=>{
     const i=+row.dataset.i,l=trS.logs[trS.idx][i];
     const ikg=row.querySelector(".ikg"),irep=row.querySelector(".irep"),iseg=row.querySelector(".iseg");
-    l.kg=ikg?numBR(ikg.value):0;
-    if(irep)l.rep=inteiroBR(irep.value);
-    if(iseg)l.seg=inteiroBR(iseg.value);
+    l.kg=campoVisivel(ikg)?numBR(ikg.value):0;
+    l.rep=campoVisivel(irep)?inteiroBR(irep.value):0;
+    l.seg=campoVisivel(iseg)?inteiroBR(iseg.value):0;
   });
 }
 /* ============================================================
@@ -5525,8 +5533,28 @@ let trPrevRef=null;
    2011;25:2891-2894). O volume em kg desses exercícios é zero; eles contam
    por séries e reps, que é o que a literatura de dose-resposta usa. */
 const EX_TEMPO_RE=/\b(prancha|isometri[a-z]*|wall sit|cadeirinha|hollow hold|dead hang|suspensao na barra)\b/;
-const EX_CORPO_RE=/\b(flexao(?! (de )?(punho|plantar))|barra fixa|chin ?up|pull ?up|mergulho|paralelas?|dips?|abdominal(?! (no|na|com) (cabo|polia|maquina|anilha|halter))|elevacao de (pernas|joelhos)|burpees?|polichinelos?|escalador|canivete|superman)\b/;
-function exTipo(nome){const t=norm(String(nome||"")).replace(/[^a-z0-9]+/g," ").trim();return EX_TEMPO_RE.test(t)?"tempo":EX_CORPO_RE.test(t)?"corpo":"carga";}
+const EX_CORPO_RE=/\b(flexao|barra fixa|chin ?up|pull ?up|mergulho|paralelas|dips?|abdominal|elevacao de (pernas|joelhos)|burpees?|polichinelos?|escalador|canivete|superman)\b/;
+/* Sinal de carga externa vence o nome do movimento: "Mergulho máquina",
+   "Abdominal na polia", "Flexão de joelho" (mesa flexora), "Flexão de
+   punho", "Puxada pegada paralela" têm carga. */
+const EX_CARGA_RE=/\b(maquina|polia|cabo|corda|crossover|smith|halteres?|anilhas?|kettlebell|caneleira|pegada|joelho|punho|plantar|lateral de tronco|carga)\b/;
+const exNome=n=>norm(String(n||"")).replace(/[^a-z0-9]+/g," ").trim();
+function exTipo(nome){
+  const t=exNome(nome);
+  if(/\b(barra fixa|chin ?up|pull ?up)\b/.test(t))return "corpo";     // pegada supinada ou neutra continua peso do corpo
+  if(/^abdominal\b/.test(t))return EX_CARGA_RE.test(t)?"carga":"corpo"; // "Abdominal na prancha declinada": a prancha é o banco
+  if(EX_TEMPO_RE.test(t))return "tempo";                                // "Prancha com anilha" continua de tempo, com a carga à vista
+  if(EX_CARGA_RE.test(t))return "carga";
+  if(EX_CORPO_RE.test(t))return "corpo";
+  return "carga";
+}
+/* Série feita: carga, reps ou segundos. Um critério só, para o finalizar e
+   os avisos do descanso contarem igual. */
+const serieFeita=l=>(l.kg||0)>0||(l.rep||0)>0||(l.seg||0)>0;
+/* Campo que está na tela; o escondido não vale (guardaria o que foi digitado
+   antes de trocar o exercício). */
+const campoVisivel=el=>!!el&&!el.closest(".fld").classList.contains("oculto");
+function semBotoesVazios(){const b=$("trSets").querySelector(".tr-botoes");if(b&&!b.children.length)b.remove();}
 /* O melhor de um exercício: a maior carga; sem carga, o máximo de segundos
    ou de reps. */
 function melhorDe(sets){
@@ -5544,7 +5572,7 @@ const melhorTxt=m=>m.un==="kg"?`${kgTxt(m.v)} kg`:`${r0(m.v)} ${m.un}`;
    dito de onde veio do que nenhum. Sem academia, é a última de qualquer
    lugar, como sempre foi. */
 function lastExSession(nome,acad){
-  const alvo=norm(nome||""),tds=store.tdays||{};
+  const alvo=norm(nome||""),tds=store.tdays||{},deCarga=exTipo(nome)==="carga";
   const dias=Object.keys(tds).sort().reverse(); // datas ISO: ordem alfabética = cronológica
   let deOutra=null;
   for(const dk of dias){
@@ -5552,6 +5580,10 @@ function lastExSession(nome,acad){
     for(let i=regs.length-1;i>=0;i--){ // dentro do dia, o último registrado é o mais recente
       const ex=(regs[i].ex||[]).find(x=>norm(x.n)===alvo);
       if(!ex||!(ex.sets||[]).length)continue;
+      /* Exercício de carga feito com o kg em branco (esquecido) não vira a
+         referência: ela apagaria da tela a última carga de verdade, e a
+         conferência de carga perderia a régua. */
+      if(deCarga&&!ex.sets.some(x=>(x.kg||0)>0))continue;
       if(mesmaAcad(acad,regs[i].acad))return {dk,sets:ex.sets,treino:regs[i].name};
       if(!deOutra)deOutra={dk,sets:ex.sets,treino:regs[i].name,outra:acadNomeDe(regs[i])};
     }
@@ -5563,8 +5595,9 @@ const kgTxt=v=>(Math.round((v||0)*10)/10).toString().replace(".",",");
 function trDelta(row){
   const chip=row.querySelector(".tp-d");if(!chip)return;
   const p=trPrevRef&&trPrevRef.sets[+row.dataset.i];
-  const ikg=row.querySelector(".ikg"),irep=row.querySelector(".irep"),iseg=row.querySelector(".iseg");
-  const kg=ikg?numBR(ikg.value):0;
+  const ikg=row.querySelector(".ikg"),irep=row.querySelector(".irep");
+  const iseg=campoVisivel(row.querySelector(".iseg"))?row.querySelector(".iseg"):null;
+  const kg=campoVisivel(ikg)?numBR(ikg.value):0;
   const limpar=()=>{chip.textContent="";chip.className="tp-d";};
   /* Carga de outra academia é ponto de partida, não régua: medir "−40 kg"
      contra outro aparelho seria a progressão que o feed se recusa a medir. */
@@ -5590,7 +5623,7 @@ function renderTr(){
   const onde=acadNomeDe(trS);
   $("trProg").textContent=`Exercício ${trS.idx+1} de ${w.ex.length}${onde?" · "+onde:""}`;
   $("trExName").textContent=e.n;
-  $("trPlan").textContent=`${e.s} séries · descanso ${fmtSec(e.rest||90)} · `+(exTipo(e.n)==="tempo"?"segure com a forma certa até perto do limite":"busque a falha entre 6–12 reps");
+  $("trPlan").textContent=`${e.s} séries · descanso ${fmtSec(e.rest||90)} · `+(exTipo(e.n)==="tempo"&&e.medida!=="reps"?"segure com a forma certa até perto do limite":"busque a falha entre 6–12 reps");
   const av=$("trTrocado");
   av.classList.toggle("on",!!e.orig);
   if(e.orig)av.innerHTML=`<span>No lugar de <b>${esc(e.orig)}</b>, só hoje</span><button id="trDesfazer">Desfazer</button>`;
@@ -5602,19 +5635,21 @@ function renderTr(){
   trPrevRef=lastExSession(e.n,trS.acad);
   /* Referência de outra academia: dita UMA vez, acima das séries. Dentro de
      cada linha o nome partia a referência em duas em telas comuns. */
-  const tipo=exTipo(e.n);
+  const tipo=exTipo(e.n),emSeg=tipo==="tempo"&&e.medida!=="reps";
   /* A carga aparece no peso do corpo quando ela já foi usada (hoje ou da
-     última vez) ou quando a pessoa pediu "+ carga". */
-  const cargaVis=tipo==="carga"||!!e.comCarga||logs.some(l=>(l.kg||0)>0)||!!(trPrevRef&&trPrevRef.sets.some(x=>(x.kg||0)>0));
+     última vez), quando o nome fala dela ("Prancha com anilha") ou quando a
+     pessoa pediu "+ carga". */
+  const cargaVis=tipo==="carga"||!!e.comCarga||EX_CARGA_RE.test(exNome(e.n))||logs.some(l=>(l.kg||0)>0)||!!(trPrevRef&&trPrevRef.sets.some(x=>(x.kg||0)>0));
   const refOutra=trPrevRef&&trPrevRef.outra?`<div class="tr-ref-outra">Primeira vez deste exercício na <b>${esc(acadNomeDe(trS))}</b>. As cargas de referência são da <b>${esc(trPrevRef.outra)}</b>, só como ponto de partida.</div>`:"";
-  const maisCarga=cargaVis?"":`<button class="tr-maiscarga" type="button" id="trMaisCarga">+ carga (colete, anilha)</button>`;
-  $("trSets").innerHTML=refOutra+maisCarga+logs.map((l,i)=>{
+  /* Errar a classificação custa um toque: "+ carga" mostra a carga, e
+     "contar em reps" troca os segundos por reps. Nenhum dos dois redesenha
+     a tela, que mataria o descanso. */
+  const botoes=(cargaVis?"":`<button class="tr-maiscarga" type="button" id="trMaisCarga">+ carga (colete, anilha)</button>`)
+    +(emSeg?`<button class="tr-maiscarga" type="button" id="trEmReps">contar em reps</button>`:"");
+  $("trSets").innerHTML=refOutra+(botoes?`<div class="tr-botoes">${botoes}</div>`:"")+logs.map((l,i)=>{
     const p=trPrevRef&&trPrevRef.sets[i];
-    const segundo=tipo==="tempo"
-      ?`<span class="fld"><input class="iseg" type="text" data-num="int" inputmode="numeric" value="${l.seg||""}" placeholder="${p&&p.seg?p.seg:"0"}"><span class="un">seg</span></span>`
-      :`<span class="fld"><input class="irep" type="text" data-num="int" inputmode="numeric" value="${l.rep||""}" placeholder="${p?(p.rep||0):"0"}"><span class="un">reps</span></span>`;
     return `<div class="tr-set" data-i="${i}">
-    <div class="tsr1"><span class="snum">${i+1}</span><span class="sl">Série ${i+1}</span><span class="fld${cargaVis?"":" oculto"}"><input class="ikg" type="text" data-num="dec" inputmode="decimal" value="${l.kg?campoBR(l.kg):""}" placeholder="${p?kgTxt(p.kg):"0"}"><span class="un">kg</span></span>${segundo}</div>
+    <div class="tsr1"><span class="snum">${i+1}</span><span class="sl">Série ${i+1}</span><span class="fld fkg${cargaVis?"":" oculto"}"><input class="ikg" type="text" data-num="dec" inputmode="decimal" value="${l.kg?campoBR(l.kg):""}" placeholder="${p?kgTxt(p.kg):"0"}"><span class="un">kg</span></span><span class="fld frep${emSeg?" oculto":""}"><input class="irep" type="text" data-num="int" inputmode="numeric" value="${l.rep||""}" placeholder="${p?(p.rep||0):"0"}"><span class="un">reps</span></span>${tipo==="tempo"?`<span class="fld fseg${emSeg?"":" oculto"}"><input class="iseg" type="text" data-num="int" inputmode="numeric" value="${l.seg||""}" placeholder="${p&&p.seg?p.seg:"0"}"><span class="un">seg</span></span>`:""}</div>
     ${p?`<div class="tsprev"><span class="tp-t">anterior <span class="tp-v">${serieTxt(p)}</span>${(p.rir!==null&&p.rir!==undefined)?` · RIR ${p.rir}`:""}</span><span class="tp-d"></span></div>`:""}
     <div class="tsr2"><span class="rirl">RIR</span><div class="rirseg">${[0,1,2,3].map(v=>`<button data-rir="${v}" class="${l.rir===v?"on":""}">${v===3?"3+":v}</button>`).join("")}</div></div>
   </div>`;}).join("");
@@ -5622,9 +5657,18 @@ function renderTr(){
      e mataria o descanso em andamento. */
   if($("trMaisCarga"))$("trMaisCarga").onclick=()=>{
     e.comCarga=true;
-    $("trSets").querySelectorAll(".fld.oculto").forEach(f=>f.classList.remove("oculto"));
-    $("trMaisCarga").remove();trPersist();
+    $("trSets").querySelectorAll(".fkg.oculto").forEach(f=>f.classList.remove("oculto"));
+    $("trMaisCarga").remove();semBotoesVazios();trPersist();
     const c=$("trSets").querySelector(".ikg");if(c)c.focus();
+  };
+  if($("trEmReps"))$("trEmReps").onclick=()=>{
+    e.medida="reps";
+    $("trSets").querySelectorAll(".frep").forEach(f=>f.classList.remove("oculto"));
+    $("trSets").querySelectorAll(".fseg").forEach(f=>f.classList.add("oculto"));
+    $("trEmReps").remove();semBotoesVazios();
+    $("trPlan").textContent=`${e.s} séries · descanso ${fmtSec(e.rest||90)} · busque a falha entre 6–12 reps`;
+    trPersist();
+    $("trSets").querySelectorAll(".tr-set").forEach(trDelta);
   };
   $("trSets").querySelectorAll(".tr-set").forEach(row=>{
     const i=+row.dataset.i;
@@ -5768,7 +5812,7 @@ $("trNext").onclick=async()=>{
   // finalizar: duração pelo cronômetro (sem o tempo fora do app); esforço = total − descansos; intensidade pelo RIR
   const min=Math.max(1,Math.round(trElapsedMs()/60000));
   let vol=0,rirSum=0,rirN=0,setsDoneTotal=0;
-  const feita=l=>(l.kg||0)>0||(l.rep||0)>0||(l.seg||0)>0;
+  const feita=serieFeita;
   trS.logs.forEach(sets=>sets.forEach(l=>{vol+=(l.kg||0)*(l.rep||0);if(feita(l))setsDoneTotal++;if(l.rir!==null&&l.rir!==undefined){rirSum+=l.rir;rirN++;}}));
   // descanso estimado: (séries − 1) × descanso cadastrado, por exercício
   let restSec=0;
