@@ -168,9 +168,11 @@ test.describe('Sem sinal', () => {
   });
 
   test('água lançada nos dois aparelhos soma, e o anel não desmente a lista', async ({ page }) => {
+    /* Os 500 ml da manhã são de antes de existir histórico (total sem linha):
+       só a soma do que cada lado acrescentou chega a 1000. */
     const x = loja();
     x.liquids = { [hoje]: 500 };
-    x.liqLog = { [hoje]: [{ id: 'l1', ml: 500, t: '08:00' }] };
+    x.liqLog = { [hoje]: [] };
     await abrir(page, { aparelho: x, nuvem: x, base: x });
     await semRede(page, true);
     await page.evaluate(h => { __t.store.liquids[h] = 800; __t.store.liqLog[h].push({ id: 'l2', ml: 300, t: '10:00' }); __t.salvar(); }, hoje);
@@ -180,7 +182,7 @@ test.describe('Sem sinal', () => {
     await assentar(page);
     const d = await nuvem(page);
     expect(d.liquids[hoje]).toBe(1000);
-    expect(ids(d.liqLog[hoje]).sort()).toEqual(['l1', 'l2', 'l3']);
+    expect(ids(d.liqLog[hoje]).sort()).toEqual(['l2', 'l3']);
     expect(await page.evaluate(h => __t.store.liquids[h], hoje)).toBe(1000);
   });
 
@@ -409,6 +411,18 @@ test.describe('A mescla', () => {
     ]);
     expect(r[0]).toEqual(['w1', 'wN', 'w2', 'w3']);
     expect(r[1]).toEqual(['w3', 'w1', 'w2', 'w4']);
+  });
+
+  test('a mesma água apagada dos dois lados não deixa o total abaixo da lista de horários', async ({ page }) => {
+    /* Os dois apagaram a mesma linha: a soma dos dois descontos tiraria a
+       linha duas vezes do total, e o anel mostraria menos que a lista. */
+    await abrirSimples(page);
+    const M = await page.evaluate(() => __t.mesclar(
+      { liquids: { d: 500 }, liqLog: { d: [{ id: 'x', ml: 300 }, { id: 'y', ml: 200 }] } },
+      { liquids: { d: 200 }, liqLog: { d: [{ id: 'y', ml: 200 }] } },
+      { liquids: { d: 300 }, liqLog: { d: [{ id: 'y', ml: 200 }, { id: 'z', ml: 100 }] } }));
+    expect(M.liqLog.d.map(x => x.id)).toEqual(['y', 'z']);
+    expect(M.liquids.d).toBe(300);
   });
 
   test('dois itens iguais sem id no mesmo dia continuam dois', async ({ page }) => {
