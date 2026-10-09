@@ -2282,7 +2282,7 @@ window.APP_RELEASE = "tresults-v45";
       <div class="row" style="align-items:flex-end">
         <div class="field"><label class="lbl">Peso atual</label><div class="in num" id="gPesoAtualShow" style="background:var(--bg);color:var(--muted)">—</div></div>
         <div class="field"><label class="lbl" style="color:var(--primary)">Peso alvo (kg)</label><input class="in num" id="gPesoAlvo" type="text" data-num="dec" inputmode="decimal"></div>
-        <div class="field" style="flex:0 0 92px"><label class="lbl">Prazo (meses)</label><input class="in num" id="gMeses" type="text" data-num="int" inputmode="numeric"></div>
+        <div class="field" style="flex:0 0 92px"><label class="lbl">Prazo (meses)</label><input class="in num" id="gMeses" type="text" data-num="dec" inputmode="decimal"></div>
       </div>
       <label class="lbl" style="margin:16px 0 8px">Escolha seu ritmo (toque em um)</label>
       <div class="pace-list" id="paceList">
@@ -3683,15 +3683,21 @@ const numBR=v=>parseFloat(String(v==null?"":v).replace(",","."))||0;
    tem ponto. */
 const qtdBR=v=>{let t=String(v==null?"":v).trim();if(/^\d{1,3}(\.\d{3})+(,\d*)?$/.test(t))t=t.replace(/\./g,"");return numBR(t);};
 const inteiroBR=v=>Math.round(qtdBR(v));
+/* Altura em metros ("1,78") vira centímetros. O campo antigo, type=number,
+   descartava a vírgula e "1,78" virava 178 por acaso; respeitada a vírgula,
+   seria 1,78 cm e a taxa basal desabaria (cerca de 830 kcal de GETD). */
+const alturaCm=v=>{const a=numBR(v);return a>0&&a<3?Math.round(a*100):a;};
 /* Número para dentro de um campo de texto: vírgula, e sem casas à toa. */
 const campoBR=v=>{const n=+v;return (v===""||v==null||!isFinite(n))?"":String(Math.round(n*100)/100).replace(".",",");};
 /* Todo campo numérico do app é texto (data-num), pelo mesmo motivo do cardio:
    <input type=number> descarta a vírgula do teclado brasileiro antes de o
    JavaScript enxergar, e "57,5" virava 575. Este filtro roda antes dos
-   outros ouvintes (captura) e tira o que não é número. */
+   outros ouvintes (captura) e tira o que não é número. A vírgula fica até
+   nos campos inteiros: apagada, "45,5" virava 455 — o mesmo ×10 calado; com
+   ela, inteiroBR arredonda para 46. */
 document.addEventListener("input",e=>{
   const c=e.target;if(!c||!c.dataset||!c.dataset.num)return;
-  const v=c.value.replace(c.dataset.num==="int"?/[^\d.]/g:/[^\d.,]/g,"");
+  const v=c.value.replace(/[^\d.,]/g,"");
   if(v!==c.value)c.value=v;
 },true);
 
@@ -6027,7 +6033,7 @@ function renderEvo(){
     const up=d>0.5,down=d<-0.5;
     const col=up?"var(--ok)":down?"var(--warn)":"var(--muted)";
     const word=up?"↑ Progredindo":down?"↓ Regredindo":"→ Estável";
-    trendHtml=`<div class="wt-trendrow"><span class="wt-trend" style="color:${col}">${word} · ${d>0?"+":""}${r1(d)} kg no 1RM desde o início</span></div>`;
+    trendHtml=`<div class="wt-trendrow"><span class="wt-trend" style="color:${col}">${word} · ${d>0?"+":""}${kgTxt(d)} kg no 1RM desde o início</span></div>`;
   }
   const H=150,padL=18,padR=30,padT=24,padB=26,GAP=48;
   const W=Math.max(300,padL+padR+(pts.length-1)*GAP+20);
@@ -6048,10 +6054,10 @@ function renderEvo(){
     const px=P[i].x,py=P[i].y,isLast=i===pts.length-1;
     dots+=`<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="${isLast?4.5:3.4}" fill="var(--primary)"${isLast?' stroke="var(--surface)" stroke-width="2"':""}/>`;
     const anch=px<24?"start":"middle";
-    vL+=`<text x="${px.toFixed(1)}" y="${Math.max(10,py-10).toFixed(1)}" text-anchor="${anch}" class="wt-pt${isLast?" last":""}">${r1(p.v)}</text>`;
+    vL+=`<text x="${px.toFixed(1)}" y="${Math.max(10,py-10).toFixed(1)}" text-anchor="${anch}" class="wt-pt${isLast?" last":""}">${kgTxt(p.v)}</text>`;
     dL+=`<text x="${px.toFixed(1)}" y="${H-4}" text-anchor="${anch}" class="cap-label">${fmtD(p.d)}</text>`;
   });
-  el.innerHTML=`${trendHtml}${emptyMsg}<div class="wt-scroll"><svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${line}${dots}${vL}${dL}</svg></div><div class="wt-latest">Última sessão: melhor série <b>${r1(last.kg)} kg × ${last.rep}</b> → 1RM estimado <b>${r1(last.v)} kg</b></div>`;
+  el.innerHTML=`${trendHtml}${emptyMsg}<div class="wt-scroll"><svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${line}${dots}${vL}${dL}</svg></div><div class="wt-latest">Última sessão: melhor série <b>${kgTxt(last.kg)} kg × ${last.rep}</b> → 1RM estimado <b>${kgTxt(last.v)} kg</b></div>`;
   const sc=el.querySelector(".wt-scroll");if(sc)sc.scrollLeft=sc.scrollWidth;
 }
 $("evoSel").onchange=()=>{evoSelName=$("evoSel").value;renderEvo();};
@@ -6093,7 +6099,7 @@ function renderPerfil(){
   if($("pfObjTitle")){
     if(t.configured){
       const bulking=t.mode==="bulking";
-      $("pfObjTitle").textContent=(bulking?"Bulking":"Cutting")+" · "+r1(parseFloat(g.pesoAtual)||0)+" → "+r1(parseFloat(g.pesoAlvo)||0)+" kg";
+      $("pfObjTitle").textContent=(bulking?"Bulking":"Cutting")+" · "+kgTxt(parseFloat(g.pesoAtual)||0)+" → "+kgTxt(parseFloat(g.pesoAlvo)||0)+" kg";
       $("pfGetd").textContent=r0(store.getd);
       $("pfMeta").textContent=r0(goalMeta(t,todayKey()));
       $("pfPrazo").textContent=r0(t.meses)+(t.meses==1?" mês":" meses");
@@ -6944,7 +6950,7 @@ function render(){
       const its=cons.filter(i=>(i.meal||"outros")===mid);
       if(its.length===0)return;
       const sk=its.reduce((a,i)=>a+i.kcal,0),sp=its.reduce((a,i)=>a+i.p,0),sc=its.reduce((a,i)=>a+i.c,0),sg=its.reduce((a,i)=>a+i.g,0);
-      html+=`<div class="meal-group"><div class="meal-head"><span class="mt">${mealLabel(mid)}</span><span class="ms">${r0(sk)} kcal · P${r1(sp)} C${r1(sc)} G${r1(sg)}</span></div><div class="items">${its.map(rowHTML).join("")}</div></div>`;
+      html+=`<div class="meal-group"><div class="meal-head"><span class="mt">${mealLabel(mid)}</span><span class="ms">${r0(sk)} kcal · P${kgTxt(sp)} C${kgTxt(sc)} G${kgTxt(sg)}</span></div><div class="items">${its.map(rowHTML).join("")}</div></div>`;
     });
     lc.innerHTML=html;
   }
@@ -6959,7 +6965,7 @@ function render(){
 function rowHTML(i){
   const q=i.grams!=null?`${r0(i.grams)} ${i.unit||'g'}`:"porção";
   const eatBtn=i.status==="agendado"?`<button class="eat" data-eat="${i.id}">✓ Consumir agora</button>`:"";
-  return `<div class="item ${i.status==='agendado'?'sched':''}"><div class="top"><div><div class="name">${esc(i.name)}</div><div class="qty">${q}</div></div><div class="kcal">${r0(i.kcal)}<small style="font-size:11px;color:var(--muted)"> kcal</small></div></div><div class="mac"><span>P <b>${r1(i.p)}</b></span><span>C <b>${r1(i.c)}</b></span><span>G <b>${r1(i.g)}</b></span></div><div class="acts">${eatBtn}<span class="grow"></span><button data-edit="${i.id}">Editar</button><button class="del" data-del="${i.id}">Excluir</button></div></div>`;
+  return `<div class="item ${i.status==='agendado'?'sched':''}"><div class="top"><div><div class="name">${esc(i.name)}</div><div class="qty">${q}</div></div><div class="kcal">${r0(i.kcal)}<small style="font-size:11px;color:var(--muted)"> kcal</small></div></div><div class="mac"><span>P <b>${kgTxt(i.p)}</b></span><span>C <b>${kgTxt(i.c)}</b></span><span>G <b>${kgTxt(i.g)}</b></span></div><div class="acts">${eatBtn}<span class="grow"></span><button data-edit="${i.id}">Editar</button><button class="del" data-del="${i.id}">Excluir</button></div></div>`;
 }
 function esc(s){return s.replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));}
 function bindRows(){
@@ -7227,7 +7233,7 @@ function confereQtd(item,porcoes){
   return appConfirm(`Confere ${nPt(q)} ${un} de ${item.name}? ${porcoes?"São muitas porções":"É mais de "+(item.unit==="ml"?"2 litros":"2 kg")} num lançamento só.`,{title:"Conferir a quantidade",okText:"Está certo",cancelText:"Corrigir",danger:false});
 }
 $("addBtn").onclick=async()=>{
-  let item,porcoes=0;
+  let item,porcoes=0,novoCustom=null;
   if(manualMode){
     const name=search.value.trim();
     const qty=qtdBR($("mgrams").value);
@@ -7237,13 +7243,15 @@ $("addBtn").onclick=async()=>{
     if(k<=0)return flash("Informe as kcal",true);
     const base={k:k/qty*100,p:p/qty*100,c:c/qty*100,g:g/qty*100};
     item={id:uid(),name,grams:qty,unit:munit,base,kcal:k,p,c,g,status:addStatus};
-    if($("saveCustom").checked){store.custom=store.custom||[];if(!store.custom.some(x=>norm(x.n)===norm(name)))store.custom.push({n:name,k:base.k,p:base.p,c:base.c,g:base.g,unit:munit,src:"manual"});}
+    /* guardado só depois da conferência: com "Corrigir", o banco ficaria
+       com os macros por 100 g da quantidade errada para sempre */
+    if($("saveCustom").checked)novoCustom={n:name,k:base.k,p:base.p,c:base.c,g:base.g,unit:munit,src:"manual"};
   }else{
     if(!picked)return flash("Escolha um alimento na busca",true);
     const qty=qtdBR($("grams").value);
     if(!qty||qty<=0)return flash(picked.fixed?"Informe as porções":"Informe a quantidade em gramas",true);
     if(picked.fixed){
-      item={id:uid(),name:picked.n+(qty!==1?` (${r1(qty)}x)`:""),grams:null,base:null,kcal:picked.k*qty,p:picked.p*qty,c:picked.c*qty,g:picked.g*qty,status:addStatus};
+      item={id:uid(),name:picked.n+(qty!==1?` (${kgTxt(qty)}x)`:""),grams:null,base:null,kcal:picked.k*qty,p:picked.p*qty,c:picked.c*qty,g:picked.g*qty,status:addStatus};
       porcoes=qty;
     }else{
       const f=qty/100;
@@ -7251,12 +7259,13 @@ $("addBtn").onclick=async()=>{
     }
   }
   if(!await confereQtd(item,porcoes))return;
+  if(novoCustom){store.custom=store.custom||[];if(!store.custom.some(x=>norm(x.n)===norm(novoCustom.n)))store.custom.push(novoCustom);}
   item.meal=$("mealSel").value;
   /* O horário serve ao histórico de líquidos. Num dia passado não há horário a
      registrar, e inventar um seria pior que não ter. */
   if(viewKey===todayKey())item.t=Date.now();
   dayItems().push(item);save();render();
-  flash(`${item.status==="agendado"?"Agendado":"Adicionado"}: ${r0(item.kcal)} kcal · P${r1(item.p)} C${r1(item.c)} G${r1(item.g)}`);
+  flash(`${item.status==="agendado"?"Agendado":"Adicionado"}: ${r0(item.kcal)} kcal · P${kgTxt(item.p)} C${kgTxt(item.c)} G${kgTxt(item.g)}`);
   resetForm();
 };
 function resetForm(){clearPick(true);closeDrop();const lbl=document.querySelector('label[for="grams"]');if(lbl)lbl.textContent="Quantidade";$("unitSeg").style.display="flex";$("grams").value=100;["mkcal","mprot","mcarb","mgord"].forEach(id=>$(id).value="");$("mgrams").value=100;munit="g";document.querySelectorAll("#munitSeg button").forEach(x=>x.classList.toggle("on",x.dataset.u==="g"));search.focus();}
@@ -7290,7 +7299,7 @@ function openEdit(id){
   const isDb=it.base!=null;
   const el=document.querySelector('label[for="eGrams"]');if(el)el.textContent="Quantidade ("+(it.unit||'g')+")";
   $("eDbWrap").style.display=isDb?"block":"none";$("eManualWrap").style.display=isDb?"none":"grid";
-  if(isDb)$("eGrams").value=campoBR(r0(it.grams));
+  if(isDb)$("eGrams").value=campoBR(it.grams);
   else{$("eKcal").value=campoBR(r1(it.kcal));$("eProt").value=campoBR(r1(it.p));$("eCarb").value=campoBR(r1(it.c));$("eGord").value=campoBR(r1(it.g));}
   document.querySelectorAll("#eStatusSeg button").forEach(b=>b.classList.toggle("on",b.dataset.v===editStatus));
   overlay.classList.add("open");
@@ -7456,9 +7465,9 @@ function renderMacros(){
   el.innerHTML=`<div class="chart-head">Distribuição dos macros</div>
     <div class="macrobar"><span style="width:${pp}%;background:var(--mp)"></span><span style="width:${pc}%;background:var(--mc)"></span><span style="width:${pg}%;background:var(--mg)"></span></div>
     <div class="macroleg">
-      <div><i style="background:var(--mp)"></i>Proteína <b>${r1(m.p)}g</b> <s>${Math.round(pp)}%</s></div>
-      <div><i style="background:var(--mc)"></i>Carboidrato <b>${r1(m.c)}g</b> <s>${Math.round(pc)}%</s></div>
-      <div><i style="background:var(--mg)"></i>Gordura <b>${r1(m.g)}g</b> <s>${Math.round(pg)}%</s></div>
+      <div><i style="background:var(--mp)"></i>Proteína <b>${kgTxt(m.p)}g</b> <s>${Math.round(pp)}%</s></div>
+      <div><i style="background:var(--mc)"></i>Carboidrato <b>${kgTxt(m.c)}g</b> <s>${Math.round(pc)}%</s></div>
+      <div><i style="background:var(--mg)"></i>Gordura <b>${kgTxt(m.g)}g</b> <s>${Math.round(pg)}%</s></div>
     </div>`;
 }
 function renderStreak(t){
@@ -7479,7 +7488,7 @@ function renderWeight(){
   const el=$("weightChart");if(!el)return;
   const all=(store.weights||[]).slice().sort((a,b)=>a.d<b.d?-1:1);
   const g=store.goals||{},alvo=parseFloat(g.pesoAlvo)||0;
-  if(all.length===0){el.innerHTML=`<div class="ins-empty">Registre seu peso abaixo para acompanhar a curva rumo à meta${alvo?` de <b>${r1(alvo)} kg</b>`:""}.</div>`;return;}
+  if(all.length===0){el.innerHTML=`<div class="ins-empty">Registre seu peso abaixo para acompanhar a curva rumo à meta${alvo?` de <b>${kgTxt(alvo)} kg</b>`:""}.</div>`;return;}
   const bulking=(g.objetivo||((parseFloat(g.pesoAlvo)||0)>(parseFloat(g.pesoAtual)||0)?"bulking":"cutting"))==="bulking";
   const lastAll=all[all.length-1];
   // tendência e ritmo calculados sobre TODO o histórico
@@ -7492,7 +7501,7 @@ function renderWeight(){
     const word=dir==="down"?"Descendo":dir==="up"?"Subindo":"Estável";
     const col=good===null?"var(--muted)":good?"var(--ok)":"var(--warn)";
     lineCol=good===false?"var(--warn)":"var(--primary)";
-    trendHtml=`<div class="wt-trendrow"><span class="wt-trend" style="color:${col}">${arrow} ${word} · ${overall>0?"+":""}${r1(overall)} kg desde o início</span></div>`;
+    trendHtml=`<div class="wt-trendrow"><span class="wt-trend" style="color:${col}">${arrow} ${word} · ${overall>0?"+":""}${kgTxt(overall)} kg desde o início</span></div>`;
   }
   const pAtual=parseFloat(g.pesoAtual)||0,meses=parseFloat(g.meses)||0;
   const hasPlan=alvo>0&&pAtual>0&&meses>0;
@@ -7505,11 +7514,11 @@ function renderWeight(){
     const expNow=pAtual+(alvo-pAtual)*f;
     const diff=lastAll.w-expNow,tol=0.4;
     let cls,txt;
-    if(Math.abs(diff)<=tol){cls="var(--ok)";txt=`🎯 No ritmo do plano (esperado ${r1(expNow)} kg para hoje)`;}
+    if(Math.abs(diff)<=tol){cls="var(--ok)";txt=`🎯 No ritmo do plano (esperado ${kgTxt(expNow)} kg para hoje)`;}
     else{
       const ahead=bulking?diff>0:diff<0;
       cls=ahead?"var(--ok)":"var(--warn)";
-      txt=ahead?`Adiantado: ${r1(Math.abs(diff))} kg à frente do plano (esperado ${r1(expNow)} kg)`:`Atrasado: ${r1(Math.abs(diff))} kg ${bulking?"abaixo":"acima"} do esperado (${r1(expNow)} kg)`;
+      txt=ahead?`Adiantado: ${kgTxt(Math.abs(diff))} kg à frente do plano (esperado ${kgTxt(expNow)} kg)`:`Atrasado: ${kgTxt(Math.abs(diff))} kg ${bulking?"abaixo":"acima"} do esperado (${kgTxt(expNow)} kg)`;
     }
     paceHtml=`<div class="wt-pace" style="color:${cls}">${txt}</div>`;
   }
@@ -7535,7 +7544,7 @@ function renderWeight(){
   const xAt=i=>ws.length===1?W/2:padL+i*GAP;
   const yAt=w=>padT+(H-padT-padB)*(1-(w-yMin)/(yMax-yMin));
   const fmtD=k=>{const d=dateFromKey(k);return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0");};
-  const tgt=alvo>0?`<line x1="${padL}" y1="${yAt(alvo).toFixed(1)}" x2="${W-padR+10}" y2="${yAt(alvo).toFixed(1)}" stroke="var(--warn)" stroke-width="1.4" stroke-dasharray="5 4" opacity=".65"/><text x="${(W-padR+14).toFixed(1)}" y="${(yAt(alvo)+3).toFixed(1)}" class="cap-label" fill="var(--warn)" style="font-weight:800">meta ${r1(alvo)}</text>`:"";
+  const tgt=alvo>0?`<line x1="${padL}" y1="${yAt(alvo).toFixed(1)}" x2="${W-padR+10}" y2="${yAt(alvo).toFixed(1)}" stroke="var(--warn)" stroke-width="1.4" stroke-dasharray="5 4" opacity=".65"/><text x="${(W-padR+14).toFixed(1)}" y="${(yAt(alvo)+3).toFixed(1)}" class="cap-label" fill="var(--warn)" style="font-weight:800">meta ${kgTxt(alvo)}</text>`:"";
   const pts=ws.map((x,i)=>({x:xAt(i),y:yAt(x.w)}));
   let path="";
   if(pts.length>1){
@@ -7549,7 +7558,7 @@ function renderWeight(){
     dots+='<circle cx="'+px.toFixed(1)+'" cy="'+py.toFixed(1)+'" r="'+(isLast?4.6:3.2)+'" fill="'+(isLast?lineCol:"var(--primary)")+'"'+(isLast?' stroke="var(--surface)" stroke-width="2"':(isFirst?"":' opacity=".3"'))+"/>";
     if(isFirst||isLast){
       const anch=px<24?"start":"middle";
-      wLabels+='<text x="'+px.toFixed(1)+'" y="'+Math.max(10,py-10).toFixed(1)+'" text-anchor="'+anch+'" class="wt-pt'+(isLast?" last":"")+'">'+r1(x.w)+"</text>";
+      wLabels+='<text x="'+px.toFixed(1)+'" y="'+Math.max(10,py-10).toFixed(1)+'" text-anchor="'+anch+'" class="wt-pt'+(isLast?" last":"")+'">'+kgTxt(x.w)+"</text>";
       dLabels+='<text x="'+px.toFixed(1)+'" y="'+(H-4)+'" text-anchor="'+anch+'" class="cap-label">'+fmtD(x.d)+"</text>";
     }
   });
@@ -7561,7 +7570,7 @@ function renderWeight(){
     prevHtml='<div><div class="k">Previsão</div><div class="v">'+mesesPt[dEnd.getMonth()]+"/"+String(dEnd.getFullYear()).slice(2)+"</div></div>";
   }
   el.innerHTML=trendHtml+paceHtml+emptyMsg+'<div class="wt-scroll"><svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+" "+H+'">'+tgt+line+dots+wLabels+dLabels+"</svg></div>"+
-    '<div class="wt-stats"><div><div class="k">Atual</div><div class="v">'+r1(lastAll.w)+' kg</div></div>'+(alvo>0?'<div><div class="k">Faltam</div><div class="v">'+r1(Math.abs(lastAll.w-alvo))+" kg</div></div>":"")+prevHtml+"</div>";
+    '<div class="wt-stats"><div><div class="k">Atual</div><div class="v">'+kgTxt(lastAll.w)+' kg</div></div>'+(alvo>0?'<div><div class="k">Faltam</div><div class="v">'+kgTxt(Math.abs(lastAll.w-alvo))+" kg</div></div>":"")+prevHtml+"</div>";
   const sc=el.querySelector(".wt-scroll");if(sc)sc.scrollLeft=sc.scrollWidth;
 }
 const wtOverlay=$("wtOverlay");
@@ -7618,7 +7627,7 @@ function renderGoals(){
   $("deficitBlock").style.display=t.configured?"block":"none";
   if(t.configured){
     const bulking=t.mode==="bulking";
-    $("ghGoal").textContent=(bulking?"+":"−")+r1(t.kg)+" kg";
+    $("ghGoal").textContent=(bulking?"+":"−")+kgTxt(t.kg)+" kg";
     $("ghPrazo").textContent=r0(t.meses)+(t.meses==1?" mês":" meses");
     $("ghWeek").textContent=r0(t.weekly)+" kcal";
     const meta=goalMeta(t,viewKey);
@@ -7872,7 +7881,7 @@ function updatePaceLabels(g){
     if(!r){pv.innerHTML=`—<small>defina o perfil</small>`;pf.textContent="";return;}
     const wk=pa*pct/100;
     pv.innerHTML=`${r0(r.intake)}<small>kcal/dia</small>`;
-    pf.textContent=`${bulking?"Ganha":"Perde"} ≈ ${r1(wk)} kg por semana · chega na meta em ~${r.months} ${r.months==1?"mês":"meses"}`;
+    pf.textContent=`${bulking?"Ganha":"Perde"} ≈ ${kgTxt(wk)} kg por semana · chega na meta em ~${r.months} ${r.months==1?"mês":"meses"}`;
   });
 }
 document.querySelectorAll(".pace-opt").forEach(b=>b.onclick=()=>{
@@ -8005,7 +8014,7 @@ function montarExog(ids,onChange){
   };
 }
 let exogForm=null;
-function readGoalForm(){const x=exogForm?exogForm.get():{exog:[],clenDose:0,exogAceite:"",exogLocal:true};return {sexo:$("gSexo").value,idade:inteiroBR($("gIdade").value),altura:numBR($("gAltura").value),pesoAtual:numBR($("gPesoAtual").value),ativ:$("gAtiv").value,pesoAlvo:numBR($("gPesoAlvo").value),meses:numBR($("gMeses").value),liquidTarget:inteiroBR($("gLiquid").value),exog:x.exog,clenDose:x.clenDose,exogAceite:x.exogAceite,exogLocal:x.exogLocal};}
+function readGoalForm(){const x=exogForm?exogForm.get():{exog:[],clenDose:0,exogAceite:"",exogLocal:true};return {sexo:$("gSexo").value,idade:inteiroBR($("gIdade").value),altura:alturaCm($("gAltura").value),pesoAtual:numBR($("gPesoAtual").value),ativ:$("gAtiv").value,pesoAlvo:numBR($("gPesoAlvo").value),meses:numBR($("gMeses").value),liquidTarget:inteiroBR($("gLiquid").value),exog:x.exog,clenDose:x.clenDose,exogAceite:x.exogAceite,exogLocal:x.exogLocal};}
 exogForm=montarExog({seg:"gExogSeg",lista:"gExogLista",doseWrap:"gExogDoseWrap",dose:"gExogDose",doseNota:"gExogDoseNota",localWrap:"gExogLocalWrap",local:"gExogLocal"},()=>{
   const g=readGoalForm(),n=$("gExogNota"),f=exogFator(g),getd=computeGETD(g);
   n.style.display=g.exog.length?"block":"none";
@@ -8055,10 +8064,10 @@ function updateGoalPreview(){
   if(getd>0)txt+=`GETD estimado: <b>${r0(getd)}</b> kcal/dia${fx>0?` (inclui +${Math.round(fx*100)}% da taxa basal pelo exógeno)`:""}.<br>`;
   if(kg>0&&m>0){
     if(selectedObj==="bulking"){
-      txt+=`Ganhar <b>${r1(kg)} kg</b> em ${r0(m)} ${m==1?"mês":"meses"} → superávit de <b>${r0(daily)}</b> kcal/dia (<b>${r0(daily*7)}</b>/semana).`;
+      txt+=`Ganhar <b>${kgTxt(kg)} kg</b> em ${r0(m)} ${m==1?"mês":"meses"} → superávit de <b>${r0(daily)}</b> kcal/dia (<b>${r0(daily*7)}</b>/semana).`;
       if(getd>0)txt+=`<br>Consumir cerca de <b>${r0(getd+daily)}</b> kcal/dia.`;
     }else{
-      txt+=`Perder <b>${r1(kg)} kg</b> em ${r0(m)} ${m==1?"mês":"meses"} → déficit de <b>${r0(daily)}</b> kcal/dia (<b>${r0(daily*7)}</b>/semana).`;
+      txt+=`Perder <b>${kgTxt(kg)} kg</b> em ${r0(m)} ${m==1?"mês":"meses"} → déficit de <b>${r0(daily)}</b> kcal/dia (<b>${r0(daily*7)}</b>/semana).`;
       if(getd>0)txt+=`<br>Consumir cerca de <b>${r0(getd-daily)}</b> kcal/dia.`;
     }
   }
@@ -8069,6 +8078,8 @@ function updateGoalPreview(){
   else box.style.display="none";
 }
 ["gSexo","gIdade","gAltura","gPesoAtual","gAtiv","gPesoAlvo","gMeses"].forEach(id=>{const el=$(id);el.addEventListener("input",updateGoalPreview);el.addEventListener("change",updateGoalPreview);});
+/* quem digitou em metros vê o número virar centímetros, em vez de a conversão ficar escondida */
+$("gAltura").addEventListener("change",()=>{const c=$("gAltura"),a=numBR(c.value);if(a>0&&a<3)c.value=String(alturaCm(c.value));});
 $("gMeses").addEventListener("input",()=>document.querySelectorAll(".pace-opt").forEach(x=>x.classList.remove("on")));
 $("saveGoals").onclick=()=>{
   const foto=fotoGetd();   // antes de o objetivo mudar: é o que valia até hoje
@@ -8311,7 +8322,7 @@ function gGoStep(n){
   $("gNext").style.display=n<3?"flex":"none";
   $("saveGoals").style.display=n===3?"flex":"none";
   $("gBack").style.display=n>1?"flex":"none";
-  if(n===3){const pa=numBR($("gPesoAtual").value);$("gPesoAtualShow").textContent=pa?r1(pa)+" kg":"—";updateGoalPreview();}
+  if(n===3){const pa=numBR($("gPesoAtual").value);$("gPesoAtualShow").textContent=pa?kgTxt(pa)+" kg":"—";updateGoalPreview();}
   const md=goalsOverlay.querySelector(".modal");if(md)md.scrollTop=0;
 }
 function gwHint(){
@@ -8320,7 +8331,7 @@ function gwHint(){
 }
 $("gNext").onclick=()=>{
   if(goalStep===1){
-    const ok=inteiroBR($("gIdade").value)>0&&numBR($("gAltura").value)>0&&numBR($("gPesoAtual").value)>0;
+    const ok=inteiroBR($("gIdade").value)>0&&alturaCm($("gAltura").value)>0&&numBR($("gPesoAtual").value)>0;
     if(!ok){$("getdHint").innerHTML="<b>Preencha idade, altura e peso</b> para continuar.";return;}
   }
   if(goalStep===2&&!selectedObj){$("objHint").style.display="block";$("objHint").innerHTML="Toque em <b>Perder peso</b> ou <b>Ganhar massa</b> para continuar.";return;}
@@ -8345,7 +8356,7 @@ function protoTotals(m){const it=m.items||[];return {k:it.reduce((a,i)=>a+i.k,0)
 function renderProtoCards(){
   const el=$("protoCards");if(!el)return;const list=store.protocol||[];
   if(list.length===0){el.innerHTML='<div class="proto-empty">Você ainda não montou seu protocolo. Toque abaixo para cadastrar as refeições da sua dieta — depois é só um toque para registrar.</div>';return;}
-  el.innerHTML=list.map(m=>{const t=protoTotals(m);return `<button class="proto-card" data-proto="${m.id}"><div><div class="pccat">${mealLabel(m.meal)}</div><div class="pcname">${esc(m.nome)}</div><div class="pcmac">P${r1(t.p)} C${r1(t.c)} G${r1(t.g)}</div></div><span class="pckcal">${r0(t.k)} kcal</span></button>`;}).join("");
+  el.innerHTML=list.map(m=>{const t=protoTotals(m);return `<button class="proto-card" data-proto="${m.id}"><div><div class="pccat">${mealLabel(m.meal)}</div><div class="pcname">${esc(m.nome)}</div><div class="pcmac">P${kgTxt(t.p)} C${kgTxt(t.c)} G${kgTxt(t.g)}</div></div><span class="pckcal">${r0(t.k)} kcal</span></button>`;}).join("");
   el.querySelectorAll("[data-proto]").forEach(b=>b.onclick=()=>consumeProto(b.dataset.proto));
 }
 function consumeProto(id){
@@ -8422,9 +8433,9 @@ $("pmAddManual").onclick=()=>{
 };
 function renderPmItems(){
   const el=$("pmItems"),it=editingMeal.items||[];
-  el.innerHTML=it.map((x,i)=>`<div class="pm-item"><div><span class="pn">${esc(x.n)}</span>${x.grams!=null?` <span class="pm-mac">${r0(x.grams)}${x.unit||"g"}</span>`:""}<div class="pm-mac">${r0(x.k)} kcal · P${r1(x.p)} C${r1(x.c)} G${r1(x.g)}</div></div><button class="rm" data-i="${i}">×</button></div>`).join("");
+  el.innerHTML=it.map((x,i)=>`<div class="pm-item"><div><span class="pn">${esc(x.n)}</span>${x.grams!=null?` <span class="pm-mac">${r0(x.grams)}${x.unit||"g"}</span>`:""}<div class="pm-mac">${r0(x.k)} kcal · P${kgTxt(x.p)} C${kgTxt(x.c)} G${kgTxt(x.g)}</div></div><button class="rm" data-i="${i}">×</button></div>`).join("");
   el.querySelectorAll(".rm[data-i]").forEach(b=>b.onclick=()=>{editingMeal.items.splice(+b.dataset.i,1);renderPmItems();});
-  const t=protoTotals(editingMeal);$("pmTotal").textContent=it.length?`Total: ${r0(t.k)} kcal · P${r1(t.p)} C${r1(t.c)} G${r1(t.g)}`:"";
+  const t=protoTotals(editingMeal);$("pmTotal").textContent=it.length?`Total: ${r0(t.k)} kcal · P${kgTxt(t.p)} C${kgTxt(t.c)} G${kgTxt(t.g)}`:"";
 }
 $("pmSave").onclick=()=>{
   const nome=$("pmName").value.trim();

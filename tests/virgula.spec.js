@@ -64,8 +64,8 @@ test.describe('Vírgula', () => {
     await iniciarTreino(page);
     await digitar(page, '#trSets .tr-set[data-i="0"] .ikg', '5a7,5');
     expect(await page.evaluate(() => document.querySelector('#trSets .tr-set[data-i="0"] .ikg').value)).toBe('57,5');
-    await digitar(page, '#trSets .tr-set[data-i="0"] .irep', '1,0');
-    expect(await page.evaluate(() => document.querySelector('#trSets .tr-set[data-i="0"] .irep').value), 'reps são inteiras').toBe('10');
+    await digitar(page, '#trSets .tr-set[data-i="0"] .irep', '12,4');
+    expect(await page.evaluate(() => __t.trS.logs[0][0].rep), 'reps são inteiras, e a vírgula não vira ×10 (124)').toBe(12);
   });
 
   test('peso "82,4" no Progresso grava 82,4', async ({ page }) => {
@@ -110,6 +110,46 @@ test.describe('Vírgula', () => {
     await abrirApp(page, estadoBase({ days: { [hoje]: [{ id: 'a1', name: 'Arroz', grams: 150, unit: 'g', base: null, kcal: 195, p: 3.8, c: 42, g: 0.4, status: 'consumido' }] } }));
     await irPara(page, 'food');
     expect(await page.evaluate(() => ['mProt', 'mCarb', 'mGord'].map(i => document.getElementById(i).textContent))).toEqual(['3,8', '42', '0,4']);
+  });
+
+  test('o objetivo e a curva de peso mostram vírgula, não ponto', async ({ page }) => {
+    /* r1() direto no texto escreve "82.4": estavam assim o "Atual" da curva,
+       o título do objetivo no perfil e o peso no passo 3 do objetivo. */
+    const st = estadoBase({ weights: [{ d: ontem, w: 83.1 }, { d: hoje, w: 82.4 }] });
+    const s = JSON.parse(st['cutting.v1']);
+    Object.assign(s.goals, { pesoAtual: 84.5, pesoAlvo: 77.5, objetivo: 'cutting' });
+    st['cutting.v1'] = JSON.stringify(s);
+    await abrirApp(page, st);
+    await clicar(page, '#fdIrProgresso');
+    await page.waitForTimeout(400);
+    const curva = await page.evaluate(() => document.querySelector('.wt-stats').textContent);
+    expect(curva).toContain('82,4 kg');
+    expect(curva).not.toMatch(/\d\.\d/);
+    await irPara(page, 'perfil');
+    expect(await page.evaluate(() => document.getElementById('pfObjTitle').textContent)).toBe('Cutting · 84,5 → 77,5 kg');
+    await clicar(page, '#pfEdit');
+    await page.waitForTimeout(400);
+    await clicar(page, '#gNext'); await page.waitForTimeout(200);
+    await clicar(page, '#gNext'); await page.waitForTimeout(200);
+    expect(await page.evaluate(() => document.getElementById('gPesoAtualShow').textContent)).toBe('84,5 kg');
+  });
+
+  test('altura em metros ("1,78") vira 178 cm, e o prazo aceita "1,5" mês', async ({ page }) => {
+    /* O campo antigo descartava a vírgula e "1,78" virava 178 por acaso;
+       respeitada a vírgula sem isto, seriam 1,78 cm e um GETD de ~830 kcal. */
+    await abrirApp(page, estadoBase());
+    await irPara(page, 'perfil');
+    await clicar(page, '#pfEdit');
+    await page.waitForTimeout(400);
+    await digitar(page, '#gAltura', '1,78');
+    expect(await page.evaluate(() => document.getElementById('gAltura').value), 'a pessoa vê o número em centímetros').toBe('178');
+    await digitar(page, '#gMeses', '4,5');
+    await clicar(page, '#gNext'); await page.waitForTimeout(200);
+    await clicar(page, '#gNext'); await page.waitForTimeout(200);
+    await clicar(page, '#saveGoals'); await page.waitForTimeout(400);
+    const g = await page.evaluate(() => __t.store.goals);
+    expect(g.altura).toBe(178);
+    expect(g.meses, 'prazo decimal não vira 45').toBe(4.5);
   });
 
   test('objetivo: peso "82,5" e altura "178,5" ficam com a vírgula no lugar', async ({ page }) => {
@@ -191,6 +231,32 @@ test.describe('Conferências', () => {
     await page.waitForTimeout(300);
     expect(await dialogo(page), 'progressão normal não pergunta').toBeNull();
     expect(await page.evaluate(() => __t.trS.idx)).toBe(1);
+  });
+
+  test('"Corrigir" a quantidade não guarda o alimento próprio com os macros errados', async ({ page }) => {
+    await abrirApp(page, estadoBase());
+    await irPara(page, 'food');
+    await clicar(page, '#toggleManual');
+    await page.waitForTimeout(150);
+    await digitar(page, '#search', 'Bolo da vó');
+    await digitar(page, '#mgrams', '3500');
+    await digitar(page, '#mkcal', '350');
+    await clicar(page, '#addBtn');
+    await responder(page, false);
+    expect(await page.evaluate(() => (__t.store.custom || []).length), 'nada guardado antes de conferir').toBe(0);
+    await digitar(page, '#mgrams', '350');
+    await clicar(page, '#addBtn');
+    await page.waitForTimeout(300);
+    expect(await page.evaluate(() => __t.store.custom.map(x => [x.n, Math.round(x.k)]))).toEqual([['Bolo da vó', 100]]);
+  });
+
+  test('editar um item do banco não arredonda os gramas', async ({ page }) => {
+    await abrirApp(page, estadoBase({ days: { [hoje]: [{ id: 'a1', name: 'Arroz', grams: 152.5, unit: 'g', base: { k: 130, p: 2.5, c: 28, g: 0.2 }, kcal: 198.25, p: 3.8, c: 42.7, g: 0.3, status: 'consumido' }] } }));
+    await irPara(page, 'food');
+    await clicar(page, '[data-edit="a1"]');
+    await page.waitForTimeout(200);
+    const valor = await page.evaluate(() => document.getElementById('eGrams').value);
+    expect(valor).toBe('152,5');
   });
 
   test('mais de 2 kg num lançamento pergunta', async ({ page }) => {
