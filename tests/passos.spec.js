@@ -67,7 +67,7 @@ test.describe('Lançar os passos na Alimentação', () => {
     await salvar(page);
 
     const s = await store(page);
-    expect(s.passos[diaISO(0)]).toEqual({ n: 10000, inclui: false });
+    expect(s.passos[diaISO(0)], 'com o peso com que foi contado').toEqual({ n: 10000, inclui: false, peso: 80 });
     expect(await gasto(page), '2466 de base sem rotina + 299 dos passos').toBe(2765);
     expect(await texto(page, 'passosTit')).toBe('10.000 passos · 7,5 km');
     expect(await texto(page, 'passosSub')).toBe('299 no lugar de 534 da rotina · −235 na meta');
@@ -177,7 +177,7 @@ test.describe('A atividade registrada e os passos', () => {
     await salvar(page);
 
     const s = await store(page);
-    expect(s.passos[diaISO(0)]).toEqual({ n: 10000, inclui: true });
+    expect(s.passos[diaISO(0)], 'com o peso com que foi contado').toEqual({ n: 10000, inclui: true, peso: 80 });
     expect(await gasto(page), '2466 + 149 dos passos a mais + 150 da caminhada').toBe(2765);
     expect(await texto(page, 'passosSub')).toBe('5.000 além da atividade · 149 no lugar de 534 da rotina · −385 na meta');
   });

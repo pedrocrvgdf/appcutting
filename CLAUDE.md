@@ -268,7 +268,14 @@ em distância e em calorias que entram no gasto daquele dia. Lança-se na
 **Alimentação** (`#passosRow`, embaixo do saldo, no dia visto pela seta) e no
 **Início** (`#fdPassos`, sempre hoje); os dois abrem o mesmo pop-up
 (`#passosOverlay`, `abrirPassos(dk)`). Fica em `store.passos[dia] = {n,
-inclui}`, sincronizado como o resto.
+inclui, peso}`, sincronizado como o resto.
+
+- **O peso da conta é o daquele dia, e fica gravado com os passos**
+  (`pesoNoDia`, `pesoPassos`): a última pesagem até o dia, o mesmo peso que
+  o cardio usa — antes os passos usavam o peso do objetivo e o cardio a
+  última pesagem, e a mesma caminhada valia dois números. Gravado, uma
+  pesagem nova não muda os passos de ontem. Registro de antes da v45, sem
+  `peso`, segue com o peso do objetivo, como sempre foi.
 
 - **Passo = 0,415 × altura (homem) ou 0,413 × altura (mulher)**, a regra
   padrão de calibração de pedômetro (`passadaM`). Sem altura ou peso o app
@@ -301,6 +308,61 @@ inclui}`, sincronizado como o resto.
 - O campo é `type="text"` com `inputmode="numeric"`, aceita "10.000" e
   recusa letra; teto `PASSOS_MAX`.
 - Coberto em `tests/passos.spec.js`.
+
+### O peso do dia, e a meta que acompanha o peso
+
+O pedido: "adicione também na tela aonde está os passos para a pessoa
+adicionar o peso atual (ela pode colocar por dia ou semanalmente ou quando
+ela quiser)". A linha fica **logo depois da dos passos**: no Início
+(`#fdPeso`, sempre hoje) e na Alimentação (`#pesoRow`, o dia visto pela
+seta). As duas abrem `#pesoOverlay` (`abrirPeso(dk)`), que grava na mesma
+lista da curva de peso (`store.weights`, por `gravarPeso`) e passa pela mesma
+conferência do Progresso (`conferePeso`).
+
+O defeito por trás: a taxa basal, o GETD e a proteína usavam o peso digitado
+no dia em que o objetivo foi salvo. Quem perdia 8 kg continuava com o GETD de
+quando pesava mais (Mifflin-St Jeor: 10 kcal por kg, vezes o fator da
+rotina), e corrigir o peso no objetivo **reiniciava o plano** (`inicio`
+voltava para hoje). Por isso o objetivo passou a guardar dois pesos:
+
+- **`pesoAtual` é o peso no início do plano.** Dele saem o ritmo, o "faltam X
+  kg" e o `inicio`. Mudá-lo continua sendo começar outro plano.
+- **`pesoConta` é o peso da conta** (`pesoConta(g)`, usado por `computeTMB`
+  e `macroTargets`). Ausente, vale o `pesoAtual`. Só muda quando a pessoa
+  toca **"Atualizar"**.
+
+**A meta nunca muda sozinha.** Quando a pesagem mais recente muda o gasto
+estimado em `GETD_AVISO` (25) kcal ou mais, um cartão no Início (`#fdAjuste`)
+e na Alimentação (`#alAjuste`) diz quanto e mostra a meta de hoje antes e
+depois (`metaComAjuste`, a conta inteira, com passos e treino):
+
+- "Atualizar" troca `pesoConta` e o GETD (`aplicarAjuste`); o plano, o
+  `inicio` e o `pesoAtual` não mudam.
+- "Manter" grava a data daquela pesagem em `goals.mantido`; a próxima
+  pesagem pergunta de novo.
+- O limiar é decisão de produto: abaixo dele a diferença some no erro da
+  própria estimativa.
+- `saveGoals` remonta `store.goals` do zero: **`pesoConta`, `getdManual` e
+  `mantido` são carregados junto**, como `nasc` e o exógeno. Com o mesmo
+  plano, `pesoConta` fica; com plano novo (outro peso de partida, alvo,
+  prazo ou objetivo), a conta parte do peso de partida.
+
+**O GETD de cada dia** (`store.getdHist`, `{desde, getd, base}`): mudar o
+GETD não pode reescrever o saldo dos dias que passaram — a semana, o mês e a
+sequência mudariam sem a pessoa ter comido nada diferente. **Todo caminho
+que muda `store.getd` passa por `mudarGetd(novo, foto)`**, com a `foto`
+(`fotoGetd`) tirada **antes** de mexer no objetivo: na primeira mudança ela
+vira a entrada `"0000-01-01"`, que vale para todo o passado. `gastoBase(dk)`
+devolve, para dia passado, a entrada mais recente até ele; hoje usa o atual.
+Sem histórico, vale o atual, como sempre foi. É campo de primeiro nível na
+nuvem, em `CAMPOS_NUVEM`, e segue "campo ausente não é lista vazia".
+
+**GETD digitado à mão** (`goals.getdManual`): não é mais trocado sozinho —
+nem pelo objetivo, nem pelo "+" do exógeno, nem pela pesagem (o cartão nem
+aparece). A nota `#getdNota` diz isso embaixo do campo, com "Usar o
+calculado" (`#getdAuto`), que tira a marca.
+
+- Coberto em `tests/peso.spec.js`.
 
 ### A busca de alimentos
 
@@ -393,7 +455,41 @@ para uma casa e troca o ponto pela vírgula, **sem forçar decimal** — 5 km sa
 "5", 7,5 km sai "7,5". `r1()` devolve um número cru e escreve `42.5` com ponto:
 use-o para contas, nunca direto no HTML. Já apareceram com ponto o peso das
 séries, a diferença de carga e a distância do cardio; hoje há teste para os três
-(`tests/feed.spec.js`).
+(`tests/feed.spec.js`). Os macros do dia na Alimentação ("3.8") foram o
+quarto, achado por captura de tela (`tests/virgula.spec.js`).
+
+### Números digitados: a vírgula não multiplica por dez
+
+**Nenhum campo do app é `type="number"`**, e existe teste que confere isso no
+`index.html` inteiro. No teclado numérico brasileiro a tecla decimal é a
+vírgula, e o `type="number"` a descartava antes de o JavaScript enxergar:
+"57,5" virava 575 na carga da série, e contaminava o selo, o 1RM, o volume e
+a referência da próxima vez.
+
+- Todo campo numérico é `type="text"` com `data-num="dec"` (aceita dígito,
+  vírgula e ponto) ou `data-num="int"` (dígito e ponto de milhar), e o
+  `inputmode` certo. Um filtro único, em captura, limpa o resto antes de
+  qualquer outro ouvinte ler o campo.
+- **Leitura:** `numBR` para kg e cm (o ponto é decimal: "82.4" é 82,4, porque
+  há teclado que só tem ponto); `qtdBR` para gramas, ml e kcal ("1.500" é mil
+  e quinhentos, não um e meio); `inteiroBR` para o que é inteiro (reps,
+  minutos, idade, GETD). Nunca `parseFloat(x.value)` num campo destes.
+- **Escrita:** número que volta para dentro de um campo passa por `campoBR`
+  (vírgula, sem casas à toa).
+- **Conferências, que perguntam e nunca trocam o número sozinhas.** Os
+  limites são decisão de produto, não fisiologia, e estão no código:
+  - pesagem a mais de 10% da pesagem mais perto, ou fora de 30–250 kg sem
+    nenhuma para comparar, pergunta (`conferePeso`, "Talvez seja 82,4 kg");
+    acima de 400 kg não é peso de gente e não grava;
+  - carga de série no dobro da maior da última vez (e 10 kg a mais) pergunta
+    antes de seguir para o próximo exercício (`confereCargas`); referência de
+    outra academia não serve de régua;
+  - mais de 2 kg (ou 2 L) num lançamento de comida pergunta (`confereQtd`).
+- **Corrigir série** (`#serieOverlay`, `abrirSerie`): na sessão inteira,
+  tocar numa série abre a correção. Antes, um número errado só saía apagando
+  a sessão inteira. Corrigir recalcula o `vol` da sessão (e com ele o selo);
+  as calorias não mudam, porque vêm da duração e do esforço, não da carga.
+- Coberto em `tests/virgula.spec.js`.
 
 ### O histórico de líquidos
 
@@ -499,6 +595,9 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 |---|---|
 | `tests/treino.spec.js` | Persistência da sessão, retomada após o app ser descartado, desconto do tempo fora do app |
 | `tests/nuvem.spec.js` | Sincronização: outra conta no celular não herda exógeno, academias, líquidos nem treino em andamento; campo ausente não apaga; quem não sabe não envia; campo de versão mais nova volta como chegou; histórico de líquidos sobe |
+| `tests/virgula.spec.js` | Nenhum `type="number"`; carga, peso, ml, rótulo e objetivo com vírgula; macros na tela; conferências de peso, carga e quantidade; corrigir série salva |
+| `tests/peso-corpo.spec.js` | Flexão com reps, prancha com segundos, feed sem "registro manual", referência e diferença em reps, "+ carga" sem matar o descanso, selo em reps, 1RM sem série sem carga, classificação por nome |
+| `tests/peso.spec.js` | Peso do dia no Início e na Alimentação, conferência, apagar; cartão "Atualizar/Manter", plano que não reinicia, dia passado que não muda, proteína; GETD manual; passos com o peso do dia; nuvem |
 | `tests/sem-sinal.spec.js` | Treino feito sem sinal sobrevive ao app descartado; dois aparelhos sem sinal juntam; apagado não volta; água soma; transação não apaga o de outro aparelho; envio ao sair do app; aviso atrasado; excluir dados substitui; a mescla direto na função |
 | `tests/protocolos.spec.js` | Protocolos com nome: "Meu protocolo" virtual sem regravar nada, criar/renomear/excluir, sugestão que preenche ou cria, mover treino, selo que não mistura dois "Treino A", sessão com `tid`/`prot`, nuvem com versão anterior |
 | `tests/inventario.spec.js` | Inventário: catálogo inteiro reconhecido, "não informado" sem aviso, gravação por toque, aviso no cartão/treino/editor, troca com o que tem primeiro, "Tem, sim" sem matar o descanso, alternativas, nome desconhecido sem aviso |
@@ -759,8 +858,8 @@ grava por cima às cegas. Três regras saem disso, e cada uma tem teste em
   é da conta.
 - **Campo ausente não é lista vazia, e quem não sabe não envia.** Aparelho com
   versão anterior grava sem os campos novos; aceitar a ausência como vazio
-  apagaria o dado de todos os aparelhos. Vale para `academias`, `liqLog` e
-  `tprotos`.
+  apagaria o dado de todos os aparelhos. Vale para `academias`, `liqLog`,
+  `tprotos` e `getdHist`.
 - **O que veio de uma versão mais nova volta como chegou** (`CAMPOS_NUVEM`,
   `store._nuvem`): campo que esta versão não conhece é guardado e reenviado,
   em vez de apagado. Por isso campo novo de primeiro nível precisa ser JSON
@@ -838,6 +937,37 @@ Como as peças se encaixam:
   (`__nuvem`, `__semRede`, `__lento` no armazenamento local, em
   `tests/app.js`): recarregar a página é o app descartado e aberto de novo, e
   "outro aparelho" é o teste mexendo direto no documento.
+
+### Peso do corpo e tempo: flexão, barra fixa e prancha
+
+Série sem carga era **descartada ao finalizar** (o filtro exigia kg > 0):
+quem fazia flexão anotava as reps e o registro saía com `ex:[]` e `vol:0`,
+aparecendo no feed como "registro manual". A prancha nem tinha onde pôr os
+segundos.
+
+- **A série vale com reps — ou segundos — acima de zero**, com ou sem carga.
+  Gravada como `{kg, rep, rir}` e, nas de tempo, `seg`. Exercício de carga
+  feito sem carga também fica ("10 reps"); "Corrigir série" acerta depois.
+- **O nome decide só a cara da linha** (`exTipo`, `EX_CORPO_RE`,
+  `EX_TEMPO_RE`): no peso do corpo a carga fica atrás de "+ carga (colete,
+  anilha)"; nas isometrias o campo é de segundos (`.iseg`) e o plano diz
+  "segure com a forma certa". Errar a classificação custa um toque, nunca um
+  número. A carga aparece sozinha se já foi usada hoje ou da última vez.
+  Existe tabela de nomes no teste ("Flexão de punho" e "Abdominal na polia"
+  têm carga).
+- **"+ carga" não chama `renderTr()`**: ele termina em `stopRest()` e
+  mataria o descanso. Mostra o campo pelo DOM e grava `comCarga` no exercício
+  da sessão (`trPersist` leva). Existe teste.
+- **Nunca "kg movidos" inventados.** A fração do corpo que a flexão levanta
+  muda com a variação (Ebben et al., *J Strength Cond Res*
+  2011;25:2891-2894), então o volume em kg desses exercícios é zero e eles
+  contam por séries e reps, que é o que a literatura de dose-resposta usa.
+  O 1RM (`evoData`) ignora série sem carga: Epley com 0 kg dá 0.
+- **O selo compara a mesma coisa** (`medidaSessao`): volume em kg; sem carga
+  nenhuma, o total de reps ("+11% de reps"), ou de segundos. Nunca um com o
+  outro. A referência diz "15 reps" e "45 s" (`serieTxt`), e a diferença por
+  série também ("+2 reps", "mesmo tempo").
+- Coberto em `tests/peso-corpo.spec.js`.
 
 ### Trocar o exercício no meio do treino
 
@@ -953,9 +1083,8 @@ quem digitasse "7,5" gravaria 75. Num app que calcula caloria, isso é número
 errado entrando calado. A leitura passa por `numBR()`, que aceita vírgula e
 ponto, e um filtro impede letra no campo.
 
-> **Isto ainda não foi corrigido no resto do app.** Peso, macros, quantidade em
-> gramas e a carga das séries continuam em `type="number"` e sofrem do mesmo
-> defeito. Quando for mexer num desses campos, troque para texto e use `numBR`.
+Desde a v45 isso vale para o app inteiro: veja "Números digitados", na
+seção 4.
 
 ### Aviso com o app fechado (Web Push)
 

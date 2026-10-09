@@ -27,6 +27,7 @@ window.__t={
   academias, acadSel, acadDaSessao, treinoNaAcad, fdTodas, fdProgressao, fdSoEmOutra,
   startSync:()=>startSync(), sincronizar:()=>sincronizar(), mesclar, igual, paraNuvem:()=>copia(paraNuvem(store)),
   pendente, baseDe, salvar:()=>save(), get enviando(){return !!enviando},
+  exTipo, evoData, propostaGetd, gastoBase, pesoConta, pesoNoDia, computeGETD, macroTargets,
   listaProtocolos, protDoTreino, protPorId, protAberto, protNomeDe, mesmoTreino, treinosDoProt, PROT_PADRAO, T_SUG,
   EQUIP, EQUIP_ID, EX_EQUIP, EX_POR_GRUPO_: EX_POR_GRUPO, exEquip, equipFalta, equipFaltam,
   /* Trocar quem está logado, para alcançar o modo local — onde não há conta e

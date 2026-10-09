@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v44";
+window.APP_RELEASE = "tresults-v45";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -642,7 +642,10 @@ window.APP_RELEASE = "tresults-v44";
   .tr-set .fld input{width:82px;padding:11px 30px 11px 10px;border:0;border-radius:12px;font-size:15px;font-family:var(--mono);font-weight:800;text-align:center;background:var(--bg);transition:border-color .15s,box-shadow .15s}
   /* cargas com meio quilo (57,5 / 102,5) precisam caber inteiras, inclusive como sugestão */
   .tr-set .fld input.ikg{width:92px;padding-left:8px;padding-right:24px}
-  .tr-set .fld input.irep{width:80px;padding-left:8px}
+  .tr-set .fld input.irep,.tr-set .fld input.iseg{width:80px;padding-left:8px}
+  /* peso do corpo: a carga fica escondida até "+ carga" */
+  .tr-set .fld.oculto{display:none}
+  .tr-maiscarga{display:block;margin:0 0 10px auto;padding:6px 12px;border:0;border-radius:999px;background:var(--surface);box-shadow:var(--sombra-sm);color:var(--primary);font:inherit;font-size:12px;font-weight:800;cursor:pointer}
   .tr-set .fld input:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-08);outline:none}
   .tr-set .fld .un{position:absolute;right:9px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:900;color:var(--muted);text-transform:uppercase;pointer-events:none}
   .tr-set .tsr2{display:flex;align-items:center;gap:10px;margin-top:10px}
@@ -1008,6 +1011,10 @@ window.APP_RELEASE = "tresults-v44";
     font-family:var(--mono);font-size:11px;font-weight:800}
   .ss-serie .c{flex:1;font-family:var(--mono);font-weight:700}
   .ss-serie .r{flex:none;font-size:11px;font-weight:800;color:var(--muted)}
+  /* a série salva é tocável: abre "Corrigir série" */
+  button.ss-serie{width:100%;background:none;border:0;border-radius:0;color:inherit;font:inherit;font-size:13px;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  button.ss-serie:active{background:var(--bg)}
+  button.ss-serie .ed{flex:none;width:16px;height:16px;fill:none;stroke:var(--muted);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   /* Precisa vir DEPOIS das regras do feed: como o bloco estreito do app fica
      mais acima no arquivo, a regra base ganhava por ordem e a fonte continuava
      em 20px — "kcal restantes" passava 150px numa coluna de 133px. */
@@ -1173,6 +1180,20 @@ window.APP_RELEASE = "tresults-v44";
   .fd-passos span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .fd-passos svg.chev{width:15px;height:15px;opacity:.45;stroke:var(--ink);stroke-width:3}
   .fd-passos:active{transform:scale(.97)}
+  /* os dois atalhos do dia (passos e peso) ficam juntos */
+  #fdPassos{margin-bottom:8px}
+  /* O cartão que propõe ajustar a meta depois de uma pesagem. Usa os tokens,
+     então dentro do saldo fosco da Alimentação ele já nasce nas cores dele. */
+  .ajuste-meta{margin:0 0 14px;padding:12px 14px;border-radius:18px;background:var(--surface);box-shadow:var(--sombra-sm);color:var(--ink)}
+  .ajuste-meta[hidden]{display:none}
+  .passos-row+.ajuste-meta{margin:10px 0 0}
+  .ajuste-meta .am-tx{margin:0 0 10px;font-size:13px;line-height:1.5;font-weight:600}
+  .ajuste-meta .am-bts{display:flex;gap:8px}
+  .ajuste-meta .am-bts .btn{flex:1;margin:0;min-height:42px;padding:0 10px;font-size:14px}
+  .getd-nota{margin:6px 0 0;font-size:12px;line-height:1.45;color:var(--muted)}
+  .getd-nota[hidden]{display:none}
+  .getd-nota .link{padding:0;border:0;background:none;font-size:12px;cursor:pointer}
+  #serieNota:empty{display:none}
 
   /* ===================== DIREÇÃO OFF-WHITE E VERDE =====================
      Escolhida pelo dono depois de comparar quatro direções: fundo off-white,
@@ -1434,6 +1455,14 @@ window.APP_RELEASE = "tresults-v44";
     <span id="fdPassosTx">Lançar os passos de hoje</span>
     <svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
   </button>
+  <!-- Peso de hoje: quando a pessoa quiser (todo dia, por semana, de vez em
+       quando). A pesagem mais recente pode propor ajustar a meta (#fdAjuste). -->
+  <button class="fd-passos" id="fdPeso" type="button">
+    <svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4.5"/><path d="M8 10.5a5.5 5.5 0 0 1 8 0"/><path d="M12 10.5 13.6 8"/></svg>
+    <span id="fdPesoTx">Lançar o peso de hoje</span>
+    <svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
+  </button>
+  <div class="ajuste-meta" id="fdAjuste" hidden></div>
 
   <div class="fd-atalhos">
     <button class="fd-atalho" id="fdIrProgresso">
@@ -1490,7 +1519,8 @@ window.APP_RELEASE = "tresults-v44";
       <div class="m2"><div class="r"><span class="t">Carb</span><span><b id="mCarb">0</b><small id="mCarbT">g</small></span></div><div class="bar2"><span id="mCarbBar" style="width:0%"></span></div></div>
       <div class="m2"><div class="r"><span class="t">Gord</span><span><b id="mGord">0</b><small id="mGordT">g</small></span></div><div class="bar2"><span id="mGordBar" style="width:0%"></span></div></div>
     </div>
-    <div class="getd">Meta diária (GETD): <input class="num" id="getdInput" type="number" inputmode="numeric" value="3050"> kcal</div>
+    <div class="getd">Meta diária (GETD): <input class="num" id="getdInput" type="text" data-num="int" inputmode="numeric" value="3050"> kcal</div>
+    <p class="getd-nota" id="getdNota" hidden>Digitado à mão: não muda com o peso, o objetivo nem o exógeno. <button class="link" id="getdAuto" type="button">Usar o calculado</button></p>
     <!-- Passos do dia: o que o celular contou vira distância e calorias, e
          entra no gasto deste dia. Abre o pop-up #passosOverlay. -->
     <button class="passos-row" id="passosRow" type="button">
@@ -1498,6 +1528,13 @@ window.APP_RELEASE = "tresults-v44";
       <span class="tx"><b id="passosTit">Passos do dia</b><em id="passosSub">Toque para lançar o que o celular contou</em></span>
       <svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
     </button>
+    <!-- Peso do dia visto: o mesmo pop-up do Início (#pesoOverlay). -->
+    <button class="passos-row" id="pesoRow" type="button">
+      <svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4.5"/><path d="M8 10.5a5.5 5.5 0 0 1 8 0"/><path d="M12 10.5 13.6 8"/></svg>
+      <span class="tx"><b id="pesoTit">Peso do dia</b><em id="pesoSub">Toque para lançar quando quiser</em></span>
+      <svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
+    </button>
+    <div class="ajuste-meta" id="alAjuste" hidden></div>
   </section>
 
   <section class="sec">
@@ -1511,7 +1548,7 @@ window.APP_RELEASE = "tresults-v44";
         <div class="liq-add">
           <button data-add="250">+250 ml</button>
           <button data-add="500">+500 ml</button>
-          <input id="liqCustom" type="number" inputmode="numeric" placeholder="ml">
+          <input id="liqCustom" type="text" data-num="int" inputmode="numeric" placeholder="ml">
           <button id="liqAddCustom">+ add</button>
           <button id="liqReset" class="reset">zerar</button>
         </div>
@@ -1540,23 +1577,23 @@ window.APP_RELEASE = "tresults-v44";
         </div>
         <div id="dbFields" style="margin-top:10px">
           <div class="row" style="align-items:flex-end">
-            <div class="field"><label class="lbl" for="grams">Quantidade</label><input class="in num" id="grams" type="number" inputmode="decimal" value="100"></div>
+            <div class="field"><label class="lbl" for="grams">Quantidade</label><input class="in num" id="grams" type="text" data-num="dec" inputmode="decimal" value="100"></div>
             <div class="unitseg" id="unitSeg" style="flex:0 0 auto"><button data-u="g" class="on">g</button><button data-u="ml">ml</button></div>
           </div>
         </div>
         <div id="manualFields" style="display:none;margin-top:10px">
           <div class="row" style="align-items:flex-end">
-            <div class="field"><label class="lbl" for="mgrams">Quantidade desta porção</label><input class="in num" id="mgrams" type="number" inputmode="decimal" value="100"></div>
+            <div class="field"><label class="lbl" for="mgrams">Quantidade desta porção</label><input class="in num" id="mgrams" type="text" data-num="dec" inputmode="decimal" value="100"></div>
             <div class="unitseg" id="munitSeg" style="flex:0 0 auto"><button data-u="g" class="on">g</button><button data-u="ml">ml</button></div>
           </div>
           <p style="font-size:12px;color:var(--muted);margin:8px 0 2px">Informe os macros correspondentes a essa quantidade:</p>
           <div class="row">
-            <div class="field"><label class="lbl" for="mkcal">Kcal</label><input class="in num" id="mkcal" type="number" inputmode="decimal" placeholder="0"></div>
-            <div class="field"><label class="lbl" for="mprot">Prot (g)</label><input class="in num" id="mprot" type="number" inputmode="decimal" placeholder="0"></div>
+            <div class="field"><label class="lbl" for="mkcal">Kcal</label><input class="in num" id="mkcal" type="text" data-num="dec" inputmode="decimal" placeholder="0"></div>
+            <div class="field"><label class="lbl" for="mprot">Prot (g)</label><input class="in num" id="mprot" type="text" data-num="dec" inputmode="decimal" placeholder="0"></div>
           </div>
           <div class="row" style="margin-top:10px">
-            <div class="field"><label class="lbl" for="mcarb">Carb (g)</label><input class="in num" id="mcarb" type="number" inputmode="decimal" placeholder="0"></div>
-            <div class="field"><label class="lbl" for="mgord">Gord (g)</label><input class="in num" id="mgord" type="number" inputmode="decimal" placeholder="0"></div>
+            <div class="field"><label class="lbl" for="mcarb">Carb (g)</label><input class="in num" id="mcarb" type="text" data-num="dec" inputmode="decimal" placeholder="0"></div>
+            <div class="field"><label class="lbl" for="mgord">Gord (g)</label><input class="in num" id="mgord" type="text" data-num="dec" inputmode="decimal" placeholder="0"></div>
           </div>
           <label style="display:flex;align-items:center;gap:9px;margin-top:12px;font-size:13px;color:var(--muted);cursor:pointer">
             <input type="checkbox" id="saveCustom" checked style="width:18px;height:18px;accent-color:var(--primary)">
@@ -1621,7 +1658,7 @@ window.APP_RELEASE = "tresults-v44";
           <div id="weightChart"></div>
           <div class="wt-add">
             <input id="wtDate" type="date" class="wt-date">
-            <input id="wtInput" type="number" step="0.1" inputmode="decimal" class="wt-w" placeholder="Peso (kg)">
+            <input id="wtInput" type="text" data-num="dec" inputmode="decimal" class="wt-w" placeholder="Peso (kg)">
             <button id="wtAdd">Registrar</button>
           </div>
           <button class="link wt-manage" id="wtManage">Ver / editar registros</button>
@@ -1740,7 +1777,7 @@ window.APP_RELEASE = "tresults-v44";
         </div>
         <div class="row row-ta" style="margin-top:10px">
           <div class="field" id="taKmWrap" style="display:none"><label class="lbl" for="taKm">Distância (km)</label><input class="in num" id="taKm" type="text" inputmode="decimal" placeholder="5"></div>
-          <div class="field"><label class="lbl" for="taMin">Duração (min)</label><input class="in num" id="taMin" type="number" inputmode="numeric" value="60"></div>
+          <div class="field"><label class="lbl" for="taMin">Duração (min)</label><input class="in num" id="taMin" type="text" data-num="int" inputmode="numeric" value="60"></div>
           <div class="field" id="taIntWrap"><label class="lbl" for="taInt">Intensidade</label>
             <select class="in" id="taInt"><option value="0.85">Leve</option><option value="1" selected>Moderada</option><option value="1.2">Intensa</option></select>
           </div>
@@ -1804,7 +1841,25 @@ window.APP_RELEASE = "tresults-v44";
     <div class="how-sub" id="ssSub"></div>
     <div id="ssSelo" style="margin:10px 0 14px"></div>
     <div id="ssCorpo"></div>
+    <p class="tr-hint" id="ssDica" style="text-align:center;margin:-4px 0 12px" hidden>Número errado? Toque na série para corrigir.</p>
     <button class="btn secondary" id="ssFechar">Fechar</button>
+  </div>
+</div>
+
+<!-- CORRIGIR UMA SÉRIE JÁ SALVA — aberto pela sessão inteira -->
+<div class="overlay" id="serieOverlay" style="z-index:108">
+  <div class="modal" style="max-width:400px">
+    <div class="gw-step" id="serieOnde">Série</div>
+    <h3 style="margin-bottom:4px">Corrigir série</h3>
+    <p class="gw-sub">O que ficar aqui vale no histórico, no volume da sessão e na referência da próxima vez.</p>
+    <div class="row">
+      <div class="field" id="serieKgWrap"><label class="lbl" for="serieKg">Carga (kg)</label><input class="in num" id="serieKg" type="text" data-num="dec" inputmode="decimal" placeholder="0"></div>
+      <div class="field" id="serieRepWrap"><label class="lbl" for="serieRep">Reps</label><input class="in num" id="serieRep" type="text" data-num="int" inputmode="numeric"></div>
+      <div class="field" id="serieSegWrap"><label class="lbl" for="serieSeg">Segundos</label><input class="in num" id="serieSeg" type="text" data-num="int" inputmode="numeric"></div>
+    </div>
+    <div class="gw-hint" id="serieNota"></div>
+    <button class="btn" id="serieSalvar">Salvar</button>
+    <button class="btn secondary" id="serieVoltar">Voltar</button>
   </div>
 </div>
 
@@ -1830,6 +1885,20 @@ window.APP_RELEASE = "tresults-v44";
     <p id="appDlgMsg" style="font-size:14px;color:var(--muted);line-height:1.6;text-align:center;margin:0"></p>
     <button class="btn" id="appDlgOk">OK</button>
     <button class="btn secondary" id="appDlgCancel">Cancelar</button>
+  </div>
+</div>
+
+<!-- PESO DO DIA — aberto pela linha do Início (hoje) e da Alimentação (dia visto) -->
+<div class="overlay" id="pesoOverlay" style="z-index:100">
+  <div class="modal" style="max-width:460px">
+    <div class="gw-step" id="pesoData">Hoje</div>
+    <h3 style="margin-bottom:4px">Peso do dia</h3>
+    <p class="gw-sub">Pese-se quando quiser: todo dia, uma vez por semana ou de vez em quando. A pesagem mais recente pode ajustar o seu gasto estimado, sempre com a sua confirmação.</p>
+    <div class="field"><label class="lbl" for="pesoN">Peso (kg)</label><input class="in num" id="pesoN" type="text" data-num="dec" inputmode="decimal" placeholder="0"></div>
+    <div class="gw-hint" id="pesoNota"></div>
+    <button class="btn" id="pesoSalvar">Salvar</button>
+    <button class="btn secondary" id="pesoApagar" style="display:none">Apagar a pesagem deste dia</button>
+    <button class="btn secondary" id="pesoVoltar">Voltar</button>
   </div>
 </div>
 
@@ -2041,8 +2110,8 @@ window.APP_RELEASE = "tresults-v44";
           <option value="abdomen">Abdômen</option>
         </select>
       </div>
-      <div class="field" style="flex:0 0 60px"><label class="lbl" for="tpExS">Séries</label><input class="in num" id="tpExS" type="number" inputmode="numeric" value="4"></div>
-      <div class="field" style="flex:0 0 86px"><label class="lbl" for="tpExRest">Descanso (s)</label><input class="in num" id="tpExRest" type="number" inputmode="numeric" value="90"></div>
+      <div class="field" style="flex:0 0 60px"><label class="lbl" for="tpExS">Séries</label><input class="in num" id="tpExS" type="text" data-num="int" inputmode="numeric" value="4"></div>
+      <div class="field" style="flex:0 0 86px"><label class="lbl" for="tpExRest">Descanso (s)</label><input class="in num" id="tpExRest" type="text" data-num="int" inputmode="numeric" value="90"></div>
     </div>
     <div class="field" style="margin-top:8px">
       <label class="lbl">Sinergistas — volume indireto (toque para ajustar)</label>
@@ -2123,7 +2192,7 @@ window.APP_RELEASE = "tresults-v44";
       <div class="drop" id="pmDrop"></div>
     </div>
     <div class="row" style="margin-top:8px;align-items:flex-end">
-      <div class="field"><label class="lbl" for="pmGrams">Quantidade</label><input class="in num" id="pmGrams" type="number" inputmode="decimal" value="100"></div>
+      <div class="field"><label class="lbl" for="pmGrams">Quantidade</label><input class="in num" id="pmGrams" type="text" data-num="dec" inputmode="decimal" value="100"></div>
       <div class="unitseg" id="pmUnitSeg" style="flex:0 0 auto"><button data-u="g" class="on">g</button><button data-u="ml">ml</button></div>
       <button class="btn" id="pmAddFood" style="margin-top:0;flex:0 0 auto;width:auto;padding:12px 16px">Adicionar</button>
     </div>
@@ -2131,17 +2200,17 @@ window.APP_RELEASE = "tresults-v44";
     <div id="pmManual" style="display:none;margin-top:6px">
       <div class="field"><label class="lbl" for="pmMName">Nome</label><input class="in" id="pmMName" placeholder="Ex.: Marmita"></div>
       <div class="row" style="margin-top:8px;align-items:flex-end">
-        <div class="field"><label class="lbl" for="pmMGrams">Quantidade</label><input class="in num" id="pmMGrams" type="number" inputmode="decimal" value="100"></div>
+        <div class="field"><label class="lbl" for="pmMGrams">Quantidade</label><input class="in num" id="pmMGrams" type="text" data-num="dec" inputmode="decimal" value="100"></div>
         <div class="unitseg" id="pmMUnitSeg" style="flex:0 0 auto"><button data-u="g" class="on">g</button><button data-u="ml">ml</button></div>
       </div>
       <p style="font-size:12px;color:var(--muted);margin:8px 0 2px">Macros correspondentes a essa quantidade:</p>
       <div class="row">
-        <div class="field"><label class="lbl">Kcal</label><input class="in num" id="pmMKcal" type="number" inputmode="decimal"></div>
-        <div class="field"><label class="lbl">Prot</label><input class="in num" id="pmMProt" type="number" inputmode="decimal"></div>
+        <div class="field"><label class="lbl">Kcal</label><input class="in num" id="pmMKcal" type="text" data-num="dec" inputmode="decimal"></div>
+        <div class="field"><label class="lbl">Prot</label><input class="in num" id="pmMProt" type="text" data-num="dec" inputmode="decimal"></div>
       </div>
       <div class="row" style="margin-top:8px">
-        <div class="field"><label class="lbl">Carb</label><input class="in num" id="pmMCarb" type="number" inputmode="decimal"></div>
-        <div class="field"><label class="lbl">Gord</label><input class="in num" id="pmMGord" type="number" inputmode="decimal"></div>
+        <div class="field"><label class="lbl">Carb</label><input class="in num" id="pmMCarb" type="text" data-num="dec" inputmode="decimal"></div>
+        <div class="field"><label class="lbl">Gord</label><input class="in num" id="pmMGord" type="text" data-num="dec" inputmode="decimal"></div>
       </div>
       <button class="btn secondary" id="pmAddManual" style="margin-top:10px">Adicionar à refeição</button>
     </div>
@@ -2173,9 +2242,9 @@ window.APP_RELEASE = "tresults-v44";
       <div class="seg" id="gSexoSeg"><button data-v="M" class="on">Masculino</button><button data-v="F">Feminino</button></div>
       <select id="gSexo" style="display:none"><option value="M">Masculino</option><option value="F">Feminino</option></select>
       <div class="row" style="margin-top:14px">
-        <div class="field"><div class="lbl-linha"><label class="lbl" id="gIdadeLbl">Idade</label><span class="campo-nota" id="gIdadeNota"></span></div><input class="in num" id="gIdade" type="number" inputmode="numeric"></div>
-        <div class="field"><label class="lbl">Altura (cm)</label><input class="in num" id="gAltura" type="number" inputmode="decimal"></div>
-        <div class="field"><label class="lbl">Peso (kg)</label><input class="in num" id="gPesoAtual" type="number" inputmode="decimal"></div>
+        <div class="field"><div class="lbl-linha"><label class="lbl" id="gIdadeLbl">Idade</label><span class="campo-nota" id="gIdadeNota"></span></div><input class="in num" id="gIdade" type="text" data-num="int" inputmode="numeric"></div>
+        <div class="field"><label class="lbl">Altura (cm)</label><input class="in num" id="gAltura" type="text" data-num="dec" inputmode="decimal"></div>
+        <div class="field"><label class="lbl">Peso (kg)</label><input class="in num" id="gPesoAtual" type="text" data-num="dec" inputmode="decimal"></div>
       </div>
       <label class="lbl" style="margin:16px 0 8px">Rotina do dia a dia (sem contar treinos)</label>
       <div class="gw-cards" id="gAtivCards">
@@ -2206,8 +2275,8 @@ window.APP_RELEASE = "tresults-v44";
     <div id="gStep3" style="display:none">
       <div class="row" style="align-items:flex-end">
         <div class="field"><label class="lbl">Peso atual</label><div class="in num" id="gPesoAtualShow" style="background:var(--bg);color:var(--muted)">—</div></div>
-        <div class="field"><label class="lbl" style="color:var(--primary)">Peso alvo (kg)</label><input class="in num" id="gPesoAlvo" type="number" inputmode="decimal"></div>
-        <div class="field" style="flex:0 0 92px"><label class="lbl">Prazo (meses)</label><input class="in num" id="gMeses" type="number" inputmode="numeric"></div>
+        <div class="field"><label class="lbl" style="color:var(--primary)">Peso alvo (kg)</label><input class="in num" id="gPesoAlvo" type="text" data-num="dec" inputmode="decimal"></div>
+        <div class="field" style="flex:0 0 92px"><label class="lbl">Prazo (meses)</label><input class="in num" id="gMeses" type="text" data-num="int" inputmode="numeric"></div>
       </div>
       <label class="lbl" style="margin:16px 0 8px">Escolha seu ritmo (toque em um)</label>
       <div class="pace-list" id="paceList">
@@ -2216,7 +2285,7 @@ window.APP_RELEASE = "tresults-v44";
         <button class="pace-opt" data-pace="1"><span class="pc"></span><span class="pl"><span class="pt-row"><b class="pt">Intensa</b></span><em class="pdesc"></em><em class="pfacts"></em></span><span class="pv">—</span></button>
       </div>
       <div class="safety" id="safetyBox" style="display:none"></div>
-      <div class="field" style="margin-top:14px"><label class="lbl">Meta de líquido (ml)</label><input class="in num" id="gLiquid" type="number" inputmode="numeric"></div>
+      <div class="field" style="margin-top:14px"><label class="lbl">Meta de líquido (ml)</label><input class="in num" id="gLiquid" type="text" data-num="int" inputmode="numeric"></div>
       <!-- Exógenos: quem usa clembuterol ou efedrina gasta mais em repouso, e a
            meta precisa acompanhar. Anabolizante fica só como informação. -->
       <label class="lbl" style="margin:16px 0 8px">Faz uso de exógenos?</label>
@@ -2239,12 +2308,12 @@ window.APP_RELEASE = "tresults-v44";
   <div class="modal">
     <h3 id="editTitle">Editar item</h3>
     <div class="field"><label class="lbl" for="eName">Nome</label><input class="in" id="eName"></div>
-    <div id="eDbWrap" style="margin-top:12px"><div class="field"><label class="lbl" for="eGrams">Quantidade (g)</label><input class="in num" id="eGrams" type="number" inputmode="decimal"></div></div>
+    <div id="eDbWrap" style="margin-top:12px"><div class="field"><label class="lbl" for="eGrams">Quantidade (g)</label><input class="in num" id="eGrams" type="text" data-num="dec" inputmode="decimal"></div></div>
     <div id="eManualWrap" class="grid4" style="margin-top:12px">
-      <div class="field"><label class="lbl">Kcal</label><input class="in num" id="eKcal" type="number" inputmode="decimal"></div>
-      <div class="field"><label class="lbl">Prot (g)</label><input class="in num" id="eProt" type="number" inputmode="decimal"></div>
-      <div class="field"><label class="lbl">Carb (g)</label><input class="in num" id="eCarb" type="number" inputmode="decimal"></div>
-      <div class="field"><label class="lbl">Gord (g)</label><input class="in num" id="eGord" type="number" inputmode="decimal"></div>
+      <div class="field"><label class="lbl">Kcal</label><input class="in num" id="eKcal" type="text" data-num="dec" inputmode="decimal"></div>
+      <div class="field"><label class="lbl">Prot (g)</label><input class="in num" id="eProt" type="text" data-num="dec" inputmode="decimal"></div>
+      <div class="field"><label class="lbl">Carb (g)</label><input class="in num" id="eCarb" type="text" data-num="dec" inputmode="decimal"></div>
+      <div class="field"><label class="lbl">Gord (g)</label><input class="in num" id="eGord" type="text" data-num="dec" inputmode="decimal"></div>
     </div>
     <div style="margin-top:12px"><label class="lbl">Refeição</label>
       <select class="in" id="eMeal"><option value="cafe">Café da manhã</option><option value="almoco">Almoço</option><option value="lanche">Lanche</option><option value="jantar">Jantar</option><option value="ceia">Ceia</option></select>
@@ -3100,7 +3169,7 @@ let qtyUnit="g";
 let selectedObj=null, promptedSetup=false, onboarding=false;
 
 function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.days){s.custom=s.custom||[];s.goals=s.goals||{};s.liquids=s.liquids||{};s.protocol=s.protocol||[];s.weights=s.weights||[];s.tprotocol=s.tprotocol||[];s.tdays=s.tdays||{};s.passos=s.passos||{};return s;}}catch(e){}return {getd:0,days:{},custom:[],goals:{},liquids:{},protocol:[],weights:[],tprotocol:[],tdays:{},passos:{}};}
-function blankStore(){return {getd:0,days:{},custom:[],goals:{},liquids:{},protocol:[],weights:[],tprotocol:[],tdays:{},passos:{},academias:[],tprotos:[]};}
+function blankStore(){return {getd:0,days:{},custom:[],goals:{},liquids:{},protocol:[],weights:[],tprotocol:[],tdays:{},passos:{},academias:[],tprotos:[],getdHist:[]};}
 const OWNER_KEY="cutting.owner";
 const getOwner=()=>localStorage.getItem(OWNER_KEY);
 const setOwner=uid=>localStorage.setItem(OWNER_KEY,uid||"");
@@ -3193,23 +3262,34 @@ function fdSessoes(){return fdTodas().slice(0,FD_MAX);}
  * e fila de aparelho, e kcal deriva da duração. Sem sessão anterior a progressão
  * não existe — e mostrar 0% seria inventar um dado.
  */
+/* O que se compara entre duas sessões do mesmo treino: o volume em kg; sem
+   carga nenhuma (treino só de peso do corpo), o total de reps, ou de
+   segundos. Nunca um com o outro, e nunca um "volume" inventado. */
+function medidaSessao(w){
+  if((w.vol||0)>0)return {tipo:"carga",v:w.vol};
+  let rep=0,seg=0;
+  (w.ex||[]).forEach(e=>(e.sets||[]).forEach(x=>{rep+=x.rep||0;seg+=x.seg||0;}));
+  if(rep>0)return {tipo:"reps",v:rep};
+  if(seg>0)return {tipo:"tempo",v:seg};
+  return null;
+}
 function fdProgressao(lista,i){
-  const at=lista[i].w;
-  if(!at.vol)return null;
+  const at=lista[i].w,m=medidaSessao(at);
+  if(!m)return null;
   for(let j=i+1;j<lista.length;j++){
-    const p=lista[j].w;
+    const p=lista[j].w,mp=medidaSessao(p);
     /* Na mesma academia: o volume do mesmo treino em aparelhos diferentes
        não se compara. Registro sem academia casa com qualquer uma. */
-    if(mesmoTreino(at,p)&&p.vol&&mesmaAcad(at.acad,p.acad))return {pct:(at.vol/p.vol-1)*100,de:p.vol,dia:lista[j].dia,j};
+    if(mesmoTreino(at,p)&&mp&&mp.tipo===m.tipo&&mesmaAcad(at.acad,p.acad))return {pct:(m.v/mp.v-1)*100,de:mp.v,dia:lista[j].dia,j,tipo:m.tipo};
   }
   return null;
 }
 /** Sem anterior nesta academia, mas o treino já foi feito em outra? Então o
     selo não pode dizer "primeira vez deste treino": seria mentira. */
 function fdSoEmOutra(lista,i){
-  const at=lista[i].w;
-  if(!at.vol||!at.acad)return false;
-  for(let j=i+1;j<lista.length;j++){const p=lista[j].w;if(mesmoTreino(at,p)&&p.vol)return true;}
+  const at=lista[i].w,m=medidaSessao(at);
+  if(!m||!at.acad)return false;
+  for(let j=i+1;j<lista.length;j++){const p=lista[j].w,mp=medidaSessao(p);if(mesmoTreino(at,p)&&mp&&mp.tipo===m.tipo)return true;}
   return false;
 }
 
@@ -3227,9 +3307,11 @@ function fdRotuloDia(k){
 function fdSelo(pr,soEmOutra){
   if(!pr)return `<span class="fd-prog primeira"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>${soEmOutra?"primeira vez nesta academia":"primeira vez deste treino"}</span>`;
   const pct=Math.round(pr.pct);
-  if(pct>0)return `<span class="fd-prog sobe"><svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>+${pct}% de carga</span>`;
-  if(pct<0)return `<span class="fd-prog desce"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12l7 7 7-7"/></svg>${pct}% de carga</span>`;
-  return '<span class="fd-prog igual"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg>mesma carga</span>';
+  const de=pr.tipo==="reps"?"de reps":pr.tipo==="tempo"?"de tempo":"de carga";
+  const mesma=pr.tipo==="reps"?"mesmas reps":pr.tipo==="tempo"?"mesmo tempo":"mesma carga";
+  if(pct>0)return `<span class="fd-prog sobe"><svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>+${pct}% ${de}</span>`;
+  if(pct<0)return `<span class="fd-prog desce"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12l7 7 7-7"/></svg>${pct}% ${de}</span>`;
+  return `<span class="fd-prog igual"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg>${mesma}</span>`;
 }
 
 const FD_ICO_FORCA='<svg viewBox="0 0 24 24"><path d="M6 7v10M18 7v10M3 12h18M3 9v6M21 9v6"/></svg>';
@@ -3259,6 +3341,7 @@ function renderInicio(){
   }
 
   renderFdPassos();
+  renderFdPeso();
 
   /* --- feed --- */
   const todas=fdTodas();
@@ -3295,8 +3378,7 @@ function renderInicio(){
       <div class="fd-mais">
         ${forca?w.ex.map(e=>{
           const st=(e.sets||[]);
-          const melhor=st.reduce((a,x)=>Math.max(a,x.kg||0),0);
-          return `<div class="fd-ex"><span class="en">${esc(e.n)}</span><span class="es">${st.length}× · até ${kgTxt(melhor)} kg</span></div>`;
+          return `<div class="fd-ex"><span class="en">${esc(e.n)}</span><span class="es">${st.length}× · até ${melhorTxt(melhorDe(st))}</span></div>`;
         }).join(""):'<div class="fd-ex"><span class="en">Registro manual, sem detalhe de séries.</span></div>'}
         ${forca?`<button class="fd-vertudo" data-fdver="${esc(w.id)}">Ver a sessão inteira</button>`:""}
       </div>
@@ -3327,28 +3409,29 @@ function abrirSessao(id){
   const antDe=n=>{
     if(!ant)return null;
     const e=(ant.ex||[]).find(x=>x.n===n);
-    if(!e||!e.sets.length)return null;
-    return e.sets.reduce((a,x)=>Math.max(a,x.kg||0),0);
+    if(!e||!(e.sets||[]).length)return null;
+    return melhorDe(e.sets);
   };
 
   $("ssTitulo").textContent=w.name;
   const onde=acadNomeDe(w),prot=fdProtTxt(w);
   $("ssSub").textContent=`${fdRotuloDia(dia)}${prot?" · "+prot:""} · ${r0(w.min)} min · ${r0(w.kcal)} kcal${onde?" · "+onde:""}`;
   $("ssSelo").innerHTML=(w.ex&&w.ex.length)?fdSelo(pr,!pr&&fdSoEmOutra(lista,i)):"";
-  $("ssCorpo").innerHTML=(w.ex||[]).map(e=>{
-    const antes=antDe(e.n);
-    const agora=(e.sets||[]).reduce((a,x)=>Math.max(a,x.kg||0),0);
+  $("ssCorpo").innerHTML=(w.ex||[]).map((e,ei)=>{
+    const antes=antDe(e.n),agora=melhorDe(e.sets);
     let comp="";
-    if(antes!=null){
-      const d=agora-antes;
+    if(antes&&antes.un===agora.un){
+      const d=agora.v-antes.v;
       const cls=d>0?"up":d<0?"down":"same";
-      comp=`<span class="tp-d ${cls}">${d>0?"+":""}${kgTxt(d)} kg</span>`;
+      comp=`<span class="tp-d ${cls}">${d>0?"+":""}${agora.un==="kg"?kgTxt(d)+" kg":r0(d)+" "+agora.un}</span>`;
     }
     return `<div class="ss-ex">
       <div class="ssn">${esc(e.n)} ${comp}</div>
-      ${(e.sets||[]).map((x,k)=>`<div class="ss-serie"><span class="i">${k+1}</span><span class="c">${kgTxt(x.kg)} kg × ${r0(x.rep)}</span><span class="r">${x.rir!=null?"RIR "+x.rir:""}</span></div>`).join("")}
+      ${(e.sets||[]).map((x,k)=>`<button class="ss-serie" type="button" data-ssc="${ei}:${k}" aria-label="Corrigir a série ${k+1}"><span class="i">${k+1}</span><span class="c">${serieTxt(x)}</span><span class="r">${x.rir!=null?"RIR "+x.rir:""}</span><svg class="ed" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>`).join("")}
     </div>`;
   }).join("")||'<div class="fd-vazio">Sem detalhe de séries neste registro.</div>';
+  $("ssDica").hidden=!(w.ex||[]).length;
+  $("ssCorpo").querySelectorAll("[data-ssc]").forEach(b=>b.onclick=()=>{const [ei,si]=b.dataset.ssc.split(":").map(Number);abrirSerie(w.id,ei,si);});
 
   $("sessaoOverlay").classList.add("open");
 }
@@ -3386,6 +3469,48 @@ if($("fdDia"))$("fdDia").onclick=()=>showView("food");
 if($("fdIrProgresso"))$("fdIrProgresso").onclick=()=>showView("progresso");
 if($("fdIrTreino"))$("fdIrTreino").onclick=()=>showView("treino");
 if($("ssFechar"))$("ssFechar").onclick=fecharSessao;
+/* Uma série em texto: carga × reps, só reps (peso do corpo) ou segundos. */
+function serieTxt(x){
+  if((x.seg||0)>0)return `${(x.kg||0)>0?kgTxt(x.kg)+" kg · ":""}${r0(x.seg)} s`;
+  return (x.kg||0)>0?`${kgTxt(x.kg)} kg × ${r0(x.rep)}`:`${r0(x.rep)} reps`;
+}
+/* ---- Corrigir uma série já salva ----
+   Antes, um número errado (575 por 57,5) só saía apagando a sessão
+   inteira. Corrigir aqui recalcula o volume da sessão, e com ele o selo do
+   feed; o 1RM e a referência da próxima vez já leem as séries. As calorias
+   não mudam: elas vêm da duração e do esforço, não da carga. */
+let serieAlvo=null;
+function acharSessao(id){for(const dk of Object.keys(store.tdays||{})){const w=(store.tdays[dk]||[]).find(x=>x&&x.id===id);if(w)return w;}return null;}
+function abrirSerie(id,ei,si){
+  const w=acharSessao(id),e=w&&w.ex&&w.ex[ei],x=e&&e.sets&&e.sets[si];if(!x)return;
+  serieAlvo={id,ei,si};
+  const tempo=(x.seg||0)>0;
+  $("serieOnde").textContent=`${e.n} · série ${si+1}`;
+  $("serieRepWrap").style.display=tempo?"none":"";
+  $("serieSegWrap").style.display=tempo?"":"none";
+  $("serieKg").value=(x.kg||0)>0?campoBR(x.kg):"";
+  $("serieRep").value=(x.rep||0)>0?String(x.rep):"";
+  $("serieSeg").value=(x.seg||0)>0?String(x.seg):"";
+  $("serieNota").textContent="";
+  $("serieOverlay").classList.add("open");
+}
+function fecharSerie(){$("serieOverlay").classList.remove("open");}
+$("serieSalvar").onclick=async()=>{
+  const a=serieAlvo,w=a&&acharSessao(a.id),x=w&&w.ex&&w.ex[a.ei]&&w.ex[a.ei].sets[a.si];
+  if(!x){fecharSerie();return;}
+  const tempo=(x.seg||0)>0;
+  const kg=numBR($("serieKg").value),rep=inteiroBR($("serieRep").value),seg=inteiroBR($("serieSeg").value);
+  if(tempo?seg<=0:rep<=0){$("serieNota").textContent=tempo?"Digite os segundos.":"Digite as repetições.";return;}
+  if(kg>CARGA_TETO&&!await appConfirm(`Confere ${kgTxt(kg)} kg?`,{title:"Conferir a carga",okText:"Está certo",cancelText:"Corrigir",danger:false}))return;
+  x.kg=kg;
+  if(tempo)x.seg=seg;else x.rep=rep;
+  w.vol=Math.round((w.ex||[]).reduce((t,e)=>t+(e.sets||[]).reduce((u,s)=>u+(s.kg||0)*(s.rep||0),0),0));
+  save();renderInicio();renderTreino();
+  fecharSerie();
+  abrirSessao(a.id);
+};
+$("serieVoltar").onclick=fecharSerie;
+$("serieOverlay").onclick=e=>{if(e.target===$("serieOverlay"))fecharSerie();};
 if($("sessaoOverlay"))$("sessaoOverlay").onclick=e=>{if(e.target===$("sessaoOverlay"))fecharSessao();};
 document.getElementById("tabAdd").onclick=()=>{
   if(currentView!=="food")showView("food");
@@ -3537,11 +3662,28 @@ const INC_ALERTA=45;
 const GANHO_MAX=10000;
 
 /* No teclado numérico brasileiro a tecla decimal é a vírgula, e um
-   <input type="number"> a descarta antes de o JavaScript enxergar: quem
+   <input type=number> a descarta antes de o JavaScript enxergar: quem
    digitasse "7,5" gravaria 75. Num app que calcula caloria, isso é número
    errado entrando calado. Por isso os campos de distância e inclinação são
    texto com teclado decimal, e a leitura normaliza a vírgula. */
 const numBR=v=>parseFloat(String(v==null?"":v).replace(",","."))||0;
+/* Quantidade (gramas, ml, kcal): o ponto antes de três dígitos é de milhar —
+   "1.500 ml" é mil e quinhentos, não um e meio. Em kg (peso, carga) o ponto
+   continua decimal, porque ninguém escreve "82.500 kg" e há teclado que só
+   tem ponto. */
+const qtdBR=v=>{let t=String(v==null?"":v).trim();if(/^\d{1,3}(\.\d{3})+(,\d*)?$/.test(t))t=t.replace(/\./g,"");return numBR(t);};
+const inteiroBR=v=>Math.round(qtdBR(v));
+/* Número para dentro de um campo de texto: vírgula, e sem casas à toa. */
+const campoBR=v=>{const n=+v;return (v===""||v==null||!isFinite(n))?"":String(Math.round(n*100)/100).replace(".",",");};
+/* Todo campo numérico do app é texto (data-num), pelo mesmo motivo do cardio:
+   <input type=number> descarta a vírgula do teclado brasileiro antes de o
+   JavaScript enxergar, e "57,5" virava 575. Este filtro roda antes dos
+   outros ouvintes (captura) e tira o que não é número. */
+document.addEventListener("input",e=>{
+  const c=e.target;if(!c||!c.dataset||!c.dataset.num)return;
+  const v=c.value.replace(c.dataset.num==="int"?/[^\d.]/g:/[^\d.,]/g,"");
+  if(v!==c.value)c.value=v;
+},true);
 
 /* Unidade da elevação. Na rua ninguém sabe a própria inclinação média, então o
    ar livre só aceita metros; a esteira deixa escolher, porque o painel dela
@@ -3554,7 +3696,7 @@ function taElevUnid(a){
 }
 
 function taCalc(){
-  const a=T_ACTS[parseInt($("taAct").value)||0],min=parseFloat($("taMin").value)||0,w=userWeight();
+  const a=T_ACTS[parseInt($("taAct").value)||0],min=inteiroBR($("taMin").value),w=userWeight();
   const km=numBR($("taKm").value);
   /* Na caminhada a distância é opcional: quem andou 40 minutos sem medir
      continua registrando pelo MET, como sempre registrou. */
@@ -4682,7 +4824,7 @@ function renderTpEx(){
   renderTpEquip();
 }
 $("tpExAdd").onclick=()=>{
-  const n=$("tpExName").value.trim(),s=parseInt($("tpExS").value)||0,rest=parseInt($("tpExRest").value)||90,g=$("tpExG").value;
+  const n=$("tpExName").value.trim(),s=inteiroBR($("tpExS").value),rest=inteiroBR($("tpExRest").value)||90,g=$("tpExG").value;
   if(!n||s<=0)return;
   tpEditing.ex.push({n,s,rest,g,sec:[...tpSynSel]});
   $("tpExName").value="";$("tpExS").value=4;$("tpExRest").value=90;renderSynChips();renderTpEx();$("tpExName").focus();
@@ -5343,8 +5485,10 @@ function trSaveInputs(){
   if(!trS)return;
   document.querySelectorAll("#trSets .tr-set").forEach(row=>{
     const i=+row.dataset.i,l=trS.logs[trS.idx][i];
-    l.kg=parseFloat(row.querySelector(".ikg").value)||0;
-    l.rep=parseInt(row.querySelector(".irep").value)||0;
+    const ikg=row.querySelector(".ikg"),irep=row.querySelector(".irep"),iseg=row.querySelector(".iseg");
+    l.kg=ikg?numBR(ikg.value):0;
+    if(irep)l.rep=inteiroBR(irep.value);
+    if(iseg)l.seg=inteiroBR(iseg.value);
   });
 }
 /* ============================================================
@@ -5352,6 +5496,32 @@ function trSaveInputs(){
    Mostra carga e reps da vez anterior para saber quanto progredir.
    ============================================================ */
 let trPrevRef=null;
+/* ---- Peso do corpo e tempo ----
+   Série sem carga era descartada ao finalizar (o filtro exigia kg > 0):
+   flexão, barra fixa e prancha sumiam do histórico, e a sessão aparecia
+   como "registro manual". Agora a série vale com reps — ou segundos —
+   acima de zero, com ou sem carga.
+   Os nomes abaixo só mudam a cara da linha: no peso do corpo, a carga fica
+   atrás de "+ carga"; na prancha e nas isometrias, o campo é de segundos.
+   Errar a classificação custa um toque, nunca um número.
+   E não se inventa "kg movidos" no peso do corpo: a fração do corpo que a
+   flexão levanta muda com a variação (Ebben et al., J Strength Cond Res
+   2011;25:2891-2894). O volume em kg desses exercícios é zero; eles contam
+   por séries e reps, que é o que a literatura de dose-resposta usa. */
+const EX_TEMPO_RE=/\b(prancha|isometri[a-z]*|wall sit|cadeirinha|hollow hold|dead hang|suspensao na barra)\b/;
+const EX_CORPO_RE=/\b(flexao(?! (de )?(punho|plantar))|barra fixa|chin ?up|pull ?up|mergulho|paralelas?|dips?|abdominal(?! (no|na|com) (cabo|polia|maquina|anilha|halter))|elevacao de (pernas|joelhos)|burpees?|polichinelos?|escalador|canivete|superman)\b/;
+function exTipo(nome){const t=norm(String(nome||"")).replace(/[^a-z0-9]+/g," ").trim();return EX_TEMPO_RE.test(t)?"tempo":EX_CORPO_RE.test(t)?"corpo":"carga";}
+/* O melhor de um exercício: a maior carga; sem carga, o máximo de segundos
+   ou de reps. */
+function melhorDe(sets){
+  const st=sets||[];
+  const kg=st.reduce((a,x)=>Math.max(a,x.kg||0),0);
+  if(kg>0)return {v:kg,un:"kg"};
+  const seg=st.reduce((a,x)=>Math.max(a,x.seg||0),0);
+  if(seg>0)return {v:seg,un:"s"};
+  return {v:st.reduce((a,x)=>Math.max(a,x.rep||0),0),un:"reps"};
+}
+const melhorTxt=m=>m.un==="kg"?`${kgTxt(m.v)} kg`:`${r0(m.v)} ${m.un}`;
 /* Com academia, a referência é a da MESMA academia: o leg press de uma não
    é o da outra, e a carga de lá enganaria. Não havendo, vale a de outra
    academia, com o nome dela na tela (`outra`) — melhor um ponto de partida
@@ -5377,10 +5547,23 @@ const kgTxt=v=>(Math.round((v||0)*10)/10).toString().replace(".",",");
 function trDelta(row){
   const chip=row.querySelector(".tp-d");if(!chip)return;
   const p=trPrevRef&&trPrevRef.sets[+row.dataset.i];
-  const kg=parseFloat(row.querySelector(".ikg").value);
+  const ikg=row.querySelector(".ikg"),irep=row.querySelector(".irep"),iseg=row.querySelector(".iseg");
+  const kg=ikg?numBR(ikg.value):0;
+  const limpar=()=>{chip.textContent="";chip.className="tp-d";};
   /* Carga de outra academia é ponto de partida, não régua: medir "−40 kg"
      contra outro aparelho seria a progressão que o feed se recusa a medir. */
-  if(!p||!kg||kg<=0||trPrevRef.outra){chip.textContent="";chip.className="tp-d";return;}
+  if(!p||trPrevRef.outra)return limpar();
+  /* Peso do corpo, dos dois lados: compara reps (ou segundos). Carga de um
+     lado só não se compara com reps do outro. */
+  if(kg<=0&&!((p.kg||0)>0)){
+    const agora=iseg?inteiroBR(iseg.value):(irep?inteiroBR(irep.value):0),antes=iseg?(p.seg||0):(p.rep||0),un=iseg?"s":"reps";
+    if(!agora||!antes)return limpar();
+    const d=agora-antes;
+    chip.className="tp-d "+(d>0?"up":d<0?"down":"same");
+    chip.textContent=d>0?`+${d} ${un}`:d<0?`−${-d} ${un}`:(iseg?"mesmo tempo":"mesmas reps");
+    return;
+  }
+  if(!kg||kg<=0||!((p.kg||0)>0))return limpar();
   const d=Math.round((kg-p.kg)*10)/10;
   chip.className="tp-d "+(d>0?"up":d<0?"down":"same");
   chip.textContent=d>0?`+${kgTxt(d)} kg`:d<0?`${kgTxt(d)} kg`:"mesma carga";
@@ -5391,7 +5574,7 @@ function renderTr(){
   const onde=acadNomeDe(trS);
   $("trProg").textContent=`Exercício ${trS.idx+1} de ${w.ex.length}${onde?" · "+onde:""}`;
   $("trExName").textContent=e.n;
-  $("trPlan").textContent=`${e.s} séries · descanso ${fmtSec(e.rest||90)} · busque a falha entre 6–12 reps`;
+  $("trPlan").textContent=`${e.s} séries · descanso ${fmtSec(e.rest||90)} · `+(exTipo(e.n)==="tempo"?"segure com a forma certa até perto do limite":"busque a falha entre 6–12 reps");
   const av=$("trTrocado");
   av.classList.toggle("on",!!e.orig);
   if(e.orig)av.innerHTML=`<span>No lugar de <b>${esc(e.orig)}</b>, só hoje</span><button id="trDesfazer">Desfazer</button>`;
@@ -5403,14 +5586,30 @@ function renderTr(){
   trPrevRef=lastExSession(e.n,trS.acad);
   /* Referência de outra academia: dita UMA vez, acima das séries. Dentro de
      cada linha o nome partia a referência em duas em telas comuns. */
+  const tipo=exTipo(e.n);
+  /* A carga aparece no peso do corpo quando ela já foi usada (hoje ou da
+     última vez) ou quando a pessoa pediu "+ carga". */
+  const cargaVis=tipo==="carga"||!!e.comCarga||logs.some(l=>(l.kg||0)>0)||!!(trPrevRef&&trPrevRef.sets.some(x=>(x.kg||0)>0));
   const refOutra=trPrevRef&&trPrevRef.outra?`<div class="tr-ref-outra">Primeira vez deste exercício na <b>${esc(acadNomeDe(trS))}</b>. As cargas de referência são da <b>${esc(trPrevRef.outra)}</b>, só como ponto de partida.</div>`:"";
-  $("trSets").innerHTML=refOutra+logs.map((l,i)=>{
+  const maisCarga=cargaVis?"":`<button class="tr-maiscarga" type="button" id="trMaisCarga">+ carga (colete, anilha)</button>`;
+  $("trSets").innerHTML=refOutra+maisCarga+logs.map((l,i)=>{
     const p=trPrevRef&&trPrevRef.sets[i];
+    const segundo=tipo==="tempo"
+      ?`<span class="fld"><input class="iseg" type="text" data-num="int" inputmode="numeric" value="${l.seg||""}" placeholder="${p&&p.seg?p.seg:"0"}"><span class="un">seg</span></span>`
+      :`<span class="fld"><input class="irep" type="text" data-num="int" inputmode="numeric" value="${l.rep||""}" placeholder="${p?(p.rep||0):"0"}"><span class="un">reps</span></span>`;
     return `<div class="tr-set" data-i="${i}">
-    <div class="tsr1"><span class="snum">${i+1}</span><span class="sl">Série ${i+1}</span><span class="fld"><input class="ikg" type="number" inputmode="decimal" value="${l.kg||""}" placeholder="${p?kgTxt(p.kg):"0"}"><span class="un">kg</span></span><span class="fld"><input class="irep" type="number" inputmode="numeric" value="${l.rep||""}" placeholder="${p?p.rep:"0"}"><span class="un">reps</span></span></div>
-    ${p?`<div class="tsprev"><span class="tp-t">anterior <span class="tp-v">${kgTxt(p.kg)} kg × ${p.rep}</span>${(p.rir!==null&&p.rir!==undefined)?` · RIR ${p.rir}`:""}</span><span class="tp-d"></span></div>`:""}
+    <div class="tsr1"><span class="snum">${i+1}</span><span class="sl">Série ${i+1}</span><span class="fld${cargaVis?"":" oculto"}"><input class="ikg" type="text" data-num="dec" inputmode="decimal" value="${l.kg?campoBR(l.kg):""}" placeholder="${p?kgTxt(p.kg):"0"}"><span class="un">kg</span></span>${segundo}</div>
+    ${p?`<div class="tsprev"><span class="tp-t">anterior <span class="tp-v">${serieTxt(p)}</span>${(p.rir!==null&&p.rir!==undefined)?` · RIR ${p.rir}`:""}</span><span class="tp-d"></span></div>`:""}
     <div class="tsr2"><span class="rirl">RIR</span><div class="rirseg">${[0,1,2,3].map(v=>`<button data-rir="${v}" class="${l.rir===v?"on":""}">${v===3?"3+":v}</button>`).join("")}</div></div>
   </div>`;}).join("");
+  /* "+ carga" mostra o campo sem redesenhar: renderTr termina em stopRest()
+     e mataria o descanso em andamento. */
+  if($("trMaisCarga"))$("trMaisCarga").onclick=()=>{
+    e.comCarga=true;
+    $("trSets").querySelectorAll(".fld.oculto").forEach(f=>f.classList.remove("oculto"));
+    $("trMaisCarga").remove();trPersist();
+    const c=$("trSets").querySelector(".ikg");if(c)c.focus();
+  };
   $("trSets").querySelectorAll(".tr-set").forEach(row=>{
     const i=+row.dataset.i;
     row.querySelectorAll("[data-rir]").forEach(b=>b.onclick=()=>{
@@ -5527,17 +5726,38 @@ $("trocaOverlay").onclick=ev=>{if(ev.target===$("trocaOverlay"))$("trocaOverlay"
 $("trocaNome").addEventListener("keydown",ev=>{if(ev.key==="Enter")aplicarTroca();});
 
 $("trPrev").onclick=()=>{trSaveInputs();if(trS.idx>0){trS.idx--;renderTr();trPersist();}};
-$("trNext").onclick=()=>{
+/* Carga muito acima da última vez no mesmo exercício é o sinal da vírgula
+   perdida (575 por 57,5). Pergunta antes de seguir. O limite — o dobro da
+   maior carga da última vez, e ao menos 10 kg a mais — é decisão de
+   produto. Referência de outra academia não serve de régua (outro
+   aparelho); sem régua, só acima de CARGA_TETO. */
+const CARGA_TETO=400;
+async function confereCargas(){
+  const logs=(trS&&trS.logs[trS.idx])||[],ref=trPrevRef&&!trPrevRef.outra?trPrevRef:null;
+  const maior=ref?ref.sets.reduce((a,x)=>Math.max(a,x.kg||0),0):0;
+  for(let i=0;i<logs.length;i++){
+    const kg=logs[i].kg||0;if(kg<=0)continue;
+    if(!(maior>0?(kg>=2*maior&&kg-maior>=10):kg>CARGA_TETO))continue;
+    const dez=maior>0&&kg/10<=maior*1.5?` Talvez seja ${kgTxt(kg/10)} kg.`:"";
+    const ok=await appConfirm(`Série ${i+1} com ${kgTxt(kg)} kg?${maior>0?` Da última vez a maior carga foi ${kgTxt(maior)} kg.`:""}${dez}`,{title:"Conferir a carga",okText:"Está certo",cancelText:"Corrigir",danger:false});
+    if(!ok){const c=document.querySelector(`#trSets .tr-set[data-i="${i}"] .ikg`);if(c)c.focus();return false;}
+  }
+  return true;
+}
+$("trNext").onclick=async()=>{
   trSaveInputs();
+  if(!await confereCargas())return;
+  if(!trS)return;
   if(trS.idx<trS.w.ex.length-1){trS.idx++;renderTr();trPersist();return;}
   // finalizar: duração pelo cronômetro (sem o tempo fora do app); esforço = total − descansos; intensidade pelo RIR
   const min=Math.max(1,Math.round(trElapsedMs()/60000));
   let vol=0,rirSum=0,rirN=0,setsDoneTotal=0;
-  trS.logs.forEach(sets=>sets.forEach(l=>{vol+=(l.kg||0)*(l.rep||0);if((l.kg||0)>0||(l.rep||0)>0)setsDoneTotal++;if(l.rir!==null&&l.rir!==undefined){rirSum+=l.rir;rirN++;}}));
+  const feita=l=>(l.kg||0)>0||(l.rep||0)>0||(l.seg||0)>0;
+  trS.logs.forEach(sets=>sets.forEach(l=>{vol+=(l.kg||0)*(l.rep||0);if(feita(l))setsDoneTotal++;if(l.rir!==null&&l.rir!==undefined){rirSum+=l.rir;rirN++;}}));
   // descanso estimado: (séries − 1) × descanso cadastrado, por exercício
   let restSec=0;
   trS.w.ex.forEach((e,i)=>{
-    const done=setsDoneTotal>0?(trS.logs[i]||[]).filter(l=>(l.kg||0)>0||(l.rep||0)>0).length:e.s;
+    const done=setsDoneTotal>0?(trS.logs[i]||[]).filter(feita).length:e.s;
     restSec+=Math.max(0,done-1)*(e.rest||90);
   });
   let restMin=Math.min(restSec/60,min*0.75); // trava de sanidade
@@ -5554,7 +5774,7 @@ $("trNext").onclick=()=>{
   // líquido: esforço no MET do RIR; descanso entre séries ≈ MET 2 (em pé/circulando)
   const kcal=Math.round(netKcal(met,workMin)+netKcal(2,restMin));
   const avgTxt=rirN>0?(rirSum/rirN):null;
-  const exDetail=trS.w.ex.map((e,i)=>({n:e.n,g:e.g||"outros",sec:(e.sec!==undefined?e.sec:synFor(e.g||"")),sets:(trS.logs[i]||[]).filter(l=>(l.kg||0)>0&&(l.rep||0)>0).map(l=>({kg:l.kg,rep:l.rep,rir:l.rir}))})).filter(x=>x.sets.length);
+  const exDetail=trS.w.ex.map((e,i)=>({n:e.n,g:e.g||"outros",sec:(e.sec!==undefined?e.sec:synFor(e.g||"")),sets:(trS.logs[i]||[]).filter(l=>(l.rep||0)>0||(l.seg||0)>0).map(l=>Object.assign({kg:l.kg||0,rep:l.rep||0,rir:l.rir},(l.seg||0)>0?{seg:l.seg}:{}))})).filter(x=>x.sets.length);
   const reg={id:uid(),name:trS.w.nome,min,kcal,vol:Math.round(vol),intens:label,rir:avgTxt!==null?Math.round(avgTxt*10)/10:null,ex:exDetail};
   if(trS.acad){reg.acad=trS.acad;reg.acadNome=acadNomeDe(trS);}
   /* Qual treino, de qual protocolo: dois protocolos podem ter "Treino A" com
@@ -5754,7 +5974,8 @@ function evoData(){
     ((store.tdays||{})[dk]||[]).forEach(w=>{
       (w.ex||[]).forEach(e=>{
         let best=null;
-        (e.sets||[]).forEach(s=>{const v=e1rm(s.kg,s.rep);if(!best||v>best.v)best={v,kg:s.kg,rep:s.rep};});
+        /* Epley com 0 kg dá 0: série sem carga não entra no 1RM */
+        (e.sets||[]).forEach(s=>{if(!((s.kg||0)>0&&(s.rep||0)>0))return;const v=e1rm(s.kg,s.rep);if(!best||v>best.v)best={v,kg:s.kg,rep:s.rep};});
         if(!best)return;
         const k=norm(e.n);
         map[k]=map[k]||{name:e.n,pts:[]};
@@ -6165,7 +6386,7 @@ function goalsParaNuvem(g){
    disso foi gravado por uma versão mais nova do app: fica guardado em
    store._nuvem e volta na próxima gravação, em vez de ser apagado — o
    documento é gravado inteiro, sem merge. Precisa ser JSON simples. */
-const CAMPOS_NUVEM=["getd","days","custom","goals","liquids","protocol","weights","tprotocol","tdays","passos","academias","liqLog","tprotos","writer","updatedAt"];
+const CAMPOS_NUVEM=["getd","days","custom","goals","liquids","protocol","weights","tprotocol","tdays","passos","academias","liqLog","tprotos","getdHist","writer","updatedAt"];
 /* ---- Nada do que foi lançado sem sinal se perde ----
    O documento da nuvem é gravado inteiro. Antes, a abertura trocava o
    aparelho inteiro pela nuvem, e o que tinha sido lançado sem sinal (um
@@ -6222,6 +6443,7 @@ function paraNuvem(s){
   if(Array.isArray(s.academias))d.academias=s.academias;
   if(s.liqLog&&typeof s.liqLog==="object")d.liqLog=s.liqLog;
   if(Array.isArray(s.tprotos))d.tprotos=s.tprotos;
+  if(Array.isArray(s.getdHist))d.getdHist=s.getdHist;
   return d;
 }
 
@@ -6328,6 +6550,7 @@ function mesclar(B,L,R){
   campo("tprotocol",lista(porId));
   campo("academias",lista(porId));
   campo("tprotos",lista(porId));
+  campo("getdHist",lista(x=>"d:"+(x&&x.desde)));
   /* O total do dia nunca fica abaixo do que a lista de horários soma: o anel
      e a lista não podem se desmentir. */
   if(M.liqLog&&M.liquids)for(const d of Object.keys(M.liqLog)){
@@ -6387,6 +6610,9 @@ function aplicarNuvem(data,manterDia){
      o apagava a cada abertura do app. */
   const liqLog=(data.liqLog&&typeof data.liqLog==="object")?data.liqLog:(local?local.liqLog:undefined);
   if(liqLog)store.liqLog=liqLog;
+  /* O GETD de cada dia: ausente é aparelho com versão anterior, não lista vazia. */
+  const getdHist=Array.isArray(data.getdHist)?data.getdHist:(local?local.getdHist:undefined);
+  if(getdHist)store.getdHist=getdHist;
   if(Object.keys(extra).length)store._nuvem=extra;
   if(meu)Object.assign(store.goals,meu);
   if(!manterDia){viewKey=todayKey();realToday=todayKey();}
@@ -6615,7 +6841,7 @@ async function doLogout(){ closeMenu(); trDiscardRun(); if(cloudEnabled&&auth){t
    APP ALIMENTAÇÃO
    ============================================================ */
 function macroTargets(){
-  const g=store.goals||{},peso=parseFloat(g.pesoAtual)||0;
+  const g=store.goals||{},peso=pesoConta(g);
   if(peso<=0)return null;
   const t=goalTargets(),meta=store.getd>0?goalMeta(t,viewKey):0;
   const p=Math.round(peso*1.8),gg=Math.round(peso*0.8);
@@ -6663,7 +6889,8 @@ function render(){
     $("statusLine").style.color="var(--muted)";
   }
   renderPassos();
-  $("mProt").textContent=r1(tP);$("mCarb").textContent=r1(tC);$("mGord").textContent=r1(tG);
+  renderPeso();
+  $("mProt").textContent=kgTxt(tP);$("mCarb").textContent=kgTxt(tC);$("mGord").textContent=kgTxt(tG);
   renderMacroBars(tP,tC,tG);
   const lc=$("listCons");
   $("countCons").textContent=cons.length+(cons.length===1?" item":" itens");
@@ -6947,12 +7174,21 @@ $("toggleManual").onclick=()=>{
 };
 document.querySelectorAll("#statusSeg button").forEach(b=>b.onclick=()=>{addStatus=b.dataset.v;document.querySelectorAll("#statusSeg button").forEach(x=>x.classList.toggle("on",x===b));$("addBtn").textContent=addStatus==="agendado"?"Agendar refeição":"Adicionar ao dia";});
 
-$("addBtn").onclick=()=>{
-  let item;
+/* Mais de 2 kg (ou 2 L) num lançamento só quase sempre é ponto de milhar
+   ou zero a mais. Decisão de produto: pergunta, não bloqueia. */
+const QTD_MAX=2000,PORCOES_MAX=20;
+function confereQtd(item,porcoes){
+  const q=porcoes||item.grams||0,lim=porcoes?PORCOES_MAX:QTD_MAX;
+  if(q<=lim)return Promise.resolve(true);
+  const un=porcoes?"porções":(item.unit==="ml"?"ml":"g");
+  return appConfirm(`Confere ${nPt(q)} ${un} de ${item.name}? ${porcoes?"São muitas porções":"É mais de "+(item.unit==="ml"?"2 litros":"2 kg")} num lançamento só.`,{title:"Conferir a quantidade",okText:"Está certo",cancelText:"Corrigir",danger:false});
+}
+$("addBtn").onclick=async()=>{
+  let item,porcoes=0;
   if(manualMode){
     const name=search.value.trim();
-    const qty=parseFloat($("mgrams").value)||0;
-    const k=parseFloat($("mkcal").value)||0,p=parseFloat($("mprot").value)||0,c=parseFloat($("mcarb").value)||0,g=parseFloat($("mgord").value)||0;
+    const qty=qtdBR($("mgrams").value);
+    const k=qtdBR($("mkcal").value),p=qtdBR($("mprot").value),c=qtdBR($("mcarb").value),g=qtdBR($("mgord").value);
     if(!name)return flash("Informe o nome do alimento",true);
     if(qty<=0)return flash("Informe a quantidade (g/ml)",true);
     if(k<=0)return flash("Informe as kcal",true);
@@ -6961,15 +7197,17 @@ $("addBtn").onclick=()=>{
     if($("saveCustom").checked){store.custom=store.custom||[];if(!store.custom.some(x=>norm(x.n)===norm(name)))store.custom.push({n:name,k:base.k,p:base.p,c:base.c,g:base.g,unit:munit,src:"manual"});}
   }else{
     if(!picked)return flash("Escolha um alimento na busca",true);
-    const qty=parseFloat($("grams").value);
+    const qty=qtdBR($("grams").value);
     if(!qty||qty<=0)return flash(picked.fixed?"Informe as porções":"Informe a quantidade em gramas",true);
     if(picked.fixed){
       item={id:uid(),name:picked.n+(qty!==1?` (${r1(qty)}x)`:""),grams:null,base:null,kcal:picked.k*qty,p:picked.p*qty,c:picked.c*qty,g:picked.g*qty,status:addStatus};
+      porcoes=qty;
     }else{
       const f=qty/100;
       item={id:uid(),name:picked.n,grams:qty,unit:qtyUnit,base:{k:picked.k,p:picked.p,c:picked.c,g:picked.g},kcal:picked.k*f,p:picked.p*f,c:picked.c*f,g:picked.g*f,status:addStatus};
     }
   }
+  if(!await confereQtd(item,porcoes))return;
   item.meal=$("mealSel").value;
   /* O horário serve ao histórico de líquidos. Num dia passado não há horário a
      registrar, e inventar um seria pior que não ter. */
@@ -6984,7 +7222,22 @@ let flashT;
 function flash(m,warn=false){const f=$("flash");f.textContent=m;f.style.color=warn?"var(--warn)":"var(--primary)";clearTimeout(flashT);flashT=setTimeout(()=>f.textContent="",3200);}
 
 const getdInput=$("getdInput");getdInput.value=store.getd>0?store.getd:"";
-getdInput.addEventListener("change",()=>{let v=parseInt(getdInput.value)||0;if(v<500)v=500;store.getd=v;getdInput.value=v;save();render();});
+/* GETD digitado à mão ganha a marca "manual" e não é mais trocado sozinho:
+   nem pelo objetivo, nem pelo exógeno, nem pelo peso. "usar o calculado"
+   tira a marca. */
+getdInput.addEventListener("change",()=>{
+  let v=inteiroBR(getdInput.value);if(v<500)v=500;
+  const foto=fotoGetd();
+  store.goals=store.goals||{};
+  if(v!==store.getd)store.goals.getdManual=true;
+  mudarGetd(v,foto);getdInput.value=store.getd;save();render();renderInicio();
+});
+$("getdAuto").onclick=async()=>{
+  const g=store.goals||{},calc=Math.round(computeGETD(g));
+  if(!(calc>0)){appAlert("Defina seu perfil e objetivo para o app calcular o GETD.");return;}
+  if(!await appConfirm(`Voltar a calcular o GETD pelo seu perfil? Ele passa de ${nPt(store.getd)} para ${nPt(calc)} kcal.`,{title:"GETD calculado",okText:"Usar o calculado",danger:false}))return;
+  const foto=fotoGetd();delete g.getdManual;mudarGetd(calc,foto);save();render();renderInicio();
+};
 
 const overlay=$("overlay");
 function openEdit(id){
@@ -6994,8 +7247,8 @@ function openEdit(id){
   const isDb=it.base!=null;
   const el=document.querySelector('label[for="eGrams"]');if(el)el.textContent="Quantidade ("+(it.unit||'g')+")";
   $("eDbWrap").style.display=isDb?"block":"none";$("eManualWrap").style.display=isDb?"none":"grid";
-  if(isDb)$("eGrams").value=r0(it.grams);
-  else{$("eKcal").value=r1(it.kcal);$("eProt").value=r1(it.p);$("eCarb").value=r1(it.c);$("eGord").value=r1(it.g);}
+  if(isDb)$("eGrams").value=campoBR(r0(it.grams));
+  else{$("eKcal").value=campoBR(r1(it.kcal));$("eProt").value=campoBR(r1(it.p));$("eCarb").value=campoBR(r1(it.c));$("eGord").value=campoBR(r1(it.g));}
   document.querySelectorAll("#eStatusSeg button").forEach(b=>b.classList.toggle("on",b.dataset.v===editStatus));
   overlay.classList.add("open");
 }
@@ -7003,8 +7256,8 @@ document.querySelectorAll("#eStatusSeg button").forEach(b=>b.onclick=()=>{editSt
 $("saveEdit").onclick=()=>{
   const it=dayItems().find(x=>x.id===editId);if(!it)return;
   it.name=$("eName").value.trim()||it.name;it.status=editStatus;it.meal=$("eMeal").value;
-  if(it.base!=null){let grams=parseFloat($("eGrams").value);if(!grams||grams<=0)grams=it.grams;const f=grams/100;it.grams=grams;it.kcal=it.base.k*f;it.p=it.base.p*f;it.c=it.base.c*f;it.g=it.base.g*f;}
-  else{it.kcal=parseFloat($("eKcal").value)||0;it.p=parseFloat($("eProt").value)||0;it.c=parseFloat($("eCarb").value)||0;it.g=parseFloat($("eGord").value)||0;}
+  if(it.base!=null){let grams=qtdBR($("eGrams").value);if(!grams||grams<=0)grams=it.grams;const f=grams/100;it.grams=grams;it.kcal=it.base.k*f;it.p=it.base.p*f;it.c=it.base.c*f;it.g=it.base.g*f;}
+  else{it.kcal=qtdBR($("eKcal").value);it.p=qtdBR($("eProt").value);it.c=qtdBR($("eCarb").value);it.g=qtdBR($("eGord").value);}
   save();render();overlay.classList.remove("open");
 };
 $("cancelEdit").onclick=()=>overlay.classList.remove("open");
@@ -7045,11 +7298,39 @@ function burnedKcal(dk){return ((store.tdays&&store.tdays[dk])||[]).reduce((a,w)
      é o GETD sem a parte da rotina acima do piso sedentário (TMB × 1,2). Com
      GETD digitado à mão o desconto é o mesmo. O exógeno fica, porque é somado
      à parte. Sem passos, nada muda. */
+/* ---- O peso que vale na conta ----
+   O objetivo guarda dois pesos, que antes eram um campo só:
+   - pesoAtual: o peso no início do plano. Dele saem o ritmo, o "faltam X
+     kg" e o `inicio`; mudá-lo é começar outro plano.
+   - pesoConta: o peso da taxa basal (Mifflin-St Jeor, 10 kcal por kg), do
+     GETD e da proteína. Começa igual ao pesoAtual e só muda quando a pessoa
+     aceita "Atualizar" depois de uma pesagem. A meta nunca muda sozinha: a
+     pesagem propõe, a pessoa decide.
+   Atividade medida (cardio, passos) usa o peso daquele dia, como sempre usou
+   o cardio: a mesma caminhada não pode valer dois números. */
+function pesoConta(g){g=g||{};return parseFloat(g.pesoConta)||parseFloat(g.pesoAtual)||0;}
+function pesoNoDia(dk){
+  const ws=(store.weights||[]).filter(x=>x&&x.w>0&&x.d<=dk).sort((a,b)=>a.d<b.d?-1:1);
+  return ws.length?ws[ws.length-1].w:(parseFloat((store.goals||{}).pesoAtual)||0);
+}
+function ultimaPesagem(){
+  const h=todayKey(),ws=(store.weights||[]).filter(x=>x&&x.w>0&&x.d<=h).sort((a,b)=>a.d<b.d?-1:1);
+  return ws.length?ws[ws.length-1]:null;
+}
+/* Os passos guardam o peso com que foram contados: uma pesagem nova não
+   muda o passado. Registro de antes disto, sem peso, segue com o peso do
+   objetivo, como sempre foi. */
+function pesoPassos(dk){
+  const reg=store.passos&&store.passos[dk];
+  if(reg&&reg.peso>0)return reg.peso;
+  if(reg&&reg.n>0)return parseFloat((store.goals||{}).pesoAtual)||0;
+  return pesoNoDia(dk);
+}
 const PASSADA_H=0.415,PASSADA_M=0.413,PASSOS_MAX=100000;
 function passadaM(g){const alt=parseFloat(g&&g.altura)||0;return alt>0?alt/100*((g&&g.sexo==="F")?PASSADA_M:PASSADA_H):0;}
 function kmAtividades(dk){return ((store.tdays&&store.tdays[dk])||[]).reduce((a,w)=>a+(w.km>0?w.km:0),0);}
-function passosCalc(dk,n,inclui){
-  const g=store.goals||{},passada=passadaM(g),peso=parseFloat(g.pesoAtual)||0;
+function passosCalc(dk,n,inclui,pesoNovo){
+  const g=store.goals||{},passada=passadaM(g),peso=pesoNovo>0?pesoNovo:pesoPassos(dk);
   const kmAtiv=kmAtividades(dk),temAtiv=kmAtiv>0;
   const passosAtiv=(passada>0&&temAtiv)?Math.round(kmAtiv*1000/passada):0;
   const incluiDeFato=!!(inclui&&temAtiv);
@@ -7071,7 +7352,35 @@ function baseSemRotina(){
 function rotinaKcal(){return Math.max(0,Math.round((store.getd||0)-baseSemRotina()));}
 function efeitoPassos(p){return p&&p.calculavel?Math.round(p.kcal-rotinaKcal()):0;}
 const sinal=v=>(v>0?"+":v<0?"−":"")+nPt(Math.abs(v));
-function gastoDia(dk){const p=passosDia(dk);if(p&&p.calculavel)return baseSemRotina()+p.kcal+burnedKcal(dk);return store.getd+burnedKcal(dk);}
+/* ---- O GETD de cada dia ----
+   Mudar o GETD (pelo peso, pelo objetivo, pelo exógeno ou à mão) não pode
+   reescrever o saldo dos dias que já passaram: a semana, o mês e a
+   sequência mudariam sem a pessoa ter comido nada diferente. Cada mudança
+   guarda o que valia em `store.getdHist` ({desde, getd, base}); dia
+   passado usa o seu, hoje usa o atual. Sem histórico (ninguém mudou nada
+   ainda), vale o atual, como sempre foi. */
+function fotoGetd(){return {getd:store.getd||0,base:baseSemRotina()};}
+function mudarGetd(novo,foto){
+  novo=Math.round(novo);
+  if(!(novo>0)||novo===store.getd)return false;
+  const hoje=todayKey(),h=Array.isArray(store.getdHist)?store.getdHist.slice():[];
+  if(!h.length&&foto&&foto.getd>0)h.push({desde:"0000-01-01",getd:foto.getd,base:foto.base});
+  store.getd=novo;
+  const e={desde:hoje,getd:novo,base:baseSemRotina()},i=h.findIndex(x=>x&&x.desde===hoje);
+  if(i>-1)h[i]=e;else h.push(e);
+  store.getdHist=h;
+  if(document.activeElement!==$("getdInput"))$("getdInput").value=store.getd;
+  return true;
+}
+function gastoBase(dk){
+  const h=store.getdHist;
+  if(dk&&dk<todayKey()&&Array.isArray(h)){
+    let e=null;for(const x of h)if(x&&x.desde<=dk&&(!e||x.desde>e.desde))e=x;
+    if(e)return {getd:e.getd,base:e.base};
+  }
+  return {getd:store.getd,base:baseSemRotina()};
+}
+function gastoDia(dk){const b=gastoBase(dk),p=passosDia(dk);if(p&&p.calculavel)return b.base+p.kcal+burnedKcal(dk);return b.getd+burnedKcal(dk);}
 const nPt=n=>Math.round(n).toLocaleString("pt-BR");
 function goalMeta(t,dk){const base=gastoDia(dk||viewKey);return t.mode==="bulking"?base+t.daily:Math.max(0,base-t.daily);}
 function dayMetric(t,dk){return t.mode==="bulking"?(consumedKcal(dk)-gastoDia(dk)):(gastoDia(dk)-consumedKcal(dk));}
@@ -7219,19 +7528,45 @@ wtOverlay.onclick=e=>{if(e.target===wtOverlay)wtOverlay.classList.remove("open")
 function renderWtList(){
   const ws=(store.weights||[]).slice().sort((a,b)=>a.d<b.d?1:-1);
   const el=$("wtList");
-  el.innerHTML=ws.length?ws.map(x=>{const d=dateFromKey(x.d);const lbl=String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();return `<div class="wt-row"><span class="wt-d">${lbl}</span><input class="wt-edit" data-d="${x.d}" type="number" step="0.1" inputmode="decimal" value="${x.w}"><span class="wt-unit">kg</span><button class="wt-del" data-del="${x.d}" aria-label="Excluir">×</button></div>`;}).join(""):'<div class="ins-empty">Nenhum registro ainda.</div>';
-  el.querySelectorAll(".wt-edit").forEach(inp=>inp.onchange=()=>{const v=parseFloat(inp.value),dk=inp.dataset.d,it=(store.weights||[]).find(x=>x.d===dk);if(it&&v>0){it.w=v;save();renderGoals();}});
+  el.innerHTML=ws.length?ws.map(x=>{const d=dateFromKey(x.d);const lbl=String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();return `<div class="wt-row"><span class="wt-d">${lbl}</span><input class="wt-edit" data-d="${x.d}" type="text" data-num="dec" inputmode="decimal" value="${campoBR(x.w)}"><span class="wt-unit">kg</span><button class="wt-del" data-del="${x.d}" aria-label="Excluir">×</button></div>`;}).join(""):'<div class="ins-empty">Nenhum registro ainda.</div>';
+  el.querySelectorAll(".wt-edit").forEach(inp=>inp.onchange=async()=>{const v=numBR(inp.value),dk=inp.dataset.d,it=(store.weights||[]).find(x=>x.d===dk);if(!it||!(v>0))return;if(!await conferePeso(v,dk)){inp.value=campoBR(it.w);return;}it.w=v;save();renderGoals();});
   el.querySelectorAll(".wt-del").forEach(b=>b.onclick=async()=>{if(await appConfirm("Excluir este registro de peso?",{okText:"Excluir"})){store.weights=(store.weights||[]).filter(x=>x.d!==b.dataset.del);save();renderWtList();renderGoals();}});
 }
 document.querySelectorAll("#wtTabs button").forEach(b=>b.onclick=()=>{wtView=b.dataset.v;document.querySelectorAll("#wtTabs button").forEach(x=>x.classList.toggle("on",x===b));renderWeight();});
-$("wtAdd").onclick=()=>{
-  const w=parseFloat($("wtInput").value);
+/* ---- Pesagem: conferir antes de gravar ----
+   O número com mais chance de estar errado é o que se afasta muito da
+   pesagem mais perto: vírgula esquecida (824 por 82,4) ou dedo escorregado.
+   Os limites são decisão de produto, não fisiologia: mais de 10% de
+   diferença para a pesagem mais perto ou, sem nenhuma para comparar, fora de
+   30 a 250 kg. O app pergunta; nunca troca o número sozinho. */
+const PESO_DIF=0.10,PESO_MIN=30,PESO_MAX=250,PESO_TETO=400;
+function pesoVizinho(dk){
+  const ws=(store.weights||[]).filter(x=>x.d!==dk&&x.w>0);
+  if(!ws.length)return null;
+  const t=dateFromKey(dk).getTime(),dist=x=>Math.abs(dateFromKey(x.d).getTime()-t);
+  return ws.reduce((a,x)=>dist(x)<dist(a)?x:a);
+}
+async function conferePeso(w,dk){
+  const viz=pesoVizinho(dk);
+  const dez=viz&&Math.abs(w/10-viz.w)/viz.w<=PESO_DIF?` Talvez seja ${kgTxt(w/10)} kg.`:"";
+  if(!(w>0)||w>PESO_TETO){await appAlert(`${kgTxt(w)} kg não é um peso possível.${dez} Confira o número.`,"Conferir o peso");return false;}
+  if(viz?Math.abs(w-viz.w)/viz.w<=PESO_DIF:(w>=PESO_MIN&&w<=PESO_MAX))return true;
+  const ref=viz?` A pesagem mais perto, de ${fdRotuloDia(viz.d).toLowerCase()}, foi ${kgTxt(viz.w)} kg.`:"";
+  return appConfirm(`Confere ${kgTxt(w)} kg?${ref}${dez}`,{title:"Conferir o peso",okText:"Está certo",cancelText:"Corrigir",danger:false});
+}
+function gravarPeso(dk,w){
+  store.weights=store.weights||[];
+  const it=store.weights.find(x=>x.d===dk);
+  if(it)it.w=w;else store.weights.push({d:dk,w});
+  save();
+}
+$("wtAdd").onclick=async()=>{
+  const w=numBR($("wtInput").value);
   if(!w||w<=0)return;
   const k=$("wtDate").value||todayKey();
-  store.weights=store.weights||[];
-  const idx=store.weights.findIndex(x=>x.d===k);
-  if(idx>-1)store.weights[idx].w=w;else store.weights.push({d:k,w});
-  $("wtInput").value="";save();renderGoals();
+  if(!await conferePeso(w,k)){$("wtInput").focus();return;}
+  gravarPeso(k,w);
+  $("wtInput").value="";renderGoals();
 };
 if($("wtDate"))$("wtDate").value=todayKey();
 function renderGoals(){
@@ -7398,7 +7733,7 @@ function limitarLiqHist(){
 }
 
 document.querySelectorAll("[data-add]").forEach(b=>b.onclick=()=>addLiquid(parseInt(b.dataset.add)));
-$("liqAddCustom").onclick=()=>{const v=parseInt($("liqCustom").value)||0;if(v>0){addLiquid(v);$("liqCustom").value="";}};
+$("liqAddCustom").onclick=()=>{const v=inteiroBR($("liqCustom").value);if(v>0){addLiquid(v);$("liqCustom").value="";}};
 /* Zerar agora apaga o histórico do dia junto, e isso não se desfaz. */
 $("liqReset").onclick=async()=>{
   if(!(await appConfirm("Zerar a água do dia? O histórico de horários deste dia também é apagado.",{okText:"Zerar",cancelText:"Voltar"})))return;
@@ -7426,7 +7761,7 @@ function idadeAtual(g){
   const porData=idadeDe(g&&g.nasc);
   return porData>0?porData:(parseFloat(g&&g.idade)||0);
 }
-function computeTMB(g){const peso=parseFloat(g.pesoAtual)||0,alt=parseFloat(g.altura)||0,idade=idadeAtual(g);if(peso<=0||alt<=0||idade<=0)return 0;return 10*peso+6.25*alt-5*idade+((g.sexo==="F")?-161:5);}
+function computeTMB(g){const peso=pesoConta(g),alt=parseFloat(g.altura)||0,idade=idadeAtual(g);if(peso<=0||alt<=0||idade<=0)return 0;return 10*peso+6.25*alt-5*idade+((g.sexo==="F")?-161:5);}
 const NEAT_MIG={"1.375":1.3,"1.55":1.4,"1.725":1.55,"1.9":1.7};
 function neatAtiv(v){const f=parseFloat(v)||1.2;const m=NEAT_MIG[String(v)];return m!==undefined?m:f;}
 /* O exógeno soma sobre a taxa basal, não sobre o GETD inteiro: o que foi medido
@@ -7627,7 +7962,7 @@ function montarExog(ids,onChange){
   };
 }
 let exogForm=null;
-function readGoalForm(){const x=exogForm?exogForm.get():{exog:[],clenDose:0,exogAceite:"",exogLocal:true};return {sexo:$("gSexo").value,idade:$("gIdade").value,altura:$("gAltura").value,pesoAtual:$("gPesoAtual").value,ativ:$("gAtiv").value,pesoAlvo:$("gPesoAlvo").value,meses:$("gMeses").value,liquidTarget:$("gLiquid").value,exog:x.exog,clenDose:x.clenDose,exogAceite:x.exogAceite,exogLocal:x.exogLocal};}
+function readGoalForm(){const x=exogForm?exogForm.get():{exog:[],clenDose:0,exogAceite:"",exogLocal:true};return {sexo:$("gSexo").value,idade:inteiroBR($("gIdade").value),altura:numBR($("gAltura").value),pesoAtual:numBR($("gPesoAtual").value),ativ:$("gAtiv").value,pesoAlvo:numBR($("gPesoAlvo").value),meses:numBR($("gMeses").value),liquidTarget:inteiroBR($("gLiquid").value),exog:x.exog,clenDose:x.clenDose,exogAceite:x.exogAceite,exogLocal:x.exogLocal};}
 exogForm=montarExog({seg:"gExogSeg",lista:"gExogLista",doseWrap:"gExogDoseWrap",dose:"gExogDose",doseNota:"gExogDoseNota",localWrap:"gExogLocalWrap",local:"gExogLocal"},()=>{
   const g=readGoalForm(),n=$("gExogNota"),f=exogFator(g),getd=computeGETD(g);
   n.style.display=g.exog.length?"block":"none";
@@ -7643,7 +7978,7 @@ document.querySelectorAll(".obj-btn").forEach(b=>b.onclick=()=>{
 });
 function openGoals(){
   const g=store.goals||{};
-  $("gSexo").value=g.sexo||"M";$("gAltura").value=g.altura||"";$("gPesoAtual").value=g.pesoAtual||"";
+  $("gSexo").value=g.sexo||"M";$("gAltura").value=campoBR(g.altura||"");$("gPesoAtual").value=campoBR(g.pesoAtual||"");
   /* Com data de nascimento guardada, a idade é conta, não pergunta: o campo
      mostra o valor de hoje e não aceita digitação, para não abrir uma segunda
      verdade sobre a mesma pessoa. Contas antigas, sem data, seguem digitando. */
@@ -7651,7 +7986,7 @@ function openGoals(){
   $("gIdade").value=porData>0?porData:(g.idade||"");
   $("gIdade").readOnly=porData>0;
   $("gIdadeNota").textContent=porData>0?"pela sua data de nascimento":"";
-  $("gAtiv").value=g.ativ?String(neatAtiv(g.ativ)):"1.4";$("gPesoAlvo").value=g.pesoAlvo||"";$("gMeses").value=g.meses||"";$("gLiquid").value=g.liquidTarget||3000;
+  $("gAtiv").value=g.ativ?String(neatAtiv(g.ativ)):"1.4";$("gPesoAlvo").value=campoBR(g.pesoAlvo||"");$("gMeses").value=campoBR(g.meses||"");$("gLiquid").value=g.liquidTarget||3000;
   const pa=parseFloat(g.pesoAtual)||0,pv=parseFloat(g.pesoAlvo)||0;
   selectedObj=g.objetivo||(pv&&pa?(pv>pa?"bulking":"cutting"):null);
   exogForm.set(g);
@@ -7693,6 +8028,7 @@ function updateGoalPreview(){
 ["gSexo","gIdade","gAltura","gPesoAtual","gAtiv","gPesoAlvo","gMeses"].forEach(id=>{const el=$(id);el.addEventListener("input",updateGoalPreview);el.addEventListener("change",updateGoalPreview);});
 $("gMeses").addEventListener("input",()=>document.querySelectorAll(".pace-opt").forEach(x=>x.classList.remove("on")));
 $("saveGoals").onclick=()=>{
+  const foto=fotoGetd();   // antes de o objetivo mudar: é o que valia até hoje
   const g=readGoalForm();
   const pa=parseFloat(g.pesoAtual)||0,pv=parseFloat(g.pesoAlvo)||0;
   const obj=selectedObj||(pv>pa?"bulking":"cutting");
@@ -7706,8 +8042,15 @@ $("saveGoals").onclick=()=>{
   const nasc=(store.goals&&store.goals.nasc)||"";
   const anos=idadeDe(nasc);
   store.goals={nome,inicio,nasc,objetivo:obj,sexo:g.sexo,idade:anos>0?anos:(parseFloat(g.idade)||0),altura:parseFloat(g.altura)||0,pesoAtual:parseFloat(g.pesoAtual)||0,ativ:parseFloat(g.ativ)||1.2,pesoAlvo:parseFloat(g.pesoAlvo)||0,meses:parseFloat(g.meses)||0,liquidTarget:parseInt(g.liquidTarget)||3000,exog:g.exog||[],clenDose:g.clenDose||0,exogAceite:g.exogAceite||"",exogLocal:g.exogLocal!==false};
+  /* Também remontados do zero, e por isso carregados aqui: o peso aceito em
+     "Atualizar" (só com o mesmo plano: plano novo parte do peso de partida),
+     a marca de GETD manual e o "Manter" da última pesagem. */
+  if(sameplan&&prev.pesoConta)store.goals.pesoConta=prev.pesoConta;
+  if(prev.getdManual)store.goals.getdManual=true;
+  if(sameplan&&prev.mantido)store.goals.mantido=prev.mantido;
   const getd=computeGETD(store.goals);
-  if(getd>0){store.getd=Math.round(getd);$("getdInput").value=store.getd;}
+  if(getd>0&&!store.goals.getdManual)mudarGetd(getd,foto);
+  else if(store.goals.getdManual&&store.getd>0)flash(`O GETD continua ${nPt(store.getd)} kcal, digitado à mão`);
   save();render();goalsOverlay.classList.remove("open");
   if(onboarding){onboarding=false;fillUser();showView("inicio");}
 };
@@ -7717,7 +8060,7 @@ let passosDk=null;
 function passosLerN(){return Math.min(PASSOS_MAX,parseInt(String($("passosN").value).replace(/\D/g,""),10)||0);}
 function passosInclui(){return $("passosIncSeg").dataset.v!=="nao";}
 function pintarPassos(){
-  const n=passosLerN(),c=passosCalc(passosDk,n,passosInclui());
+  const n=passosLerN(),c=passosCalc(passosDk,n,passosInclui(),pesoNoDia(passosDk));
   $("passosAtivWrap").style.display=c.temAtiv?"":"none";
   if(c.temAtiv){
     const ativs=((store.tdays&&store.tdays[passosDk])||[]).filter(x=>x.km>0).map(x=>`${x.name} ${kgTxt(x.km)} km`).join(", ");
@@ -7757,7 +8100,8 @@ $("passosSalvar").onclick=()=>{
   if(n<=0){$("passosNota").textContent="Digite os passos que o celular ou o relógio mostra.";$("passosN").focus();return;}
   store.passos=store.passos||{};
   const temAtiv=kmAtividades(passosDk)>0;
-  store.passos[passosDk]={n,inclui:temAtiv?passosInclui():false};
+  const peso=pesoNoDia(passosDk);
+  store.passos[passosDk]=Object.assign({n,inclui:temAtiv?passosInclui():false},peso>0?{peso}:{});
   if(temAtiv){try{localStorage.setItem("tresults.passosInc",passosInclui()?"sim":"nao");}catch(e){}}
   save();render();renderInicio();renderTreino();
   $("passosOverlay").classList.remove("open");
@@ -7767,6 +8111,104 @@ $("passosVoltar").onclick=()=>$("passosOverlay").classList.remove("open");
 $("passosOverlay").onclick=e=>{if(e.target===$("passosOverlay"))$("passosOverlay").classList.remove("open");};
 $("passosRow").onclick=()=>abrirPassos(viewKey);
 $("fdPassos").onclick=()=>abrirPassos(todayKey());
+/* ---- Peso do dia ----
+   Lançado ao lado dos passos, no Início (hoje) e na Alimentação (o dia
+   visto), quando a pessoa quiser. Vai para a mesma lista da curva de peso
+   (store.weights), com a mesma conferência (conferePeso). */
+let pesoDk=null;
+function pesoDoDia(dk){const it=(store.weights||[]).find(x=>x&&x.d===dk);return it&&it.w>0?it.w:0;}
+function pesoAntes(dk){const ws=(store.weights||[]).filter(x=>x&&x.w>0&&x.d<dk).sort((a,b)=>a.d<b.d?-1:1);return ws.length?ws[ws.length-1]:null;}
+const quandoTxt=dk=>dk===todayKey()?"hoje":fdRotuloDia(dk).toLowerCase();
+const difKg=d=>Math.abs(d)<0.05?"mesmo peso":(d>0?"+":"−")+kgTxt(Math.abs(d))+" kg";
+function abrirPeso(dk){
+  pesoDk=dk;
+  const w=pesoDoDia(dk),ant=pesoAntes(dk);
+  $("pesoN").value=w?campoBR(w):"";
+  $("pesoN").placeholder=ant?campoBR(ant.w):"0";
+  $("pesoData").textContent=dk===todayKey()?"Hoje":fdRotuloDia(dk);
+  $("pesoNota").textContent=ant?`Pesagem anterior: ${kgTxt(ant.w)} kg (${quandoTxt(ant.d)}).`:"É a primeira pesagem registrada.";
+  $("pesoApagar").style.display=w?"":"none";
+  $("pesoOverlay").classList.add("open");
+  setTimeout(()=>$("pesoN").focus(),200);
+}
+function fecharPeso(){$("pesoOverlay").classList.remove("open");}
+$("pesoSalvar").onclick=async()=>{
+  const w=numBR($("pesoN").value);
+  if(!(w>0)){$("pesoNota").textContent="Digite o peso que a balança mostrou.";$("pesoN").focus();return;}
+  if(!await conferePeso(w,pesoDk)){$("pesoN").focus();return;}
+  gravarPeso(pesoDk,w);
+  fecharPeso();render();renderInicio();renderGoals();
+};
+$("pesoApagar").onclick=async()=>{
+  if(!await appConfirm("Apagar a pesagem deste dia?",{okText:"Apagar"}))return;
+  store.weights=(store.weights||[]).filter(x=>x.d!==pesoDk);save();
+  fecharPeso();render();renderInicio();renderGoals();
+};
+$("pesoVoltar").onclick=fecharPeso;
+$("pesoOverlay").onclick=e=>{if(e.target===$("pesoOverlay"))fecharPeso();};
+$("pesoRow").onclick=()=>abrirPeso(viewKey);
+$("fdPeso").onclick=()=>abrirPeso(todayKey());
+/* ---- A meta acompanha o peso, com a confirmação da pessoa ----
+   Quando a pesagem mais recente muda o gasto estimado em GETD_AVISO kcal ou
+   mais, um cartão no Início e na Alimentação diz quanto e pergunta. O
+   limiar é decisão de produto: abaixo dele a diferença some no erro da
+   própria estimativa. "Atualizar" troca o peso da conta (pesoConta) e o
+   GETD; o plano, o `inicio` e o peso de partida não mudam. "Manter" vale
+   para aquela pesagem: a próxima pergunta de novo. */
+const GETD_AVISO=25;
+function propostaGetd(){
+  const g=store.goals||{};
+  if(g.getdManual||!(store.getd>0))return null;
+  const ult=ultimaPesagem();
+  if(!ult||g.mantido===ult.d)return null;
+  const atual=pesoConta(g);
+  if(!(atual>0)||Math.abs(ult.w-atual)<0.05)return null;
+  const antes=computeGETD(g),depois=computeGETD(Object.assign({},g,{pesoConta:ult.w}));
+  if(!(antes>0)||!(depois>0))return null;
+  const dif=Math.round(depois-antes);
+  if(Math.abs(dif)<GETD_AVISO)return null;
+  return {dif,novo:store.getd+dif,peso:ult.w,d:ult.d};
+}
+/* A meta de hoje como ficaria com a proposta: a conta inteira (passos,
+   treino, rotina), não só o GETD somado. */
+function metaComAjuste(p,t){
+  const g=store.goals,gd=store.getd,tinha="pesoConta" in g,pc=g.pesoConta;
+  g.pesoConta=p.peso;store.getd=p.novo;
+  try{return goalMeta(t,todayKey());}
+  finally{if(tinha)g.pesoConta=pc;else delete g.pesoConta;store.getd=gd;}
+}
+function pintarAjuste(el){
+  if(!el)return;
+  const p=propostaGetd();
+  el.hidden=!p;
+  if(!p){el.innerHTML="";return;}
+  const t=goalTargets(),meta=t.configured?goalMeta(t,todayKey()):0,depois=meta>0?metaComAjuste(p,t):0;
+  el.innerHTML=`<p class="am-tx">Com <b>${kgTxt(p.peso)} kg</b> (pesagem de ${quandoTxt(p.d)}), seu gasto estimado ${p.dif<0?"cai":"sobe"} <b>${nPt(Math.abs(p.dif))} kcal</b> por dia.${meta>0?` Meta de hoje: <b>${nPt(depois)}</b> (era ${nPt(meta)}).`:""}</p>`
+    +`<div class="am-bts"><button class="btn" type="button" data-ajuste="sim">Atualizar</button><button class="btn secondary" type="button" data-ajuste="nao">Manter</button></div>`;
+  el.querySelector('[data-ajuste="sim"]').onclick=()=>aplicarAjuste(true);
+  el.querySelector('[data-ajuste="nao"]').onclick=()=>aplicarAjuste(false);
+}
+function aplicarAjuste(sim){
+  const p=propostaGetd();if(!p)return;
+  const g=store.goals;
+  if(sim){const foto=fotoGetd();g.pesoConta=p.peso;delete g.mantido;mudarGetd(p.novo,foto);flash(`Meta ajustada ao peso de ${kgTxt(p.peso)} kg`);}
+  else g.mantido=p.d;
+  save();render();renderInicio();
+}
+function renderPeso(){
+  if(!$("pesoRow"))return;
+  const w=pesoDoDia(viewKey),ant=pesoAntes(viewKey);
+  if(w){$("pesoTit").textContent=`${kgTxt(w)} kg`;$("pesoSub").textContent=ant?`${difKg(w-ant.w)} desde ${quandoTxt(ant.d)}`:"Primeira pesagem registrada";}
+  else{$("pesoTit").textContent="Peso do dia";$("pesoSub").textContent=ant?`Último: ${kgTxt(ant.w)} kg (${quandoTxt(ant.d)}) · toque para lançar`:"Toque para lançar quando quiser";}
+  pintarAjuste($("alAjuste"));
+  $("getdNota").hidden=!(store.goals&&store.goals.getdManual);
+}
+function renderFdPeso(){
+  const el=$("fdPesoTx");if(!el)return;
+  const h=todayKey(),w=pesoDoDia(h),ult=ultimaPesagem();
+  el.textContent=w?`Peso de hoje: ${kgTxt(w)} kg`:ult?`Lançar o peso · último ${kgTxt(ult.w)} kg (${quandoTxt(ult.d)})`:"Lançar o peso de hoje";
+  pintarAjuste($("fdAjuste"));
+}
 /* A linha na Alimentação (dia visto) e o selo no Início (sempre hoje). */
 function renderPassos(){
   if(!$("passosRow"))return;
@@ -7789,6 +8231,7 @@ const exogPop=montarExog({seg:"exogPopSeg",lista:"exogPopLista",doseWrap:"exogPo
   const g=Object.assign({},store.goals||{},exogPop.get()),n=$("exogPopNota");
   const antes=computeGETD(store.goals||{}),depois=computeGETD(g);
   if(antes<=0)n.innerHTML="Defina seu objetivo no perfil para o app calcular o efeito no GETD.";
+  else if(g.getdManual)n.innerHTML=`Seu GETD está fixado à mão em <b>${r0(store.getd)}</b> kcal: o exógeno não muda a meta enquanto ele estiver assim.`;
   else if(g.exog.length&&Math.round(depois)!==Math.round(antes))n.innerHTML=`GETD: <b>${r0(antes)}</b> → <b>${r0(depois)}</b> kcal/dia.`;
   else if(g.exog.length)n.innerHTML="Só informação: a meta não muda.";
   else n.innerHTML=`GETD: <b>${r0(depois)}</b> kcal/dia.`;
@@ -7804,9 +8247,10 @@ $("exogPopVoltar").onclick=()=>$("exogOverlay").classList.remove("open");
 $("exogOverlay").onclick=e=>{if(e.target===$("exogOverlay"))$("exogOverlay").classList.remove("open");};
 $("exogPopSalvar").onclick=()=>{
   store.goals=store.goals||{};
+  const foto=fotoGetd();
   Object.assign(store.goals,exogPop.get());
   const getd=computeGETD(store.goals);
-  if(getd>0){store.getd=Math.round(getd);$("getdInput").value=store.getd;}
+  if(getd>0&&!store.goals.getdManual)mudarGetd(getd,foto);
   save();render();renderInicio();renderPerfil();
   $("exogOverlay").classList.remove("open");
 };
@@ -7824,7 +8268,7 @@ function gGoStep(n){
   $("gNext").style.display=n<3?"flex":"none";
   $("saveGoals").style.display=n===3?"flex":"none";
   $("gBack").style.display=n>1?"flex":"none";
-  if(n===3){const pa=parseFloat($("gPesoAtual").value)||0;$("gPesoAtualShow").textContent=pa?r1(pa)+" kg":"—";updateGoalPreview();}
+  if(n===3){const pa=numBR($("gPesoAtual").value);$("gPesoAtualShow").textContent=pa?r1(pa)+" kg":"—";updateGoalPreview();}
   const md=goalsOverlay.querySelector(".modal");if(md)md.scrollTop=0;
 }
 function gwHint(){
@@ -7833,7 +8277,7 @@ function gwHint(){
 }
 $("gNext").onclick=()=>{
   if(goalStep===1){
-    const ok=(parseFloat($("gIdade").value)||0)>0&&(parseFloat($("gAltura").value)||0)>0&&(parseFloat($("gPesoAtual").value)||0)>0;
+    const ok=inteiroBR($("gIdade").value)>0&&numBR($("gAltura").value)>0&&numBR($("gPesoAtual").value)>0;
     if(!ok){$("getdHint").innerHTML="<b>Preencha idade, altura e peso</b> para continuar.";return;}
   }
   if(goalStep===2&&!selectedObj){$("objHint").style.display="block";$("objHint").innerHTML="Toque em <b>Perder peso</b> ou <b>Ganhar massa</b> para continuar.";return;}
@@ -7915,7 +8359,7 @@ $("pmManualToggle").onclick=()=>{pmManual=!pmManual;$("pmManual").style.display=
 $("pmAddFood").onclick=()=>{
   if(pmManual)return;
   if(!pmPicked){pmSearch.focus();return;}
-  const qty=parseFloat($("pmGrams").value)||0;if(qty<=0)return;
+  const qty=qtdBR($("pmGrams").value);if(qty<=0)return;
   let item;
   if(pmPicked.fixed)item={n:pmPicked.n,k:pmPicked.k*qty,p:pmPicked.p*qty,c:pmPicked.c*qty,g:pmPicked.g*qty,grams:null,unit:null};
   else{const f=qty/100;item={n:pmPicked.n,k:pmPicked.k*f,p:pmPicked.p*f,c:pmPicked.c*f,g:pmPicked.g*f,grams:qty,unit:pmUnit};}
@@ -7923,7 +8367,7 @@ $("pmAddFood").onclick=()=>{
 };
 document.querySelectorAll("#pmMUnitSeg button").forEach(b=>b.onclick=()=>{pmMUnit=b.dataset.u;document.querySelectorAll("#pmMUnitSeg button").forEach(x=>x.classList.toggle("on",x===b));});
 $("pmAddManual").onclick=()=>{
-  const n=$("pmMName").value.trim(),qty=parseFloat($("pmMGrams").value)||0,k=parseFloat($("pmMKcal").value)||0,p=parseFloat($("pmMProt").value)||0,c=parseFloat($("pmMCarb").value)||0,g=parseFloat($("pmMGord").value)||0;
+  const n=$("pmMName").value.trim(),qty=qtdBR($("pmMGrams").value),k=qtdBR($("pmMKcal").value),p=qtdBR($("pmMProt").value),c=qtdBR($("pmMCarb").value),g=qtdBR($("pmMGord").value);
   if(!n||k<=0||qty<=0)return;
   editingMeal.items.push({n,k,p,c,g,grams:qty,unit:pmMUnit});
   store.custom=store.custom||[];
