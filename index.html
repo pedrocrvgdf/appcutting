@@ -729,7 +729,7 @@ window.APP_RELEASE = "tresults-v43";
   .prot-editar{display:flex;align-items:center;justify-content:center;gap:5px;margin-top:10px}
   .prot-q{min-width:0;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .prot-titulo{font-family:var(--display);font-size:20px;font-weight:800}
-  .prot-del{color:var(--warn)}
+  .modal .btn.secondary.prot-del{color:var(--warn)}
   /* Inventário */
   .pcfalta{font-size:11.5px;font-weight:700;color:var(--warn);margin-top:4px;line-height:1.35}
   .acad-equip{display:block;margin-top:4px;padding:2px 0;font-size:12px;font-weight:700;color:var(--muted);text-align:left}
@@ -738,14 +738,14 @@ window.APP_RELEASE = "tresults-v43";
   .equip-atalhos button{font-size:12.5px;font-weight:700;padding:7px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
   .equip-grupo{display:block;margin:14px 0 6px 2px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
   .equip-conta{display:block;margin:12px 0 0 2px}
-  .tp-equip-nota{display:block;margin:6px 0 0 2px;color:var(--warn);line-height:1.45}
+  .campo-nota.tp-equip-nota{display:block;margin:6px 0 0 2px;color:var(--warn);line-height:1.45}
   .tr-falta{display:none;flex-direction:column;gap:8px;font-size:12.5px;line-height:1.45;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin:0 0 10px;overflow-wrap:anywhere}
   .tr-falta.on{display:flex}
   .tr-falta .tf-acts{display:flex;gap:8px}
   .tr-falta button{flex:1;font-size:12.5px;font-weight:700;padding:8px 10px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--primary)}
   .tr-falta button:active,.equip-atalhos button:active{transform:scale(.97)}
   .sub-op.falta{color:var(--muted)}
-  .sub-op .tag.falta{color:var(--warn)}
+  .sub-op .tag.falta{color:var(--warn);flex:0 1 auto;min-width:0;white-space:normal;text-align:right;line-height:1.3}
   .troca-inv{display:flex;flex-direction:column;gap:8px;font-size:12.5px;line-height:1.45;color:var(--muted);margin:10px 0 4px;padding:10px 12px;border:1px dashed var(--line);border-radius:14px}
   .troca-inv b{color:var(--ink)}
   .troca-inv button{align-self:flex-start;font-size:12.5px;font-weight:700;color:var(--primary);padding:4px 0}
@@ -1933,7 +1933,7 @@ window.APP_RELEASE = "tresults-v43";
 </div>
 
 <!-- SUGESTÕES DE TREINO -->
-<div class="overlay" id="tSugOverlay">
+<div class="overlay" id="tSugOverlay" style="z-index:100">
   <div class="modal">
     <h3>Sugestões de treino</h3>
     <p style="font-size:13px;color:var(--muted);margin:0 0 14px;line-height:1.55" id="tSugSub"></p>
@@ -3845,8 +3845,24 @@ function mesmaAcad(a,b){return !a||!b||a===b;}
     no mesmo protocolo. Sessão de antes dos protocolos conta como do "Meu
     protocolo", que é onde os treinos dela estão. */
 function mesmoTreino(a,b){
-  if(a.tid&&b.tid&&a.tid===b.tid)return true;
+  if(a.tid&&b.tid){
+    if(a.tid===b.tid)return true;
+    /* Dois treinos que existem são dois treinos, mesmo com o mesmo nome no
+       mesmo protocolo. O nome só decide quando um deles foi excluído (e
+       recriado), ou quando a sessão é de antes do `tid`. */
+    const ids=new Set((store.tprotocol||[]).map(w=>w.id));
+    if(ids.has(a.tid)&&ids.has(b.tid))return false;
+  }
   return a.name===b.name&&(a.prot||PROT_PADRAO)===(b.prot||PROT_PADRAO);
+}
+/** As sessões antigas de um treino (sem `tid`) passam a apontar para ele.
+    Elas só o reconhecem pelo nome e pelo protocolo: renomear ou mover o
+    treino quebraria a ligação, e o histórico dele pareceria de outro. */
+function carimbarTid(w){
+  const tds=store.tdays||{},pr=protDoTreino(w);
+  Object.keys(tds).forEach(dk=>(tds[dk]||[]).forEach(r=>{
+    if(!r.tid&&r.ex&&r.ex.length&&r.name===w.nome&&(r.prot||PROT_PADRAO)===pr)r.tid=w.id;
+  }));
 }
 
 function renderAcadBar(){
@@ -4029,17 +4045,23 @@ function protNomeValido(nome,ignorar){
 function protOrfao(nome){
   const alvo=norm(nome),tds=store.tdays||{};
   for(const dk of Object.keys(tds).sort().reverse())
-    for(const r of tds[dk]||[])
-      if(r.prot&&!protPorId(r.prot)&&norm(r.protNome||"")===alvo)return r.prot;
+    for(const r of tds[dk]||[]){
+      if(!r.ex||!r.ex.length)continue;
+      const id=r.prot||PROT_PADRAO,nm=r.protNome||(r.prot?"":PROT_PADRAO_NOME);   // sessão antiga é do "Meu protocolo"
+      if(!protPorId(id)&&norm(nm)===alvo)return id;
+    }
   return "";
 }
 /** Nome do protocolo de um registro: o atual, se ele existe; senão, o guardado. */
-function protNomeDe(reg){const p=protPorId((reg&&reg.prot)||PROT_PADRAO);return p?p.nome:((reg&&reg.protNome)||"");}
+function protNomeDe(reg){
+  const id=(reg&&reg.prot)||PROT_PADRAO,p=protPorId(id);
+  return p?p.nome:((reg&&reg.protNome)||(id===PROT_PADRAO?PROT_PADRAO_NOME:""));
+}
 /** O nome do protocolo só aparece no histórico quando ajuda: com dois ou
     mais protocolos, ou quando o da sessão não existe mais. */
 function fdProtTxt(w){
   if(!w||!(w.ex&&w.ex.length))return "";
-  if(listaProtocolos().length>1||(w.prot&&!protPorId(w.prot)))return protNomeDe(w);
+  if(listaProtocolos().length>1||!protPorId(w.prot||PROT_PADRAO))return protNomeDe(w);
   return "";
 }
 /** O protocolo aberto na aba Treino: o escolhido neste aparelho; sem
@@ -4133,8 +4155,8 @@ $("protNovoOverlay").onclick=e=>{if(e.target===$("protNovoOverlay"))$("protNovoO
    quem já tinha marcado a academia.
 
    O aparelho é deduzido do NOME do exercício (`EX_EQUIP`): regras por
-   trecho do nome sem acento, da mais específica para a mais geral, como as
-   demonstrações (`EX_ALIAS`/`exMatch`); vale a primeira que casa. Cada regra
+   trecho do nome sem acento, em começo de palavra, da mais específica para a
+   mais geral; vale a primeira que casa. Cada regra
    dá ALTERNATIVAS: serve uma ou outra, e dentro de uma vão todos juntos;
    alternativa vazia é "dá para fazer só com o corpo". O aviso só aparece
    quando TODAS as alternativas têm algo faltando. Nome que o catálogo não
@@ -4215,22 +4237,26 @@ const EX_EQUIP=[
  [["supino", "inclinad"],[["barra", "est_supino_incl"], ["barra", "gaiola", "banco_regulavel"]]],   // Supino inclinado
  [["supino", "declinad"],[["barra", "est_supino_decl"]]],   // Supino declinado
  [["supino"],[["barra", "est_supino_reto"], ["barra", "gaiola", "banco_reto"], ["barra", "gaiola", "banco_regulavel"]]],   // Supino reto
- [["crucifixo", "invers", "maquina"],[["peck_deck"]]],   // Crucifixo inverso na máquina
- [["crucifixo", "invers", "deck"],[["peck_deck"]]],   // Crucifixo inverso no peck deck
- [["crucifixo", "invers", "voador"],[["peck_deck"]]],   // Crucifixo inverso no voador
- [["crucifixo", "invers", "cabo"],[["crossover"], ["polia"]]],   // Crucifixo inverso no cabo
- [["crucifixo", "invers", "polia"],[["crossover"], ["polia"]]],   // Crucifixo inverso na polia
- [["crucifixo", "invers", "halter"],[["halteres"]]],   // Crucifixo inverso com halter
- [["crucifixo", "invers"],[["halteres"], ["peck_deck"], ["crossover"], ["polia"]]],   // Crucifixo inverso
+ [["crucifixo", "inver", "maquina"],[["peck_deck"]]],   // Crucifixo inverso na máquina
+ [["crucifixo", "inver", "deck"],[["peck_deck"]]],   // Crucifixo inverso no peck deck
+ [["crucifixo", "inver", "voador"],[["peck_deck"]]],   // Crucifixo inverso no voador
+ [["crucifixo", "inver", "cabo"],[["crossover"], ["polia"]]],   // Crucifixo inverso no cabo
+ [["crucifixo", "inver", "polia"],[["crossover"], ["polia"]]],   // Crucifixo inverso na polia
+ [["crucifixo", "inver", "halter"],[["halteres"]]],   // Crucifixo inverso com halter
+ [["crucifixo", "inver"],[["halteres"], ["peck_deck"], ["crossover"], ["polia"]]],   // Crucifixo inverso
  [["crucifixo", "maquina"],[["peck_deck"]]],   // Crucifixo máquina
  [["crucifixo", "cabo"],[["crossover"]]],   // Crucifixo no cabo
  [["crucifixo", "polia"],[["crossover"]]],   // Crucifixo na polia
+ [["crucifixo", "voador"],[["peck_deck"]]],   // Crucifixo no voador
+ [["crucifixo", "deck"],[["peck_deck"]]],   // Crucifixo no peck deck
  [["crucifixo", "inclinad"],[["halteres", "banco_regulavel"], ["halteres", "est_supino_incl"]]],   // Crucifixo inclinado
  [["crucifixo", "declinad"],[["halteres", "est_supino_decl"]]],   // Crucifixo declinado
  [["crucifixo"],[["halteres", "banco_reto"], ["halteres", "banco_regulavel"], ["halteres", "est_supino_reto"]]],   // Crucifixo
  [["voador"],[["peck_deck"]]],   // Voador
  [["deck"],[["peck_deck"]]],   // Peck deck
  [["flexao", "punho"],[["barra"], ["halteres"]]],   // Flexão de punho
+ [["flexao", "braco"],[[]]],   // Flexão de braço com joelhos apoiados
+ [["flexao", "apoiad"],[[]]],   // Flexão com joelhos apoiados
  [["flexao", "joelho"],[["mesa_flexora"], ["cadeira_flexora"], ["flexora_pe"]]],   // Flexão de joelho
  [["flexao", "plantar"],[["panturrilha_pe"], ["panturrilha_sentado"], ["leg_press"], ["hack"], ["smith"], ["halteres"]]],   // Flexão plantar
  [["flexao"],[[]]],   // Flexão de braço
@@ -4264,7 +4290,7 @@ const EX_EQUIP=[
  [["pullover"],[["halteres", "banco_reto"], ["halteres", "banco_regulavel"]]],   // Pullover
  [["puxada", "estendid"],[["crossover"], ["polia"], ["puxador"]]],   // Puxada com braços estendidos
  [["puxada"],[["puxador"], ["crossover"], ["polia"]]],   // Puxada frente
- [["puxador"],[["puxador"]]],   // Puxador frente
+ [["puxador"],[["puxador"], ["crossover"], ["polia"]]],   // Puxador frente
  [["pulldown"],[["puxador"], ["crossover"], ["polia"]]],   // Pulldown
  [["pull", "down"],[["puxador"], ["crossover"], ["polia"]]],   // Pull down
  [["face", "pull"],[["crossover"], ["polia"]]],   // Face pull
@@ -4352,6 +4378,7 @@ const EX_EQUIP=[
  [["bulgaro", "barra"],[["barra", "gaiola"]]],   // Búlgaro com barra
  [["bulgaro"],[["halteres"], []]],   // Búlgaro
  [["agachamento", "sumo", "barra"],[["barra", "gaiola"]]],   // Agachamento sumô com barra
+ [["terra", "sumo", "halter"],[["halteres"]]],   // Terra sumô com halteres
  [["terra", "sumo"],[["barra"]]],   // Terra sumô
  [["sumo", "halter"],[["halteres"]]],   // Agachamento sumô com halter
  [["sumo"],[["halteres"], ["kettlebell"]]],   // Sumô
@@ -4392,9 +4419,12 @@ const EX_EQUIP=[
  [["hiperextens"],[["banco_lombar"]]],   // Hiperextensão
  [["superman"],[[]]],   // Superman
  [["lombar"],[["banco_lombar"]]],   // Lombar
+ [["thruster"],[["barra"], ["halteres"], ["kettlebell"]]],   // Thruster (não é elevação pélvica)
  [["pelvica", "maquina"],[["maq_pelvica"]]],   // Elevação pélvica máquina
  [["thrust", "maquina"],[["maq_pelvica"]]],   // Hip thrust máquina
  [["pelvica", "halter"],[["halteres"]]],   // Elevação pélvica com halter
+ [["thrust", "halter"],[["halteres"]]],   // Hip thrust com halter
+ [["quadril", "halter"],[["halteres"]]],   // Elevação de quadril com halter
  [["pelvica"],[["barra"], ["maq_pelvica"]]],   // Elevação pélvica
  [["thrust"],[["barra"], ["maq_pelvica"]]],   // Hip thrust
  [["elevacao", "quadril"],[["barra"], ["maq_pelvica"]]],   // Elevação de quadril
@@ -4455,12 +4485,16 @@ const EX_EQUIP=[
 
 /** De que aparelho o exercício precisa. null = não sei (nunca avisa). */
 function exEquip(nome){
-  const nn=norm(nome||"");
+  /* Cada trecho casa em COMEÇO de palavra: "lateral" não casa dentro de
+     "unilateral", e "Elevação pélvica unilateral" não vira elevação lateral
+     de ombro. Pontuação vira espaço ("Peck-deck" = "peck deck"). */
+  const nn=" "+norm(nome||"").replace(/[^a-z0-9]+/g," ").trim()+" ";
+  const tem=k=>nn.includes(" "+k);
   for(const [ch,req] of EX_EQUIP){
-    if(!ch.every(k=>nn.includes(k)))continue;
+    if(!ch.every(tem))continue;
     /* "máquina"/"articulado" no nome, sem regra própria: é uma máquina que o
        catálogo não conhece, e herdar o aparelho da regra geral avisaria errado. */
-    if(/maquina|articulad/.test(nn)&&!ch.some(k=>/maquina|articulad/.test(k)))return null;
+    if(/ (maquina|articulad)/.test(nn)&&!ch.some(k=>/maquina|articulad/.test(k)))return null;
     return req;
   }
   return null;
@@ -4530,6 +4564,7 @@ function fecharEquip(){
   $("equipOverlay").classList.remove("open");
   const cb=equipAoFechar;equipAoFechar=null;equipAcad=null;
   if(cb)cb();
+  if(trS)pintarFalta();   // o aviso do exercício da vez acompanha (nunca renderTr: mataria o descanso)
   if($("acadOverlay").classList.contains("open"))renderAcadLista();
   renderTreino();
 }
@@ -4565,24 +4600,28 @@ function renderTpEquip(){
 /* protocolo de treino */
 const tprotoOverlay=$("tprotoOverlay"),tpEditOverlay=$("tpEditOverlay");
 let tpEditing=null,tpEditId=null;
-let tpProtAtual=PROT_PADRAO;   // o protocolo aberto no pop-up
+let tpProtAtual=PROT_PADRAO,tpProtNomeIni="";   // o protocolo aberto no pop-up, e o nome que o título mostrava ao abrir
 function openTProtocol(id){
   tpProtAtual=(id&&protPorId(id))?id:protAberto();
-  $("tpProtNome").value=protPorId(tpProtAtual).nome;
+  $("tpProtNome").value=tpProtNomeIni=protPorId(tpProtAtual).nome;
   renderTpList();tprotoOverlay.classList.add("open");
 }
 /** Grava o nome que está no título. Falso quando o nome não vale (o aviso já
     apareceu): fechar não pode descartar calado o que foi digitado. */
 function salvarNomeProt(){
   const p=protPorId(tpProtAtual);if(!p)return true;
+  /* Só renomeia se a pessoa mexeu no título: o nome pode ter mudado em
+     outro aparelho com o pop-up aberto, e o título velho o desfaria calado. */
+  if($("tpProtNome").value===tpProtNomeIni)return true;
   const nome=$("tpProtNome").value.trim().slice(0,PROT_NOME_MAX);
-  if(nome===p.nome)return true;
+  if(nome===p.nome){tpProtNomeIni=$("tpProtNome").value;return true;}
   if(!protNomeValido(nome,p.id))return false;
   materializarProtocolos();
   const g=store.tprotos.find(x=>x.id===p.id);
   if(g)g.nome=nome;else store.tprotos.push({id:p.id,nome});
   // o nome vai também nos treinos: é por ele que a lista se refaz se se perder
   treinosDoProt(p.id).forEach(w=>{w.prot=p.id;w.protNome=nome;});
+  tpProtNomeIni=$("tpProtNome").value;
   save();return true;
 }
 function fecharProtocolo(){
@@ -4621,9 +4660,9 @@ $("tpNew").onclick=()=>{if(salvarNomeProt())openTpEditor(null);};
 function tpSeries(w){return (w.ex||[]).reduce((a,e)=>a+(e.s||0),0);}
 function openTpEditor(id){
   tpEditId=id||null;
-  if(id){const w=(store.tprotocol||[]).find(x=>x.id===id);tpEditing={ex:JSON.parse(JSON.stringify(w.ex||[])),acads:acadsDoTreino(w),prot:protDoTreino(w)};$("tpTitle").textContent="Editar treino";$("tpName").value=w.nome;$("tpCat").value=w.cat||"A";}
+  if(id){const w=(store.tprotocol||[]).find(x=>x.id===id);tpEditing={ex:JSON.parse(JSON.stringify(w.ex||[])),acads:acadsDoTreino(w),prot:protDoTreino(w),protNome:protNomeDe({prot:protDoTreino(w),protNome:w.protNome})};$("tpTitle").textContent="Editar treino";$("tpName").value=w.nome;$("tpCat").value=w.cat||"A";}
   /* treino novo nasce na academia escolhida e no protocolo aberto: é para eles que está sendo montado */
-  else{const sel=acadSel();tpEditing={ex:[],acads:sel?[sel]:[],prot:tpProtAtual};$("tpTitle").textContent="Novo treino";$("tpName").value="";$("tpCat").value="A";}
+  else{const sel=acadSel();tpEditing={ex:[],acads:sel?[sel]:[],prot:tpProtAtual,protNome:(protPorId(tpProtAtual)||{}).nome||tpProtNomeIni};$("tpTitle").textContent="Novo treino";$("tpName").value="";$("tpCat").value="A";}
   renderTpProts();
   renderTpAcads();
   $("tpExName").value="";$("tpExS").value=4;$("tpExRest").value=90;$("tpExG").value="peito";renderSynChips();
@@ -4660,15 +4699,20 @@ $("tpSave").onclick=()=>{
   /* O protocolo. Quem nunca mexeu em protocolo continua gravando o treino com
      a forma de sempre; e nenhum caminho TIRA o `prot` de um treino — mover
      para o "Meu protocolo" grava "principal". */
-  const alvo=protPorId(tpEditing.prot)?tpEditing.prot:tpProtAtual;
+  /* Protocolo excluído em outro aparelho com o editor aberto: o treino é
+     gravado nele mesmo assim, e o protocolo volta pela reconstrução da lista
+     — o que foi digitado não se perde. */
+  const alvo=protPorId(tpEditing.prot)?tpEditing.prot:(protPorId(tpProtAtual)?tpProtAtual:(tpEditing.prot||tpProtAtual||PROT_PADRAO));
+  const nomeAlvo=(protPorId(alvo)||{}).nome||tpEditing.protNome||PROT_PADRAO_NOME;
   if(listaProtocolos().length>1)materializarProtocolos();
-  if(alvo!==PROT_PADRAO||protMaterializado()||(antigo&&"prot" in antigo)){data.prot=alvo;data.protNome=protPorId(alvo).nome;}
+  if(alvo!==PROT_PADRAO||protMaterializado()||(antigo&&"prot" in antigo)){data.prot=alvo;data.protNome=nomeAlvo;}
   const movido=!!antigo&&protDoTreino(antigo)!==alvo;
+  if(antigo&&(movido||antigo.nome!==nome))carimbarTid(antigo);   // o histórico vem junto
   store.tprotocol=store.tprotocol||[];
   if(tpEditId){const idx=store.tprotocol.findIndex(x=>x.id===tpEditId);if(idx>-1)store.tprotocol[idx]=data;else store.tprotocol.push(data);}
   else store.tprotocol.push(data);
   save();tpEditOverlay.classList.remove("open");renderTpList();renderTreino();
-  if(movido)showCongrats(`Treino movido para “${protPorId(alvo).nome}”.`);
+  if(movido)showCongrats(`Treino movido para “${nomeAlvo}”.`);
 };
 /* ---- execução do treino ---- */
 const tRunOverlay=$("tRunOverlay");
@@ -5417,6 +5461,8 @@ function pintarTrocaLista(preSel,inicio){
   }
   let escolha=null;
   if(preSel&&comInv)escolha=opcoes.find(n=>!falta(n)&&exEquip(n)!==null)||null;
+  // redesenho (voltando dos aparelhos): o destaque segue o que está no campo
+  if(!inicio&&!preSel&&$("trocaNome").value.trim())escolha=$("trocaNome").value.trim();
   const atual=n=>escolha?norm(n)===norm(escolha):(n===prescrito?!e.orig:(e.orig&&norm(e.n)===norm(n)));
   const tagF='<span class="tag falta">sem aparelho aqui</span>';
   $("trocaLista").innerHTML=
@@ -6140,9 +6186,16 @@ function applyRemote(data){
   render();
   renderTreino();   // academias e protocolos vindos de outro aparelho
   equipRevisar();   // pop-up de aparelhos aberto: redesenha, ou fecha se a academia sumiu
-  if(tprotoOverlay.classList.contains("open")&&!protPorId(tpProtAtual)){
-    tprotoOverlay.classList.remove("open");appAlert("Este protocolo foi excluído em outro aparelho.");
+  if(tprotoOverlay.classList.contains("open")){
+    const p=protPorId(tpProtAtual);
+    if(!p){tprotoOverlay.classList.remove("open");appAlert("Este protocolo foi excluído em outro aparelho.");}
+    else{
+      // título que a pessoa não mexeu acompanha a nuvem; o que ela digitou fica
+      if($("tpProtNome").value===tpProtNomeIni)$("tpProtNome").value=tpProtNomeIni=p.nome;
+      renderTpList();
+    }
   }
+  if(trS)pintarFalta();   // inventário mudou em outro aparelho; nunca renderTr, que mataria o descanso
   applyingRemote=false;
   setSyncDot("ok","Sincronizado");
 }

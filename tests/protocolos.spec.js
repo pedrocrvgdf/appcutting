@@ -489,6 +489,273 @@ test.describe('Protocolos', () => {
     expect(await page.evaluate(() => __t.listaProtocolos().map(p => p.nome))).toEqual(['Meu protocolo']);
   });
 
+  test('mover um treino de protocolo leva junto o histórico de antes desta versão', async ({ page }) => {
+    /* Sessões antigas não têm `tid`: só o nome e o protocolo as ligam ao
+       treino. Mover o treino quebrava essa ligação, e o selo dizia "primeira
+       vez deste treino" — contra a frase do editor, "O histórico deste treino
+       vem junto". */
+    await abrirApp(page, estadoBase({ tdays: { [diaISO(3)]: [sessao('s0', 'Treino A', 500)] } }));
+    await irTreino(page);
+    await criar(page, 'Hipertrofia');
+    await page.evaluate(() => document.getElementById('tpClose').click());
+    await page.evaluate(() => document.querySelector('[data-protabrir="principal"]').click());
+    await page.waitForTimeout(150);
+    await abrirProtocolo(page);
+    await page.evaluate(() => document.querySelector('#tprotoList [data-ted="w1"]').click());
+    await page.waitForSelector('#tpEditOverlay.open');
+    const destino = await page.evaluate(() => __t.listaProtocolos().find(p => p.nome === 'Hipertrofia').id);
+    await page.evaluate(id => document.querySelector(`#tpProts [data-tpprot="${id}"]`).click(), destino);
+    await page.evaluate(() => document.getElementById('tpSave').click());
+    await page.waitForTimeout(200);
+    expect(await page.evaluate(() => Object.values(__t.store.tdays)[0][0].tid), 'a sessão antiga passa a apontar para o treino').toBe('w1');
+
+    // a sessão seguinte, já no protocolo novo, compara com a antiga
+    await page.evaluate(([id, hoje]) => {
+      __t.store.tdays[hoje] = [{ id: 's1', name: 'Treino A', tid: 'w1', prot: id, protNome: 'Hipertrofia', min: 50, kcal: 300, vol: 600, intens: 'moderada', rir: 2,
+        ex: [{ n: 'Supino reto', g: 'peito', sec: [], sets: [{ kg: 60, rep: 10, rir: 2 }] }] }];
+    }, [destino, diaISO(0)]);
+    await page.evaluate(() => document.querySelector('#tabbar [data-tab="inicio"]').click());
+    await page.waitForTimeout(200);
+    expect(await page.textContent('#fdFeed .fd-card .fd-prog')).toBe('+20% de carga');
+  });
+
+  test('renomear um treino também leva o histórico de antes desta versão', async ({ page }) => {
+    await abrirApp(page, estadoBase({ tdays: { [diaISO(3)]: [sessao('s0', 'Treino A', 500)] } }));
+    await irTreino(page);
+    await abrirProtocolo(page);
+    await page.evaluate(() => document.querySelector('#tprotoList [data-ted="w1"]').click());
+    await page.waitForSelector('#tpEditOverlay.open');
+    await page.fill('#tpName', 'Peito e tríceps');
+    await page.evaluate(() => document.getElementById('tpSave').click());
+    await page.waitForTimeout(200);
+    expect(await page.evaluate(() => Object.values(__t.store.tdays)[0][0].tid)).toBe('w1');
+  });
+
+  test('dois treinos que existem, com o mesmo nome no mesmo protocolo, não se comparam', async ({ page }) => {
+    await abrirApp(page, doisProtocolos({
+      tprotocol: [treino('w1', 'Treino A', { prot: 'p2', protNome: 'Viagem' }), treino('w3', 'Treino A', { prot: 'p2', protNome: 'Viagem' })],
+      tdays: {
+        [diaISO(6)]: [sessao('a1', 'Treino A', 800, { tid: 'w1', prot: 'p2' })],
+        [diaISO(3)]: [sessao('b1', 'Treino A', 200, { tid: 'w3', prot: 'p2' })],
+        [diaISO(0)]: [sessao('a2', 'Treino A', 840, { tid: 'w1', prot: 'p2' })],
+      },
+    }));
+    // a2 contra a1 (o mesmo treino): +5%. Contra b1 (o outro, mais recente) daria +320%.
+    expect(await page.textContent('#fdFeed .fd-card .fd-prog')).toBe('+5% de carga');
+  });
+
+  test('treino movido de protocolo continua comparando pelo tid', async ({ page }) => {
+    await abrirApp(page, doisProtocolos({
+      tprotocol: [treino('w1', 'Treino A', { prot: 'p2', protNome: 'Viagem' })],
+      tdays: {
+        [diaISO(4)]: [sessao('s1', 'Treino A', 500, { tid: 'w1', prot: 'principal' })],
+        [diaISO(1)]: [sessao('s2', 'Treino A', 600, { tid: 'w1', prot: 'p2' })],
+      },
+    }));
+    expect(await page.textContent('#fdFeed .fd-card .fd-prog')).toBe('+20% de carga');
+  });
+
+  test('"primeira vez nesta academia" não confunde o "Treino A" de outro protocolo', async ({ page }) => {
+    await abrirApp(page, doisProtocolos({
+      academias: [{ id: 'a1', nome: 'Prédio' }, { id: 'a2', nome: 'Smart Fit' }],
+      tdays: {
+        [diaISO(4)]: [sessao('s1', 'Treino A', 800, { tid: 'w3', prot: 'p2', acad: 'a2', acadNome: 'Smart Fit' })],
+        [diaISO(1)]: [sessao('s2', 'Treino A', 500, { tid: 'w1', prot: 'principal', acad: 'a1', acadNome: 'Prédio' })],
+      },
+    }));
+    expect(await page.textContent('#fdFeed .fd-card .fd-prog')).toBe('primeira vez deste treino');
+  });
+
+  test('salvar no editor depois que o protocolo foi excluído em outro aparelho grava o treino e devolve o protocolo', async ({ page }) => {
+    const erros = await abrirApp(page, { ...doisProtocolos(), 'tresults.prot': 'p2' });
+    await irTreino(page);
+    await abrirProtocolo(page);
+    await page.evaluate(() => document.getElementById('tpNew').click());
+    await page.waitForSelector('#tpEditOverlay.open');
+    await page.fill('#tpName', 'Hotel');
+    await page.fill('#tpExName', 'Flexão de braço');
+    await page.evaluate(() => document.getElementById('tpExAdd').click());
+    await page.evaluate(() => {
+      const s = JSON.parse(JSON.stringify(__t.store));
+      s.tprotos = s.tprotos.filter(p => p.id !== 'p2'); s.tprotocol = s.tprotocol.filter(w => w.prot !== 'p2');
+      __t.applyRemote(s);
+    });
+    await page.waitForSelector('#appDlgOverlay.open');
+    await page.evaluate(() => document.getElementById('appDlgOk').click());
+    await page.waitForTimeout(150);
+    await page.evaluate(() => document.getElementById('tpSave').click());
+    await page.waitForTimeout(200);
+    const r = await page.evaluate(() => ({
+      editor: document.getElementById('tpEditOverlay').classList.contains('open'),
+      w: __t.store.tprotocol.find(x => x.nome === 'Hotel'),
+      lista: __t.listaProtocolos().map(p => p.nome),
+    }));
+    expect(r.editor).toBe(false);
+    expect([r.w.prot, r.w.protNome]).toEqual(['p2', 'Viagem']);
+    expect(r.lista).toEqual(['Hipertrofia', 'Viagem']);
+    expect(erros).toEqual([]);
+  });
+
+  test('nome mudado em outro aparelho com o pop-up aberto não é desfeito ao fechar', async ({ page }) => {
+    await abrirApp(page, { ...doisProtocolos(), 'tresults.prot': 'p2' });
+    await irTreino(page);
+    await abrirProtocolo(page);
+    await page.evaluate(() => {
+      const s = JSON.parse(JSON.stringify(__t.store));
+      s.tprotos.find(p => p.id === 'p2').nome = 'Em casa';
+      s.tprotocol.filter(w => w.prot === 'p2').forEach(w => { w.protNome = 'Em casa'; });
+      __t.applyRemote(s);
+    });
+    expect(await page.inputValue('#tpProtNome'), 'o título acompanha').toBe('Em casa');
+    await page.evaluate(() => document.getElementById('tpClose').click());
+    await page.waitForTimeout(150);
+    expect(await page.evaluate(() => __t.protPorId('p2').nome)).toBe('Em casa');
+  });
+
+  test('com o "Meu protocolo" excluído, as sessões de antes ainda dizem de onde eram', async ({ page }) => {
+    await abrirApp(page, estadoBase({
+      tprotos: [{ id: 'p2', nome: 'Viagem' }],
+      tprotocol: [treino('w3', 'Hotel', { prot: 'p2', protNome: 'Viagem' })],
+      tdays: { [diaISO(2)]: [sessao('s0', 'Treino A', 500)] },
+    }));
+    expect(await page.textContent('#fdFeed .fd-card .h')).toMatch(/^Meu protocolo · /);
+    await irTreino(page);
+    await criar(page, 'meu protocolo');
+    expect(await page.evaluate(() => __t.listaProtocolos().map(p => p.id)), 'recriar devolve o id dele').toEqual(['p2', 'principal']);
+  });
+
+  test('"Preencher com uma sugestão" abre na frente do pop-up do protocolo, e dá para tocar', async ({ page }) => {
+    await abrirApp(page, estadoBase());
+    await irTreino(page);
+    await criar(page, 'Casa');
+    await page.click('#tpSugAqui');
+    await page.waitForSelector('#tSugOverlay.open');
+    // toque de verdade, não evaluate: com o pop-up por cima, o clique não chegaria
+    await page.click('[data-usesug="ab"]', { timeout: 3000 });
+    await page.waitForTimeout(250);
+    const r = await page.evaluate(() => ({
+      linhas: document.querySelectorAll('#tprotoList [data-ted]').length,
+      sug: getComputedStyle(document.getElementById('tpSugAqui')).display,
+    }));
+    expect(r.linhas, 'a lista do pop-up se redesenha').toBe(2);
+    expect(r.sug).toBe('none');
+  });
+
+  test('"Ver sugestões" com o protocolo aberto vazio o preenche, sem criar outro nem mudar a forma dos dados', async ({ page }) => {
+    await abrirApp(page, estadoBase({ tprotocol: [] }));
+    await irTreino(page);
+    await page.evaluate(() => document.getElementById('tSugBtn').click());
+    await page.waitForSelector('#tSugOverlay.open');
+    await page.evaluate(() => document.querySelector('[data-usesug="ab"]').click());
+    await page.waitForTimeout(250);
+    const r = await page.evaluate(() => ({ lista: __t.listaProtocolos().map(p => p.nome), tp: __t.store.tprotos, prot: __t.store.tprotocol.map(w => 'prot' in w) }));
+    expect(r.lista).toEqual(['Meu protocolo']);
+    expect(r.prot).toEqual([false, false]);
+  });
+
+  test('mover para o "Meu protocolo" grava prot "principal" (nunca tira a chave) e avisa', async ({ page }) => {
+    await abrirApp(page, { ...doisProtocolos(), 'tresults.prot': 'p2' });
+    await irTreino(page);
+    await abrirProtocolo(page);
+    await page.evaluate(() => document.querySelector('#tprotoList [data-ted="w3"]').click());
+    await page.waitForSelector('#tpEditOverlay.open');
+    await page.evaluate(() => document.querySelector('#tpProts [data-tpprot="principal"]').click());
+    await page.evaluate(() => document.getElementById('tpSave').click());
+    await page.waitForTimeout(150);
+    const w = await page.evaluate(() => __t.store.tprotocol.find(x => x.id === 'w3'));
+    expect([w.prot, w.protNome]).toEqual(['principal', 'Hipertrofia']);
+    expect(await page.evaluate(() => document.querySelector('.congrats')?.textContent || document.body.textContent)).toMatch(/Treino movido para “Hipertrofia”/);
+  });
+
+  test('tocar fora do pop-up do protocolo grava o nome digitado; só a caixa do próprio nome também vale', async ({ page }) => {
+    await abrirApp(page, { ...doisProtocolos(), 'tresults.prot': 'p2' });
+    await irTreino(page);
+    await abrirProtocolo(page);
+    await page.fill('#tpProtNome', 'VIAGEM');
+    await page.evaluate(() => { const o = document.getElementById('tprotoOverlay'); o.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+    await page.waitForTimeout(150);
+    expect(await page.evaluate(() => document.getElementById('appDlgOverlay').classList.contains('open'))).toBe(false);
+    expect(await page.evaluate(() => __t.protPorId('p2').nome)).toBe('VIAGEM');
+  });
+
+  test('outra conta no celular não herda a lista de protocolos', async ({ page }) => {
+    await abrirApp(page, doisProtocolos());
+    await page.evaluate(() => {
+      __t.setUser({ uid: 'u2' });
+      __t.applyRemote({ getd: 2500, days: {}, custom: [], liquids: {}, protocol: [], weights: [], tdays: {}, passos: {}, goals: { nome: 'Bia', tIntro: true },
+        tprotocol: [{ id: 'wb', nome: 'Treino da Bia', cat: 'A', ex: [{ n: 'Agachamento', s: 3, rest: 90, g: 'quadriceps', sec: [] }] }] });
+    });
+    expect(await page.evaluate(() => __t.store.tprotos)).toBeUndefined();
+    expect(await page.evaluate(() => __t.listaProtocolos().map(p => p.nome))).toEqual(['Meu protocolo']);
+  });
+
+  test('lista reconstruída mantém o nome dado ao "Meu protocolo"; renomeado e vazio não some; campo de versão nova fica', async ({ page }) => {
+    await abrirApp(page, estadoBase({
+      tprotocol: [treino('w1', 'Treino A', { prot: 'principal', protNome: 'Hipertrofia' }), treino('w3', 'Hotel', { prot: 'p2', protNome: 'Viagem' })],
+    }));
+    expect(await page.evaluate(() => __t.listaProtocolos().map(p => p.nome))).toEqual(['Hipertrofia', 'Viagem']);
+
+    await abrirApp(page, estadoBase({ tprotocol: [], tprotos: [{ id: 'principal', nome: 'Hipertrofia', cor: 'azul' }] }));
+    await irTreino(page);
+    await criar(page, 'Casa');
+    expect(await page.evaluate(() => __t.listaProtocolos().map(p => p.nome))).toEqual(['Hipertrofia', 'Casa']);
+    expect(await page.evaluate(() => __t.store.tprotos[0].cor)).toBe('azul');
+  });
+
+  test('criar com o nome antigo de um protocolo renomeado cria outro, sem reaproveitar o id vivo', async ({ page }) => {
+    await abrirApp(page, doisProtocolos({
+      tprotos: [{ id: 'principal', nome: 'Hipertrofia' }, { id: 'p2', nome: 'Praia' }],
+      tdays: { [diaISO(2)]: [sessao('s1', 'Treino A', 500, { tid: 'w3', prot: 'p2', protNome: 'Viagem' })] },
+    }));
+    await irTreino(page);
+    await criar(page, 'Viagem');
+    const r = await page.evaluate(() => ({ nomes: __t.listaProtocolos().map(p => p.nome), ids: __t.store.tprotos.map(p => p.id) }));
+    expect(r.nomes).toEqual(['Hipertrofia', 'Praia', 'Viagem']);
+    expect(new Set(r.ids).size).toBe(r.ids.length);
+  });
+
+  test('sem escolha guardada: abre onde o treino da última sessão está hoje, e cardio não decide', async ({ page }) => {
+    await abrirApp(page, doisProtocolos({
+      tprotocol: [treino('w1', 'Treino A'), treino('w3', 'Hotel', { prot: 'principal', protNome: 'Hipertrofia' }), treino('w4', 'Praia', { prot: 'p2', protNome: 'Viagem' })],
+      tdays: { [diaISO(1)]: [sessao('s1', 'Hotel', 500, { tid: 'w3', prot: 'p2' })] },
+    }));
+    expect(await page.evaluate(() => __t.protAberto())).toBe('principal');
+    await abrirApp(page, doisProtocolos({
+      tdays: {
+        [diaISO(2)]: [sessao('s1', 'Treino A', 500, { tid: 'w3', prot: 'p2' })],
+        [diaISO(1)]: [{ id: 'c1', name: 'Caminhada', min: 40, kcal: 150 }],
+      },
+    }));
+    expect(await page.evaluate(() => __t.protAberto())).toBe('p2');
+  });
+
+  test('criar, renomear e excluir protocolo chegam ao armazenamento do aparelho', async ({ page }) => {
+    const salvo = () => page.evaluate(() => JSON.parse(localStorage.getItem('cutting.v1')));
+    await abrirApp(page, estadoBase());
+    await irTreino(page);
+    await criar(page, 'Casa');
+    expect((await salvo()).tprotos.map(p => p.nome)).toEqual(['Meu protocolo', 'Casa']);
+    await page.fill('#tpProtNome', 'Em casa');
+    await page.evaluate(() => document.getElementById('tpClose').click());
+    await page.waitForTimeout(150);
+    expect((await salvo()).tprotos.map(p => p.nome)).toEqual(['Meu protocolo', 'Em casa']);
+    await abrirProtocolo(page);
+    await page.evaluate(() => document.getElementById('tpProtDel').click());
+    await confirmar(page);
+    expect((await salvo()).tprotos.map(p => p.nome)).toEqual(['Meu protocolo']);
+  });
+
+  test('"Excluir este protocolo" sai na cor de alerta', async ({ page }) => {
+    await abrirApp(page, doisProtocolos());
+    await irTreino(page);
+    await abrirProtocolo(page);
+    const cores = await page.evaluate(() => ({
+      del: getComputedStyle(document.getElementById('tpProtDel')).color,
+      novo: getComputedStyle(document.getElementById('tpNew')).color,
+    }));
+    expect(cores.del).not.toBe(cores.novo);
+  });
+
   test('em 320px, nome comprido de protocolo não empurra a tela', async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 640 });
     const longo = 'Protocolo de hipertrofia para a fase de definição';

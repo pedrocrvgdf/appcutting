@@ -350,6 +350,138 @@ test.describe('Inventário', () => {
     expect(await page.evaluate(() => __t.store.academias.map(a => a.id))).toEqual(['a2']);
   });
 
+  test('catálogo: nomes comuns que já deram aviso falso', async ({ page }) => {
+    await abrirApp(page, estadoBase());
+    const r = await page.evaluate(() => {
+      const e = n => __t.exEquip(n);
+      return {
+        flexaoApoiada: e('Flexão com joelhos apoiados'),
+        flexaoBraco: e('Flexão de braço com joelho no chão'),
+        flexora: e('Flexão de joelho'),
+        pelvicaUni: e('Elevação pélvica unilateral'),
+        lateral: e('Elevação lateral'),
+        thrustHalter: e('Hip thrust com halter'),
+        quadrilHalter: e('Elevação de quadril com halter'),
+        thruster: e('Thruster'),
+        sumoHalter: e('Terra sumô com halteres'),
+        puxador: e('Puxador frente'),
+        crucInvertido: e('Crucifixo invertido'),
+        crucVoador: e('Crucifixo no voador'),
+        peckHifen: e('Peck-deck'),
+      };
+    });
+    expect(r.flexaoApoiada).toEqual([[]]);
+    expect(r.flexaoBraco).toEqual([[]]);
+    expect(r.flexora.flat()).toContain('mesa_flexora');
+    expect(r.pelvicaUni.flat(), '"unilateral" não é "lateral"').toContain('maq_pelvica');
+    expect(r.lateral.flat()).toContain('halteres');
+    expect(r.thrustHalter).toEqual([['halteres']]);
+    expect(r.quadrilHalter).toEqual([['halteres']]);
+    expect(r.thruster.flat()).not.toContain('maq_pelvica');
+    expect(r.sumoHalter).toEqual([['halteres']]);
+    expect(r.puxador).toEqual([['puxador'], ['crossover'], ['polia']]);
+    expect(r.crucInvertido.flat()).toContain('peck_deck');
+    expect(r.crucVoador).toEqual([['peck_deck']]);
+    expect(r.peckHifen).toEqual([['peck_deck']]);
+  });
+
+  test('marcar aparelhos pela troca acende o aviso do exercício da vez', async ({ page }) => {
+    await abrirApp(page, estado());
+    await irTreino(page);
+    await iniciar(page);
+    expect(await aviso(page)).toBe('');
+    await page.evaluate(() => document.getElementById('trTrocar').click());
+    await page.waitForSelector('#trocaOverlay.open');
+    await page.evaluate(() => document.getElementById('trocaInvBtn').click());
+    await page.waitForSelector('#equipOverlay.open');
+    await page.evaluate(() => document.querySelector('#equipGrupos [data-equip="leg_press"]').click());
+    await page.evaluate(() => document.getElementById('equipFechar').click());
+    await page.evaluate(() => document.getElementById('trocaFechar').click());
+    await page.waitForTimeout(150);
+    expect(await aviso(page)).toMatch(/não tem Leg press/);
+  });
+
+  test('ao voltar dos aparelhos, a lista da troca destaca o que está no campo', async ({ page }) => {
+    await abrirApp(page, estado());
+    await irTreino(page);
+    await iniciar(page);
+    await page.evaluate(() => document.getElementById('trTrocar').click());
+    await page.waitForSelector('#trocaOverlay.open');
+    await page.evaluate(() => document.querySelector('#trocaLista [data-sub="Hack machine"]').click());
+    await page.evaluate(() => document.getElementById('trocaInvBtn').click());
+    await page.waitForSelector('#equipOverlay.open');
+    await page.evaluate(() => document.querySelector('#equipGrupos [data-equip="smith"]').click());
+    await page.evaluate(() => document.getElementById('equipFechar').click());
+    await page.waitForTimeout(150);
+    const r = await page.evaluate(() => ({
+      campo: document.getElementById('trocaNome').value,
+      destaque: [...document.querySelectorAll('#trocaLista .atual')].map(b => b.dataset.sub),
+    }));
+    expect(r).toEqual({ campo: 'Hack machine', destaque: ['Hack machine'] });
+  });
+
+  test('"Tem, sim" com alternativas tira só a forma que precisa de menos, e grava no aparelho', async ({ page }) => {
+    const PEITO = { id: 'w1', nome: 'Peito', cat: 'A', ex: [ex('Supino reto', 'peito')] };
+    await abrirApp(page, estado({ faltam: ['est_supino_reto', 'gaiola', 'banco_reto'], tprotocol: [PEITO] }));
+    await irTreino(page);
+    await iniciar(page);
+    // na ordem do catálogo
+    expect(await aviso(page)).toMatch(/não tem Banco reto, Banco de supino reto nem Gaiola \/ rack de agachamento\./);
+    await page.evaluate(() => document.getElementById('trFaltaTem').click());
+    await page.waitForTimeout(100);
+    expect(await faltam(page)).toEqual(['gaiola', 'banco_reto']);
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('cutting.v1')).academias[0].faltam)).toEqual(['gaiola', 'banco_reto']);
+  });
+
+  test('o toque no pop-up de aparelhos chega ao armazenamento do aparelho', async ({ page }) => {
+    await abrirApp(page, estado());
+    await irTreino(page);
+    await abrirAparelhos(page);
+    await page.evaluate(() => document.querySelector('#equipGrupos [data-equip="leg_press"]').click());
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('cutting.v1')).academias[0].faltam)).toEqual(['leg_press']);
+  });
+
+  test('inventário mudado em outro aparelho redesenha o pop-up aberto', async ({ page }) => {
+    await abrirApp(page, estado({ faltam: ['leg_press'] }));
+    await irTreino(page);
+    await abrirAparelhos(page);
+    await page.evaluate(() => { const s = JSON.parse(JSON.stringify(__t.store)); s.academias[0].faltam = []; __t.applyRemote(s); });
+    expect(await page.evaluate(() => document.querySelector('#equipGrupos [data-equip="leg_press"]').classList.contains('on'))).toBe(true);
+  });
+
+  test('no editor, acrescentar exercício sem aparelho atualiza a nota na hora, em cor de alerta', async ({ page }) => {
+    await abrirApp(page, estado({ faltam: ['leg_press'], tprotocol: [] }));
+    await irTreino(page);
+    await page.evaluate(() => document.getElementById('tOpenProtocol').click());
+    await page.waitForSelector('#tprotoOverlay.open');
+    await page.evaluate(() => document.getElementById('tpNew').click());
+    await page.waitForSelector('#tpEditOverlay.open');
+    await page.fill('#tpExName', 'Leg press');
+    await page.evaluate(() => document.getElementById('tpExAdd').click());
+    expect(await page.textContent('#tpEquipNota')).toMatch(/Na Prédio falta aparelho para Leg press/);
+    const cores = await page.evaluate(() => ({
+      nota: getComputedStyle(document.getElementById('tpEquipNota')).color,
+      neutra: getComputedStyle(document.getElementById('tpAcadNota')).color,
+    }));
+    expect(cores.nota).not.toBe(cores.neutra);
+  });
+
+  test('em 320px, o selo do prescrito que falta não estoura a lista da troca', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 740 });
+    const PEITO = { id: 'w1', nome: 'Peito', cat: 'A', ex: [ex('Supino reto', 'peito')] };
+    await abrirApp(page, estado({ faltam: ['barra', 'est_supino_reto', 'halteres'], tprotocol: [PEITO] }));
+    await irTreino(page);
+    await iniciar(page);
+    await page.evaluate(() => document.getElementById('trTrocar').click());
+    await page.waitForSelector('#trocaOverlay.open');
+    const r = await page.evaluate(() => {
+      const l = document.getElementById('trocaLista');
+      return { cabe: l.scrollWidth <= l.clientWidth + 1, tag: document.querySelector('#trocaLista .tag.falta').textContent };
+    });
+    expect(r.tag).toMatch(/prescrito · sem aparelho aqui/);
+    expect(r.cabe).toBe(true);
+  });
+
   test('em 320px, a linha da academia, o pop-up, o cartão e o aviso do treino não rolam para o lado', async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 640 });
     const todos = await (async () => { await abrirApp(page, estadoBase()); return page.evaluate(() => __t.EQUIP.map(e => e.id)); })();

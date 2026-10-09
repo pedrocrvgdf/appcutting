@@ -665,9 +665,16 @@ escolha, é o do último treino feito (`protAberto`).
   (editado num aparelho antigo, que remonta o treino sem ela).
 - **A sessão grava `tid`, `prot` e `protNome`.** O selo de progressão e a
   sessão inteira comparam o **mesmo treino** (`mesmoTreino`): mesmo `tid`
-  (sobrevive a renomear o treino), ou mesmo nome no mesmo protocolo. Sem
-  isso, "Treino A" de dois protocolos com exercícios diferentes seria
-  comparado como se fosse um. Sessão de antes conta como do principal.
+  (sobrevive a renomear e a mover o treino), ou mesmo nome no mesmo
+  protocolo. Sem isso, "Treino A" de dois protocolos com exercícios
+  diferentes seria comparado como se fosse um. **Dois `tid` diferentes de
+  treinos que ainda existem nunca são o mesmo treino**, mesmo com o mesmo
+  nome; o nome só decide quando um lado não tem `tid` ou o treino foi
+  excluído. Sessão de antes conta como do principal.
+- **Renomear ou mover um treino carimba o `tid` nas sessões antigas dele**
+  (`carimbarTid`): elas só o reconheciam pelo nome e pelo protocolo, e o
+  selo passava a dizer "primeira vez deste treino" — contra a frase do
+  editor, "O histórico deste treino vem junto".
 - **A referência da última carga (`lastExSession`) não muda**: ela segue o
   exercício e a academia, de qualquer protocolo — supino é supino.
 - Excluir protocolo apaga **os treinos dele** (com `appConfirm`, não senha:
@@ -676,7 +683,15 @@ escolha, é o do último treino feito (`protAberto`).
   Recriar com o mesmo nome devolve o id (`protOrfao`), como academias.
 - Sugestão pronta: com o protocolo aberto **vazio**, ela o preenche; com
   treinos nele, vira protocolo **novo com o nome dela** ("… 2" se repetir).
-- O nome do protocolo só aparece no histórico com dois ou mais protocolos.
+- O nome do protocolo só aparece no histórico com dois ou mais protocolos
+  (ou quando o da sessão não existe mais; sessão antiga, sem `prot`, é do
+  "Meu protocolo").
+- **O título do pop-up só renomeia se a pessoa mexeu nele**
+  (`tpProtNomeIni`): com o pop-up aberto, um nome dado em outro aparelho
+  atualiza o título, e o título velho não o desfaz ao fechar.
+- **Protocolo excluído em outro aparelho com o editor aberto:** salvar grava o
+  treino nele mesmo assim, e o protocolo volta pela reconstrução da lista. O
+  que foi digitado não se perde.
 - Coberto em `tests/protocolos.spec.js`.
 
 ### Inventário de aparelhos por academia
@@ -689,8 +704,10 @@ tocar não grava nada. Guardar o que falta faz aparelho novo no catálogo
 nascer "tem" — sem aviso falso para quem já tinha marcado.
 
 - **O aparelho sai do nome do exercício** (`EX_EQUIP`, `exEquip`): regras por
-  trecho do nome sem acento, da mais específica para a mais geral, primeira
-  que casa — o mesmo casamento das demonstrações (`exMatch`). Cada regra dá
+  trecho do nome sem acento, **em começo de palavra**, da mais específica para
+  a mais geral, primeira que casa. Começo de palavra porque "lateral" casava
+  dentro de "unilateral" e "Elevação pélvica unilateral" virava elevação
+  lateral de ombro. Pontuação vira espaço ("Peck-deck"). Cada regra dá
   **alternativas** (serve uma ou outra; dentro de uma, todos juntos;
   alternativa vazia = peso do corpo). **O aviso só aparece quando todas as
   alternativas têm algo faltando** (`equipFalta`).
@@ -701,7 +718,11 @@ nascer "tem" — sem aviso falso para quem já tinha marcado.
 - O catálogo (`EQUIP`, 44 aparelhos em 7 grupos; `EX_EQUIP`, 255 regras) saiu
   de dois levantamentos independentes, conciliados, e é conferido por teste:
   todo nome de `EX_POR_GRUPO` e `T_SUG` é reconhecido, todo id existe, todo
-  aparelho é usado. Ids são imutáveis (o rótulo pode mudar). Sem cardio.
+  aparelho é usado, e uma tabela de nomes que já deram aviso falso ("Flexão
+  com joelhos apoiados" não é flexora; "Thruster" não é elevação pélvica;
+  "Puxador frente" aceita cabo). Achou outro? Ponha uma regra mais
+  específica ANTES da geral e o caso na tabela. Ids são imutáveis (o rótulo
+  pode mudar). Sem cardio.
 - **Usos**, e só estes: aviso no cartão do treino com academia escolhida
   (`pcFalta`); faixa no treino em andamento (`#trFalta`, `pintarFalta`) com
   "Trocar" e "Tem, sim"; a troca de exercício em três faixas (o que tem, o
