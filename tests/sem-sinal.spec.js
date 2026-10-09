@@ -346,7 +346,23 @@ test.describe('Sem sinal', () => {
     await assentar(page);
     const d = await nuvem(page);
     expect(d.tdays, 'nada do histórico fica, nem o que o outro aparelho gravou').toEqual({});
+    expect(d.liqLog, 'o histórico de líquidos sobe vazio de verdade: ausente, os outros aparelhos o devolveriam').toEqual({});
     expect(await page.evaluate(() => localStorage.getItem('cutting.pendente'))).toBeNull();
+  });
+
+  test('a leitura da abertura que chega depois de uma transação não troca o aparelho pela versão velha', async ({ page }) => {
+    /* O sinal voltou (ou a pessoa saiu e voltou ao app) enquanto a leitura
+       da abertura viajava: a transação subiu o treino feito sem sinal, e a
+       leitura, pedida antes, chegou depois com o documento de antes. */
+    const x = loja();
+    const aqui = loja();
+    aqui.tdays = { [hoje]: [avulso('s1')] };
+    await page.addInitScript(() => { if (!sessionStorage.getItem('__jaDisparou')) { sessionStorage.setItem('__jaDisparou', '1'); setTimeout(() => dispatchEvent(new Event('online')), 300); } });
+    await abrir(page, { aparelho: aqui, nuvem: x, base: x, pendente: true, extra: { '__lentoPrimeiro': '1500' } });
+    await page.waitForTimeout(2000);
+    await assentar(page);
+    expect(ids((await nuvem(page)).tdays[hoje]), 'a transação subiu').toEqual(['s1']);
+    expect(await page.evaluate(h => (__t.store.tdays[h] || []).map(s => s.id), hoje), 'e a leitura velha não apagou da tela').toEqual(['s1']);
   });
 
   test('outra conta entrando não leva o pendente da anterior', async ({ page }) => {
@@ -423,6 +439,44 @@ test.describe('A mescla', () => {
       { liquids: { d: 300 }, liqLog: { d: [{ id: 'y', ml: 200 }, { id: 'z', ml: 100 }] } }));
     expect(M.liqLog.d.map(x => x.id)).toEqual(['y', 'z']);
     expect(M.liquids.d).toBe(300);
+  });
+
+  test('água que já chegou à nuvem não conta duas vezes quando a base não acompanhou', async ({ page }) => {
+    /* O app gravou e foi descartado antes de atualizar a base (ou o SDK
+       repetiu a transação depois de um commit que deu certo): a nuvem já
+       tem o que o aparelho tem. Somar de novo dava 1100. */
+    await abrirSimples(page);
+    const r = await page.evaluate(() => {
+      const B = { liquids: { d: 500 }, liqLog: { d: [{ id: 'a', ml: 500 }] } };
+      const L = { liquids: { d: 800 }, liqLog: { d: [{ id: 'a', ml: 500 }, { id: 'b', ml: 300 }] } };
+      const semLog = __t.mesclar({ liquids: { d: 500 } }, { liquids: { d: 800 } }, { liquids: { d: 800 } });
+      return [__t.mesclar(B, L, JSON.parse(JSON.stringify(L))).liquids.d, semLog.liquids.d];
+    });
+    expect(r).toEqual([800, 800]);
+  });
+
+  test('o vazio de verdade da nuvem apaga a água que este aparelho não mexeu', async ({ page }) => {
+    await abrirSimples(page);
+    const M = await page.evaluate(() => __t.mesclar(
+      { liquids: { d: 500 }, liqLog: { d: [{ id: 'a', ml: 500 }] } },
+      { liquids: { d: 500 }, liqLog: { d: [{ id: 'a', ml: 500 }] } },
+      { liquids: {}, liqLog: {} }));
+    expect([M.liquids, M.liqLog]).toEqual([{}, {}]);
+  });
+
+  test('GETD mudado nos dois aparelhos: vale o da mudança mais recente do histórico', async ({ page }) => {
+    /* Escolher "o daqui" deixava o GETD de hoje desmentindo o histórico: o
+       saldo do dia mudaria quando ele virasse passado. */
+    await abrirSimples(page);
+    const M = await page.evaluate(() => {
+      const semente = { desde: '0000-01-01', getd: 3000, base: 2500 };
+      return __t.mesclar(
+        { getd: 3000, getdHist: [semente] },
+        { getd: 2900, getdHist: [semente, { desde: '2026-10-10', getd: 2900, base: 2400 }] },
+        { getd: 2800, getdHist: [semente, { desde: '2026-10-12', getd: 2800, base: 2300 }] });
+    });
+    expect(M.getdHist.map(x => x.desde)).toEqual(['0000-01-01', '2026-10-10', '2026-10-12']);
+    expect(M.getd).toBe(2800);
   });
 
   test('dois itens iguais sem id no mesmo dia continuam dois', async ({ page }) => {

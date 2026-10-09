@@ -144,14 +144,18 @@ const semRede=()=>localStorage.getItem("__semRede")==="1";
 const offline=()=>Promise.reject(Object.assign(new Error("offline"),{code:"unavailable"}));
 export function getFirestore(){return {};}
 export function doc(){return {};}
+let leituras=0;
 export async function getDoc(){
   if(!temNuvem())return {exists:()=>false};
-  /* "__lento": a leitura demora tantos ms, para dar tempo de lançar algo
-     com a transação no meio do caminho */
-  const ms=+(localStorage.getItem("__lento")||0);
+  /* O documento é o do momento do pedido, como num servidor de verdade: a
+     resposta que demora traz a versão de quando foi pedida. */
+  const d=JSON.parse(localStorage.getItem("__nuvem"));
+  /* "__lento": toda leitura demora tantos ms, para dar tempo de lançar algo
+     com a transação no meio do caminho. "__lentoPrimeiro": só a primeira
+     leitura da página (a da abertura) demora. */
+  const ms=+(localStorage.getItem("__lento")||0)+(leituras++===0?+(localStorage.getItem("__lentoPrimeiro")||0):0);
   if(ms)await new Promise(r=>setTimeout(r,ms));
   if(semRede())return offline();
-  const d=JSON.parse(localStorage.getItem("__nuvem"));
   return d?{exists:()=>true,data:()=>JSON.parse(JSON.stringify(d))}:{exists:()=>false};
 }
 export function setDoc(r,d){

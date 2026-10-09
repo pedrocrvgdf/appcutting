@@ -3175,7 +3175,11 @@ let qtyUnit="g";
 let selectedObj=null, promptedSetup=false, onboarding=false;
 
 function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.days){s.custom=s.custom||[];s.goals=s.goals||{};s.liquids=s.liquids||{};s.protocol=s.protocol||[];s.weights=s.weights||[];s.tprotocol=s.tprotocol||[];s.tdays=s.tdays||{};s.passos=s.passos||{};return s;}}catch(e){}return {getd:0,days:{},custom:[],goals:{},liquids:{},protocol:[],weights:[],tprotocol:[],tdays:{},passos:{}};}
-function blankStore(){return {getd:0,days:{},custom:[],goals:{},liquids:{},protocol:[],weights:[],tprotocol:[],tdays:{},passos:{},academias:[],tprotos:[],getdHist:[]};}
+/* Os campos "quem não sabe não envia" (academias, tprotos, liqLog, getdHist)
+   nascem vazios DE VERDADE: o "Excluir dados" sobe o vazio explícito, e
+   campo ausente seria lido pelos outros aparelhos como "versão anterior,
+   mantenha o seu" — o histórico de líquidos apagado voltava por eles. */
+function blankStore(){return {getd:0,days:{},custom:[],goals:{},liquids:{},protocol:[],weights:[],tprotocol:[],tdays:{},passos:{},academias:[],tprotos:[],liqLog:{},getdHist:[]};}
 const OWNER_KEY="cutting.owner";
 const getOwner=()=>localStorage.getItem(OWNER_KEY);
 const setOwner=uid=>localStorage.setItem(OWNER_KEY,uid||"");
@@ -6290,7 +6294,7 @@ let auth=null,db=null,user=null,unsub=null,pushTimer=null,fns=null;
 /* Estado da sincronização. Declarado ANTES do `await` dos módulos do
    Firebase: save() pode rodar enquanto eles carregam, e uma variável
    declarada depois ainda estaria inacessível nessa hora. */
-let syncBase=null,pendN=0,enviando=null,maisUma=false,retryT=null,retryMs=0,avisarEnvio=false,avisouSentry=false;
+let syncBase=null,pendN=0,enviando=null,maisUma=false,retryT=null,retryMs=0,avisarEnvio=false,avisouSentry=false,geracao=0;
 
 if(cloudEnabled){
   const [{initializeApp},
@@ -6349,8 +6353,14 @@ async function startSync(){
   const ref=doc(db,"users",user.uid);
   setSyncDot("saving","Sincronizando…");
   try{
+    const g0=geracao;
     const snap=await getDoc(ref);
-    if(snap.exists()){
+    /* Uma transação terminou enquanto esta leitura viajava (o sinal voltou,
+       a pessoa saiu e voltou ao app): o que a leitura trouxe pode ser de
+       antes dela, e aplicado trocaria pela versão velha o que acabou de
+       subir. A transação já leu e aplicou a nuvem de verdade. */
+    if(geracao!==g0&&getOwner()===user.uid){}
+    else if(snap.exists()){
       /* Outra conta neste celular: o treino em andamento e a academia
          escolhida eram da anterior. */
       if(getOwner()!==user.uid){ trDiscardRun(); setAcadSel(""); setProtAberto(""); limparSync(); }
@@ -6510,7 +6520,7 @@ function mapa3(b,l,r,fundir){
   const out={};
   for(const k of new Set([...Object.keys(l),...Object.keys(r)])){
     const inL=k in l&&l[k]!==undefined,inR=k in r&&r[k]!==undefined,inB=!!b&&k in b&&b[k]!==undefined;
-    if(inL&&inR)out[k]=fundir(inB?b[k]:undefined,l[k],r[k]);
+    if(inL&&inR)out[k]=fundir(inB?b[k]:undefined,l[k],r[k],k);
     else if(inL){if(!(inB&&igual(l[k],b[k])))out[k]=l[k];}
     else if(inR){if(!(inB&&igual(r[k],b[k])))out[k]=r[k];}
   }
@@ -6547,9 +6557,27 @@ function mesclar(B,L,R){
   campo("tdays",porDia((b,l,r)=>lista3(b,l,r,porId,ganha)));
   campo("liqLog",porDia((b,l,r)=>lista3(b,l,r,porId,ganha)));
   campo("passos",porDia(escolhe));
-  /* Líquido é contador: o que cada lado somou desde a base soma. Sem base
-     não dá para saber, e fica o maior. */
-  campo("liquids",porDia((b,l,r)=>temBase?Math.max(0,(+l||0)+(+r||0)-(+b||0)):Math.max(+l||0,+r||0)));
+  /* Líquido: o total do dia é a lista de horários — já mesclada por id, que
+     não conta nada duas vezes — mais o "resto" sem horário (o que foi
+     lançado antes de existir histórico). Só o resto é contador: o que cada
+     lado somou desde a base soma, e lados iguais não mudam nada. Somar o
+     total inteiro contava em dobro a gravação que chegou à nuvem sem a base
+     acompanhar (o app descartado logo depois de gravar, ou a transação que o
+     SDK repete depois de um commit que deu certo). Lado sem lista de
+     horários (versão antiga) conta como se a lista fosse a da base. */
+  const somaLog=(log,d)=>((log&&log[d])||[]).reduce((a,x)=>a+(+(x&&x.ml)||0),0);
+  const logDe=X=>(X.liqLog&&typeof X.liqLog==="object")?X.liqLog:(B.liqLog||null);
+  campo("liquids",porDia((b,l,r,d)=>{
+    const rl=(+l||0)-somaLog(logDe(L),d),rr=(+r||0)-somaLog(logDe(R),d);
+    const rb=(b===undefined||b===null)?undefined:(+b||0)-somaLog(B.liqLog,d);
+    let resto;
+    if(rl===rr)resto=rl;
+    else if(rb===undefined)resto=temBase?rl+rr:Math.max(rl,rr);
+    else if(rl===rb)resto=rr;
+    else if(rr===rb)resto=rl;
+    else resto=rl+rr-rb;
+    return Math.max(0,somaLog(M.liqLog,d)+Math.max(0,resto));
+  }));
   campo("custom",lista(x=>"n:"+(x&&x.n)));
   campo("protocol",lista(porId));
   campo("weights",lista(x=>"d:"+(x&&x.d)));
@@ -6557,6 +6585,14 @@ function mesclar(B,L,R){
   campo("academias",lista(porId));
   campo("tprotos",lista(porId));
   campo("getdHist",lista(x=>"d:"+(x&&x.desde)));
+  /* O GETD anda com o histórico dele: se os dois aparelhos o mudaram, vale o
+     da mudança mais recente no histórico, e não simplesmente "o daqui" —
+     senão o GETD de hoje desmentiria o histórico, e o saldo do dia mudaria
+     quando ele virasse passado. */
+  if(!igual(L.getd,R.getd)&&!igual(L.getd,B.getd)&&!igual(R.getd,B.getd)&&Array.isArray(M.getdHist)){
+    const u=M.getdHist.reduce((a,x)=>x&&(!a||x.desde>a.desde)?x:a,null);
+    if(u&&(igual(u.getd,L.getd)||igual(u.getd,R.getd)))M.getd=u.getd;
+  }
   /* O total do dia nunca fica abaixo do que a lista de horários soma: o anel
      e a lista não podem se desmentir. */
   if(M.liqLog&&M.liquids)for(const d of Object.keys(M.liqLog)){
@@ -6674,6 +6710,7 @@ async function sincronizarAgora(uid){
   }catch(e){falhouEnvio(e);return false;}
   if(!user||user.uid!==uid||getOwner()!==uid)return false;   // trocou de conta no meio
   retryMs=0;clearTimeout(retryT);
+  geracao++;
   setBase(uid,M);
   if(!igual(M,L)){
     /* A nuvem trouxe o que este aparelho não tinha. O que foi lançado
