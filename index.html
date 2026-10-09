@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v43";
+window.APP_RELEASE = "tresults-v44";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -3104,7 +3104,10 @@ function blankStore(){return {getd:0,days:{},custom:[],goals:{},liquids:{},proto
 const OWNER_KEY="cutting.owner";
 const getOwner=()=>localStorage.getItem(OWNER_KEY);
 const setOwner=uid=>localStorage.setItem(OWNER_KEY,uid||"");
-function save(){localStorage.setItem(KEY,JSON.stringify(store));if(!applyingRemote)pushRemote(false);}
+/* Toda gravação marca que este aparelho tem algo que a nuvem ainda não tem
+   (marcarPendente, na seção da nuvem). É a marca que impede a próxima
+   abertura de trocar o que foi lançado sem sinal pela versão da nuvem. */
+function save(){localStorage.setItem(KEY,JSON.stringify(store));if(!applyingRemote){marcarPendente();pushRemote(false);}}
 function dayItems(){const k=viewKey;if(!store.days[k])store.days[k]=[];return store.days[k];}
 
 const MEALS=[["cafe","Café da manhã"],["almoco","Almoço"],["lanche","Lanche"],["jantar","Jantar"],["ceia","Ceia"],["outros","Outros"]];
@@ -6044,6 +6047,9 @@ async function resetData(){
   localStorage.setItem(KEY,JSON.stringify(store));
   $("getdInput").value="";
   promptedSetup=false;onboarding=false;selectedObj=null;viewKey=todayKey();
+  /* Apagar é substituir a nuvem, não mesclar com ela: sem esta marca, o que
+     outro aparelho gravou depois da última leitura daqui sobreviveria. */
+  marcarPendente(true);
   save();render();
   showView("welcome");
 }
@@ -6054,11 +6060,15 @@ async function resetData(){
    ============================================================ */
 const cloudEnabled=!firebaseConfig.apiKey.includes("COLE");
 let auth=null,db=null,user=null,unsub=null,pushTimer=null,fns=null;
+/* Estado da sincronização. Declarado ANTES do `await` dos módulos do
+   Firebase: save() pode rodar enquanto eles carregam, e uma variável
+   declarada depois ainda estaria inacessível nessa hora. */
+let syncBase=null,pendN=0,enviando=null,maisUma=false,retryT=null,retryMs=0,avisarEnvio=false,avisouSentry=false;
 
 if(cloudEnabled){
   const [{initializeApp},
     {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,sendPasswordResetEmail,EmailAuthProvider,reauthenticateWithCredential,deleteUser},
-    {getFirestore,doc,getDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp},
+    {getFirestore,doc,getDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp,runTransaction},
     {getFunctions,httpsCallable}]=await Promise.all([
     import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"),
     import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"),
@@ -6067,7 +6077,7 @@ if(cloudEnabled){
   const app=initializeApp(firebaseConfig);
   auth=getAuth(app); db=getFirestore(app);
   try{ fns=getFunctions(app,"southamerica-east1"); window.__fnCall=httpsCallable; }catch(e){}
-  window.__fb={signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,sendPasswordResetEmail,EmailAuthProvider,reauthenticateWithCredential,deleteUser,doc,getDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp};
+  window.__fb={signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,sendPasswordResetEmail,EmailAuthProvider,reauthenticateWithCredential,deleteUser,doc,getDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp,runTransaction};
   onAuthStateChanged(auth,u=>{
     user=u;
     if(u){
@@ -6116,11 +6126,12 @@ async function startSync(){
     if(snap.exists()){
       /* Outra conta neste celular: o treino em andamento e a academia
          escolhida eram da anterior. */
-      if(getOwner()!==user.uid){ trDiscardRun(); setAcadSel(""); setProtAberto(""); }
+      if(getOwner()!==user.uid){ trDiscardRun(); setAcadSel(""); setProtAberto(""); limparSync(); }
+      else if(pendente())avisarEnvio=true;   // abriu com algo lançado sem sinal
       applyRemote(snap.data()); setOwner(user.uid);
     }
     else {
-      if(getOwner()!==user.uid){ trDiscardRun(); store=blankStore(); setAcadSel(""); setProtAberto(""); localStorage.setItem(KEY,JSON.stringify(store)); $("getdInput").value=""; render(); }
+      if(getOwner()!==user.uid){ trDiscardRun(); store=blankStore(); setAcadSel(""); setProtAberto(""); limparSync(); localStorage.setItem(KEY,JSON.stringify(store)); $("getdInput").value=""; render(); }
       setOwner(user.uid);
       await pushRemote(true);
     }
@@ -6129,9 +6140,15 @@ async function startSync(){
       if(!d.exists())return;
       const data=d.data();
       if(data.writer===DEVICE)return;
-      applyRemote(data);
+      /* O aviso diz só que algo mudou; quem decide o que vale é a leitura
+         dentro da transação. Um aviso atrasado, de antes da última gravação
+         deste aparelho, aplicado direto, apagaria da tela o que acabou de
+         subir. */
+      if(igual(semMeta(data),baseDe(user.uid)))return;
+      if(enviando){maisUma=true;return;}
+      sincronizar();
     },()=>setSyncDot("err","Erro de conexão"));
-    setSyncDot("ok","Sincronizado");
+    if(!pendente())setSyncDot("ok","Sincronizado");
   }catch(e){ setSyncDot("err","Erro ao carregar"); }
 }
 function stopSync(){ if(unsub){unsub();unsub=null;} }
@@ -6149,7 +6166,199 @@ function goalsParaNuvem(g){
    store._nuvem e volta na próxima gravação, em vez de ser apagado — o
    documento é gravado inteiro, sem merge. Precisa ser JSON simples. */
 const CAMPOS_NUVEM=["getd","days","custom","goals","liquids","protocol","weights","tprotocol","tdays","passos","academias","liqLog","tprotos","writer","updatedAt"];
+/* ---- Nada do que foi lançado sem sinal se perde ----
+   O documento da nuvem é gravado inteiro. Antes, a abertura trocava o
+   aparelho inteiro pela nuvem, e o que tinha sido lançado sem sinal (um
+   treino no subsolo da academia, uma pesagem) sumia calado se a página
+   tivesse sido descartada antes de o sinal voltar.
+
+   Agora são três peças:
+   - a MARCA (`cutting.pendente`): gravada por save(), sai só quando a nuvem
+     confirma. Ela sobrevive ao app fechado;
+   - a BASE (`cutting.base`): a nuvem como este aparelho a viu por último. É
+     ela que diz quem mexeu no quê: o que difere da base aqui foi mexido aqui,
+     o que difere da base lá foi mexido lá;
+   - a MESCLA (`mesclar`), feita dentro de uma transação: lê a nuvem de
+     verdade, junta com o daqui e grava. Se outro aparelho gravar no meio, a
+     transação recomeça sozinha, em vez de um apagar o outro. */
+function pendente(){try{return JSON.parse(localStorage.getItem("cutting.pendente")||"null");}catch(e){return null;}}
+function limparPendente(){try{localStorage.removeItem("cutting.pendente");}catch(e){}}
+function marcarPendente(substituir){
+  if(!cloudEnabled)return;
+  const uid=(user&&user.uid)||getOwner();
+  if(!uid)return;
+  pendN++;
+  const p=pendente();
+  if(substituir||!p||p.uid!==uid){
+    try{localStorage.setItem("cutting.pendente",JSON.stringify(substituir?{uid,substituir:true}:{uid}));}catch(e){}
+  }
+}
+function baseDe(uid){
+  if(!uid)return null;
+  if(syncBase&&syncBase.uid===uid)return syncBase.doc;
+  try{const b=JSON.parse(localStorage.getItem("cutting.base")||"null");if(b&&b.uid===uid&&b.doc){syncBase=b;return b.doc;}}catch(e){}
+  return null;
+}
+function setBase(uid,docNuvem){
+  syncBase={uid,doc:docNuvem};
+  /* Sem espaço para a base, a sincronização continua: só que, na próxima
+     abertura com algo pendente, a mescla junta tudo em vez de saber o que
+     foi apagado. É o lado seguro: nada se perde. */
+  try{localStorage.setItem("cutting.base",JSON.stringify(syncBase));}
+  catch(e){try{localStorage.removeItem("cutting.base");}catch(_){}}
+}
+/* Outra conta entrou: o pendente e a base eram da anterior. */
+function limparSync(){limparPendente();syncBase=null;pendN=0;try{localStorage.removeItem("cutting.base");}catch(e){}}
+
+const copia=o=>JSON.parse(JSON.stringify(o));
+/* O documento sem as marcas de quem gravou e quando (`updatedAt` é um
+   Timestamp, não JSON). */
+function semMeta(d){return copia(Object.assign({},d||{},{writer:undefined,updatedAt:undefined}));}
+/* O store como ele sobe para a nuvem. */
+function paraNuvem(s){
+  const d=Object.assign({},s._nuvem||{},{getd:s.getd,days:s.days||{},custom:s.custom||[],goals:goalsParaNuvem(s.goals),liquids:s.liquids||{},protocol:s.protocol||[],weights:s.weights||[],tprotocol:s.tprotocol||[],tdays:s.tdays||{},passos:s.passos||{}});
+  /* Quem não sabe não envia: lista que este aparelho nunca recebeu não sobe
+     como vazia por cima da de outro aparelho. */
+  if(Array.isArray(s.academias))d.academias=s.academias;
+  if(s.liqLog&&typeof s.liqLog==="object")d.liqLog=s.liqLog;
+  if(Array.isArray(s.tprotos))d.tprotos=s.tprotos;
+  return d;
+}
+
+/* Mesmo conteúdo: objeto sem ligar para a ordem das chaves, lista em ordem. */
+function igual(a,b){
+  if(a===b)return true;
+  if(a===null||b===null||typeof a!=="object"||typeof b!=="object")return false;
+  if(Array.isArray(a)!==Array.isArray(b))return false;
+  if(Array.isArray(a)){
+    if(a.length!==b.length)return false;
+    for(let i=0;i<a.length;i++)if(!igual(a[i],b[i]))return false;
+    return true;
+  }
+  const ka=Object.keys(a).filter(k=>a[k]!==undefined),kb=Object.keys(b).filter(k=>b[k]!==undefined);
+  if(ka.length!==kb.length)return false;
+  for(const k of ka)if(!igual(a[k],b[k]))return false;
+  return true;
+}
+/* Um valor, três versões: b (a base), l (este aparelho), r (a nuvem). Quem
+   mexeu leva; se os dois mexeram, `ganha` decide. */
+function tres(b,l,r,ganha,fundir){
+  if(igual(l,r))return l;
+  if(igual(l,b))return r;
+  if(igual(r,b))return l;
+  return fundir?fundir(b,l,r):(ganha==="l"?l:r);
+}
+/* Lista de registros com chave (id, data, nome). Lançado de um lado entra;
+   apagado de um lado sai, desde que o outro não o tenha mexido — mexido
+   vence apagado, porque perder um registro é pior que vê-lo voltar. Sem
+   base (b null), não há como saber o que foi apagado: junta tudo. */
+function lista3(b,l,r,chave,ganha){
+  l=Array.isArray(l)?l:[];r=Array.isArray(r)?r:[];b=Array.isArray(b)?b:null;
+  const chaves=a=>{const n={};return a.map(x=>{const c=String(chave(x));n[c]=(n[c]||0)+1;return c+"#"+n[c];});};
+  const kl=chaves(l),kr=chaves(r),kb=b?chaves(b):[];
+  const L=new Map(kl.map((k,i)=>[k,l[i]])),R=new Map(kr.map((k,i)=>[k,r[i]])),B=new Map(kb.map((k,i)=>[k,b[i]]));
+  const fica=new Map();
+  for(const k of new Set([...kl,...kr])){
+    const inL=L.has(k),inR=R.has(k),inB=B.has(k);
+    if(inL&&inR)fica.set(k,tres(inB?B.get(k):undefined,L.get(k),R.get(k),ganha));
+    else if(inL){if(!(inB&&igual(L.get(k),B.get(k))))fica.set(k,L.get(k));}   // só aqui: a nuvem apagou, ou foi lançado aqui
+    else if(!(inB&&igual(R.get(k),B.get(k))))fica.set(k,R.get(k));          // só lá: este aparelho apagou, ou foi lançado lá
+  }
+  /* Ordem: a deste aparelho — o que foi lançado no meio da lista fica no
+     lugar —, a menos que só a nuvem tenha reordenado, ou não haja base. O
+     que só o outro lado tem vai para o fim, na ordem dele. */
+  const comum=(a,s)=>a.filter(k=>s.has(k));
+  const sB=new Set(kb),sL=new Set(kl),sR=new Set(kr);
+  let primeiro=kl,depois=kr;
+  if(!b||(!igual(comum(kr,sB),comum(kb,sR))&&igual(comum(kl,sB),comum(kb,sL)))){primeiro=kr;depois=kl;}
+  const out=[],visto=new Set();
+  for(const k of [...primeiro,...depois])if(fica.has(k)&&!visto.has(k)){visto.add(k);out.push(fica.get(k));}
+  return out;
+}
+/* Mapa por chave (dia, ou chave do objetivo). Mesma regra de presença da
+   lista; os dois mexeram na mesma chave, `fundir` decide. */
+function mapa3(b,l,r,fundir){
+  l=(l&&typeof l==="object")?l:{};r=(r&&typeof r==="object")?r:{};b=(b&&typeof b==="object")?b:null;
+  const out={};
+  for(const k of new Set([...Object.keys(l),...Object.keys(r)])){
+    const inL=k in l&&l[k]!==undefined,inR=k in r&&r[k]!==undefined,inB=!!b&&k in b&&b[k]!==undefined;
+    if(inL&&inR)out[k]=fundir(inB?b[k]:undefined,l[k],r[k]);
+    else if(inL){if(!(inB&&igual(l[k],b[k])))out[k]=l[k];}
+    else if(inR){if(!(inB&&igual(r[k],b[k])))out[k]=r[k];}
+  }
+  return out;
+}
+const porId=x=>(x&&x.id!=null)?"id:"+x.id:"j:"+JSON.stringify(x);
+/* B: a base (null = não se sabe o que a nuvem tinha); L: este aparelho;
+   R: a nuvem agora. Devolve o documento que deve ficar nos dois.
+   Com base, nos poucos casos em que os dois aparelhos mexeram NA MESMA
+   coisa sem sinal, vale a deste aparelho, que é a que a pessoa tem na mão.
+   Sem base, vale a da nuvem — o daqui pode ser de um celular parado há
+   semanas — mas nenhum registro que só este aparelho tem se perde. */
+function mesclar(B,L,R){
+  const temBase=!!B;B=B||{};L=L||{};R=R||{};
+  const ganha=temBase?"l":"r";
+  const M={};
+  /* campos de uma versão mais nova: são dela, vale o que a nuvem tem */
+  for(const k of new Set([...Object.keys(L),...Object.keys(R)])){
+    if(CAMPOS_NUVEM.includes(k))continue;
+    const v=tres(temBase?B[k]:undefined,L[k],R[k],ganha);
+    if(v!==undefined)M[k]=v;
+  }
+  const campo=(k,f)=>{
+    if(R[k]===undefined){if(L[k]!==undefined)M[k]=L[k];return;}   // ausente na nuvem não é vazio
+    if(L[k]===undefined){M[k]=R[k];return;}
+    M[k]=f(temBase?B[k]:undefined,L[k],R[k]);
+  };
+  const lista=chave=>(b,l,r)=>tres(b,l,r,ganha,(b,l,r)=>lista3(b,l,r,chave,ganha));
+  const porDia=fundirDia=>(b,l,r)=>mapa3(b,l,r,fundirDia);
+  const escolhe=(b,l,r)=>tres(b,l,r,ganha);
+  campo("getd",escolhe);
+  campo("goals",porDia(escolhe));
+  campo("days",porDia((b,l,r)=>lista3(b,l,r,porId,ganha)));
+  campo("tdays",porDia((b,l,r)=>lista3(b,l,r,porId,ganha)));
+  campo("liqLog",porDia((b,l,r)=>lista3(b,l,r,porId,ganha)));
+  campo("passos",porDia(escolhe));
+  /* Líquido é contador: o que cada lado somou desde a base soma. Sem base
+     não dá para saber, e fica o maior. */
+  campo("liquids",porDia((b,l,r)=>temBase?Math.max(0,(+l||0)+(+r||0)-(+b||0)):Math.max(+l||0,+r||0)));
+  campo("custom",lista(x=>"n:"+(x&&x.n)));
+  campo("protocol",lista(porId));
+  campo("weights",lista(x=>"d:"+(x&&x.d)));
+  campo("tprotocol",lista(porId));
+  campo("academias",lista(porId));
+  campo("tprotos",lista(porId));
+  /* O total do dia nunca fica abaixo do que a lista de horários soma: o anel
+     e a lista não podem se desmentir. */
+  if(M.liqLog&&M.liquids)for(const d of Object.keys(M.liqLog)){
+    const soma=(M.liqLog[d]||[]).reduce((a,x)=>a+(+(x&&x.ml)||0),0);
+    if(soma>(+M.liquids[d]||0))M.liquids[d]=soma;
+  }
+  return M;
+}
+
 function applyRemote(data){
+  const uid=user&&user.uid;
+  const R=semMeta(data);
+  const p=pendente();
+  if(uid&&store&&getOwner()===uid&&p&&p.uid===uid){
+    /* Este aparelho tem algo que a nuvem não tem: junta, em vez de trocar. */
+    const L=copia(paraNuvem(store));
+    const M=p.substituir?L:mesclar(baseDe(uid),L,R);
+    setBase(uid,R);
+    aplicarNuvem(M);
+    setSyncDot("saving","Salvando…");
+    pushRemote(false);
+    return;
+  }
+  if(p&&(!uid||p.uid!==uid||getOwner()!==uid))limparPendente();
+  if(uid)setBase(uid,R);
+  aplicarNuvem(data);
+  setSyncDot("ok","Sincronizado");
+}
+/* Monta o store a partir de um documento da nuvem. `manterDia`: depois de
+   uma gravação deste aparelho, a tela continua no dia que a pessoa via. */
+function aplicarNuvem(data,manterDia){
   applyingRemote=true;
   /* Só herda do aparelho quem é dono dele. Com outra conta entrando neste
      celular, nada do que ficou aqui — o exógeno (dado de saúde), as
@@ -6180,9 +6389,9 @@ function applyRemote(data){
   if(liqLog)store.liqLog=liqLog;
   if(Object.keys(extra).length)store._nuvem=extra;
   if(meu)Object.assign(store.goals,meu);
-  viewKey=todayKey();realToday=todayKey();
+  if(!manterDia){viewKey=todayKey();realToday=todayKey();}
   localStorage.setItem(KEY,JSON.stringify(store));
-  $("getdInput").value=store.getd>0?store.getd:"";
+  if(document.activeElement!==$("getdInput"))$("getdInput").value=store.getd>0?store.getd:"";
   render();
   renderTreino();   // academias e protocolos vindos de outro aparelho
   equipRevisar();   // pop-up de aparelhos aberto: redesenha, ou fecha se a academia sumiu
@@ -6197,26 +6406,76 @@ function applyRemote(data){
   }
   if(trS)pintarFalta();   // inventário mudou em outro aparelho; nunca renderTr, que mataria o descanso
   applyingRemote=false;
-  setSyncDot("ok","Sincronizado");
 }
 function pushRemote(immediate){
   if(!cloudEnabled||!user)return;
-  const {doc,setDoc,serverTimestamp}=window.__fb;
   clearTimeout(pushTimer);
-  const doPush=async()=>{
-    setSyncDot("saving","Salvando…");
-    const d=Object.assign({},store._nuvem||{},{getd:store.getd,days:store.days,custom:store.custom||[],goals:goalsParaNuvem(store.goals),liquids:store.liquids||{},protocol:store.protocol||[],weights:store.weights||[],tprotocol:store.tprotocol||[],tdays:store.tdays||{},passos:store.passos||{},writer:DEVICE,updatedAt:serverTimestamp()});
-    /* Quem não sabe não envia: lista que este aparelho nunca recebeu não sobe
-       como vazia por cima da de outro aparelho. */
-    if(Array.isArray(store.academias))d.academias=store.academias;
-    if(store.liqLog&&typeof store.liqLog==="object")d.liqLog=store.liqLog;
-    if(Array.isArray(store.tprotos))d.tprotos=store.tprotos;
-    try{ await setDoc(doc(db,"users",user.uid),d); setSyncDot("ok","Sincronizado"); }
-    catch(e){ setSyncDot("err","Salvo local"); }
-  };
-  if(immediate)return doPush();
-  pushTimer=setTimeout(doPush,800);
+  if(immediate)return sincronizar();
+  pushTimer=setTimeout(sincronizar,800);
 }
+/* Uma transação por vez. Pedido que chega com uma em andamento pega a
+   carona dela; aviso da nuvem que chega no meio pede mais uma rodada. */
+async function sincronizar(){
+  if(!cloudEnabled||!user)return;
+  if(enviando)return enviando;
+  const uid=user.uid;
+  if(getOwner()!==uid)return;   // os dados deste aparelho ainda não são desta conta
+  enviando=sincronizarAgora(uid);
+  try{return await enviando;}
+  finally{enviando=null;if(maisUma){maisUma=false;sincronizar();}}
+}
+async function sincronizarAgora(uid){
+  const {doc,runTransaction,serverTimestamp}=window.__fb;
+  const ref=doc(db,"users",uid);
+  const n0=pendN,p=pendente(),pend=!!(p&&p.uid===uid);
+  const L=copia(paraNuvem(store)),B=baseDe(uid);
+  let M=null,gravou=false;
+  if(pend)setSyncDot("saving","Salvando…");
+  try{
+    await runTransaction(db,async tx=>{
+      const snap=await tx.get(ref);
+      const R=snap.exists()?semMeta(snap.data()):null;
+      M=(!R||(pend&&p.substituir))?L:(pend?mesclar(B,L,R):R);
+      gravou=!R||!igual(M,R);
+      if(gravou)tx.set(ref,Object.assign({},M,{writer:DEVICE,updatedAt:serverTimestamp()}));
+    });
+  }catch(e){falhouEnvio(e);return false;}
+  if(!user||user.uid!==uid||getOwner()!==uid)return false;   // trocou de conta no meio
+  retryMs=0;clearTimeout(retryT);
+  setBase(uid,M);
+  if(!igual(M,L)){
+    /* A nuvem trouxe o que este aparelho não tinha. O que foi lançado
+       durante a transação é mesclado por cima, não perdido. */
+    const agora=copia(paraNuvem(store));
+    aplicarNuvem(pendN!==n0?mesclar(L,agora,M):M,true);
+  }
+  if(pendN===n0){
+    if(pend)limparPendente();
+    setSyncDot("ok","Sincronizado");
+    if(avisarEnvio&&pend&&gravou)flash("O que foi lançado sem sinal está salvo na nuvem");
+    avisarEnvio=false;
+  }else{
+    if(pend&&p.substituir)try{localStorage.setItem("cutting.pendente",JSON.stringify({uid}));}catch(e){}
+    maisUma=true;   // o que foi lançado durante a transação sobe na próxima
+  }
+  return true;
+}
+function falhouEnvio(e){
+  const code=(e&&e.code)||"";
+  const semSinal=navigator.onLine===false||code==="unavailable"||code==="deadline-exceeded";
+  setSyncDot("err",semSinal?"Sem sinal, salvo no aparelho":"Não enviado, salvo no aparelho");
+  /* Recusa que não é falta de sinal (documento grande demais, permissão) é
+     defeito: o Sentry recebe só o código, uma vez por abertura. */
+  if(!semSinal&&!avisouSentry){avisouSentry=true;try{if(window.Sentry&&Sentry.captureMessage)Sentry.captureMessage("Nuvem recusou a gravação: "+(code||"sem código"));}catch(_){}}
+  retryMs=Math.min(retryMs?retryMs*2:5000,60000);
+  clearTimeout(retryT);retryT=setTimeout(()=>pushRemote(true),retryMs);
+}
+/* O sinal voltou, ou a pessoa voltou ao app: tenta de novo na hora. Ao
+   sair do app, envia já, sem esperar os 800 ms: o Android pode descartar a
+   página logo depois. */
+addEventListener("online",()=>{if(pendente())pushRemote(true);});
+addEventListener("pagehide",()=>{if(pendente())pushRemote(true);});
+document.addEventListener("visibilitychange",()=>{if(pendente())pushRemote(true);});
 function setSyncDot(state,text){const d=$("syncDot"),t=$("syncText");if(d)d.className="dot "+state;if(t)t.textContent=text;const d2=$("syncDot2");if(d2)d2.className="dot "+state;}
 
 /* ---------- Auth handlers ---------- */

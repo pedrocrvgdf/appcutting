@@ -25,7 +25,8 @@ window.__t={
   applyRemote, goalsParaNuvem, pushRemote:()=>pushRemote(true), naNuvem:()=>!!(cloudEnabled&&user),
   gastoDia, passosDia, baseSemRotina, kmAtividades, TACO, localList,
   academias, acadSel, acadDaSessao, treinoNaAcad, fdTodas, fdProgressao, fdSoEmOutra,
-  startSync:()=>startSync(),
+  startSync:()=>startSync(), sincronizar:()=>sincronizar(), mesclar, igual, paraNuvem:()=>copia(paraNuvem(store)),
+  pendente, baseDe, salvar:()=>save(), get enviando(){return !!enviando},
   listaProtocolos, protDoTreino, protPorId, protAberto, protNomeDe, mesmoTreino, treinosDoProt, PROT_PADRAO, T_SUG,
   EQUIP, EQUIP_ID, EX_EQUIP, EX_POR_GRUPO_: EX_POR_GRUPO, exEquip, equipFalta, equipFaltam,
   /* Trocar quem está logado, para alcançar o modo local — onde não há conta e
@@ -130,14 +131,51 @@ export function httpsCallable(fns,nome){
     return {data:r};
   };
 }`;
+/* Nuvem falsa. Por padrão ela não tem documento e aceita qualquer gravação
+   sem guardar, como sempre foi. Com a chave "__nuvem" no armazenamento local
+   (posta pelo teste), ela passa a ter estado: guarda o que é gravado e
+   devolve na leitura — e, por viver no armazenamento, sobrevive a recarregar
+   a página, que é como se simula o app descartado e aberto de novo.
+   "__semRede" faz leitura e gravação falharem como sem sinal. */
 const FB_FS = `
+const temNuvem=()=>localStorage.getItem("__nuvem")!==null;
+const semRede=()=>localStorage.getItem("__semRede")==="1";
+const offline=()=>Promise.reject(Object.assign(new Error("offline"),{code:"unavailable"}));
 export function getFirestore(){return {};}
 export function doc(){return {};}
-export function getDoc(){return Promise.resolve({exists:()=>false});}
-export function setDoc(){return Promise.resolve();}
+export async function getDoc(){
+  if(!temNuvem())return {exists:()=>false};
+  /* "__lento": a leitura demora tantos ms, para dar tempo de lançar algo
+     com a transação no meio do caminho */
+  const ms=+(localStorage.getItem("__lento")||0);
+  if(ms)await new Promise(r=>setTimeout(r,ms));
+  if(semRede())return offline();
+  const d=JSON.parse(localStorage.getItem("__nuvem"));
+  return d?{exists:()=>true,data:()=>JSON.parse(JSON.stringify(d))}:{exists:()=>false};
+}
+export function setDoc(r,d){
+  if(!temNuvem())return Promise.resolve();
+  if(semRede())return offline();
+  localStorage.setItem("__nuvem",JSON.stringify(d));
+  localStorage.setItem("__gravacoes",String(+(localStorage.getItem("__gravacoes")||0)+1));
+  return Promise.resolve();
+}
 export function deleteDoc(){return Promise.resolve();}
-export function onSnapshot(){return ()=>{};}
-export function serverTimestamp(){return 0;}`;
+/* O aviso de mudança fica em window.__aviso, para o teste disparar quando
+   quiser — inclusive atrasado. */
+export function onSnapshot(r,cb){window.__aviso=cb;return ()=>{};}
+export function serverTimestamp(){return 0;}
+/* A transação lê e grava pelo que estiver em window.__fb na hora: assim os
+   testes que trocam getDoc/setDoc para simular a nuvem valem também para
+   ela. */
+export async function runTransaction(db,fn){
+  const fb=window.__fb;
+  let escrita=null;
+  const tx={get:r=>fb.getDoc(r),set:(r,d)=>{escrita=[r,d];return tx;}};
+  const out=await fn(tx);
+  if(escrita)await fb.setDoc(escrita[0],escrita[1]);
+  return out;
+}`;
 
 const js = (body) => ({ status: 200, contentType: 'application/javascript', body });
 

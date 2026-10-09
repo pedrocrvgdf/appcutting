@@ -499,6 +499,7 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 |---|---|
 | `tests/treino.spec.js` | Persistência da sessão, retomada após o app ser descartado, desconto do tempo fora do app |
 | `tests/nuvem.spec.js` | Sincronização: outra conta no celular não herda exógeno, academias, líquidos nem treino em andamento; campo ausente não apaga; quem não sabe não envia; campo de versão mais nova volta como chegou; histórico de líquidos sobe |
+| `tests/sem-sinal.spec.js` | Treino feito sem sinal sobrevive ao app descartado; dois aparelhos sem sinal juntam; apagado não volta; água soma; transação não apaga o de outro aparelho; envio ao sair do app; aviso atrasado; excluir dados substitui; a mescla direto na função |
 | `tests/protocolos.spec.js` | Protocolos com nome: "Meu protocolo" virtual sem regravar nada, criar/renomear/excluir, sugestão que preenche ou cria, mover treino, selo que não mistura dois "Treino A", sessão com `tid`/`prot`, nuvem com versão anterior |
 | `tests/inventario.spec.js` | Inventário: catálogo inteiro reconhecido, "não informado" sem aviso, gravação por toque, aviso no cartão/treino/editor, troca com o que tem primeiro, "Tem, sim" sem matar o descanso, alternativas, nome desconhecido sem aviso |
 | `tests/academias.spec.js` | Academias: sem cadastro o app fica igual, filtro por academia, treino novo nascendo na escolhida, sessão gravando onde foi, referência e selo na mesma academia, excluir sem apagar treino nem histórico, nuvem, 320px |
@@ -542,6 +543,8 @@ Chaves usadas no armazenamento local, úteis para montar cenários:
 |---|---|
 | `cutting.v1` | Todos os dados do usuário |
 | `cutting.owner` | UID do dono dos dados no aparelho |
+| `cutting.pendente` | `{uid}`: há alteração que a nuvem ainda não confirmou (some quando ela confirma) |
+| `cutting.base` | `{uid, doc}`: a nuvem como este aparelho a viu por último, para a mescla |
 | `tresults.run` | Treino em andamento (some ao finalizar) |
 | `tresults.theme` | `light` / `dark` |
 | `tresults.acad` | Academia escolhida neste aparelho (vazio = Todas) |
@@ -740,9 +743,12 @@ nascer "tem" — sem aviso falso para quem já tinha marcado.
 
 ### A nuvem: o documento é gravado inteiro
 
-`pushRemote` grava o documento do usuário **inteiro, sem merge**: quem grava por
-último ganha, e o que ele não mandou deixa de existir. Três regras saem disso, e
-cada uma tem teste em `tests/nuvem.spec.js`:
+`pushRemote` grava o documento do usuário **inteiro**: o que ele não mandou deixa
+de existir. Desde a v44 a gravação é uma transação que lê a nuvem e mescla
+antes de gravar (veja "Nada do que foi lançado sem sinal se perde", abaixo),
+mas o documento continua indo inteiro, e aparelho com versão anterior ainda
+grava por cima às cegas. Três regras saem disso, e cada uma tem teste em
+`tests/nuvem.spec.js`:
 
 - **Só herda do aparelho quem é dono dele** (`applyRemote`, `local`). O que é
   guardado no aparelho e sobrevive à nuvem — exógeno (dado de saúde),
@@ -763,6 +769,75 @@ cada uma tem teste em `tests/nuvem.spec.js`:
   existia: campo de treino que esta versão não conhece continua nele.
 - **O histórico de líquidos (`liqLog`) sobe.** Antes ele ficava só no
   aparelho, e o `store` remontado pela nuvem o apagava a cada abertura do app.
+
+### Nada do que foi lançado sem sinal se perde
+
+O caso que motivou: treino finalizado no subsolo da academia, sem sinal. O app
+gravava no aparelho, mas o envio ficava numa fila **na memória** (o Firestore
+usa cache em memória). Se o Android descartasse a página antes de o sinal
+voltar, a abertura seguinte baixava a nuvem e **trocava o aparelho inteiro por
+ela**: o treino sumia sem aviso. Reproduzido com a nuvem falsa dos testes antes
+do conserto. São três peças, todas no bloco da nuvem do `index.html`:
+
+- **A marca** (`cutting.pendente`, `{uid}`): `save()` a grava
+  (`marcarPendente`), e ela só sai quando a transação confirma. Sobrevive ao
+  app fechado. `pendN` (só na memória) conta os toques, para saber se algo foi
+  lançado **durante** o envio — aí a marca fica e sai mais uma rodada.
+- **A base** (`cutting.base`, `{uid, doc}`): a nuvem como este aparelho a viu
+  por último (o que leu, ou o que gravou). É ela que diz quem mexeu no quê.
+  Sem a base, não dá para distinguir "apagado lá" de "lançado aqui".
+- **A mescla** (`mesclar(B, L, R)`): base, este aparelho, nuvem. Regras:
+  - por campo, por dia (`days`, `tdays`, `liqLog`, `passos`, `liquids`) e por
+    registro (`id`; pesagem pela data `d`; alimento próprio pelo nome `n`);
+  - lançado de um lado entra; apagado de um lado sai, **desde que o outro não
+    tenha mexido no mesmo registro** — mexido vence apagado, porque ver um
+    registro voltar é melhor que perdê-lo;
+  - os dois mexeram **na mesma coisa**: com base, vale a deste aparelho; sem
+    base (aparelho vindo da v43, ou sem espaço para gravá-la), vale a da
+    nuvem, porque este pode ser um celular parado há semanas — mas o que só
+    ele tem entra assim mesmo;
+  - o objetivo junta chave por chave;
+  - **líquido é contador**: o que cada lado somou desde a base soma, e o total
+    do dia nunca fica abaixo do que a lista de horários soma;
+  - campo ausente na nuvem não é vazio (a regra de sempre); campo de versão
+    mais nova vale o da nuvem.
+
+Como as peças se encaixam:
+
+- **Toda gravação é `runTransaction`** (`sincronizar` → `sincronizarAgora`):
+  lê a nuvem, mescla com o daqui e grava, e só grava se o resultado difere do
+  que está lá. Se outro aparelho gravar no meio, o Firestore recomeça a
+  transação, em vez de um apagar o outro. Custa uma leitura a mais por
+  gravação. Uma transação por vez (`enviando`); o que chega no meio pega
+  carona (`maisUma`).
+- **Sem sinal, a transação falha** (não fica numa fila em memória), o texto de
+  sincronização diz "Sem sinal, salvo no aparelho" e o app tenta de novo com
+  espera crescente (5 s até 60 s), ao voltar o sinal (`online`) e ao voltar
+  ao app. **Ao sair do app** (`visibilitychange`, `pagehide`) envia na hora,
+  sem esperar os 800 ms.
+- **Na abertura, com marca pendente da mesma conta**, `applyRemote` mescla em
+  vez de trocar, e o resultado sobe. Sem marca, segue a nuvem, como sempre: o
+  aparelho em dia não tem o que defender, e o que foi apagado em outro
+  aparelho não pode voltar por ele.
+- **O aviso da nuvem (`onSnapshot`) não é aplicado direto.** Ele pode chegar
+  atrasado, com o documento de antes da última gravação daqui, e aplicado
+  direto tiraria da tela o que acabou de subir. Ele só dispara uma transação,
+  que lê a versão de verdade.
+- **Excluir dados substitui, não mescla** (`marcarPendente(true)` →
+  `substituir`): sem isso, o que outro aparelho gravou depois da última
+  leitura daqui sobreviveria à exclusão.
+- **Outra conta entrando descarta a marca e a base da anterior**
+  (`limparSync`), junto com o treino em andamento.
+- Recusa que não é falta de sinal (documento grande demais, permissão) manda
+  ao Sentry **só o código do erro**, uma vez por abertura.
+- **O que ainda não resolve:** abrir o app **sem sinal** continua parado na
+  abertura (a tela espera o `getDoc`); é a ideia "Abrir na hora", que muda
+  uma regra desta página e precisa ser combinada. E aparelho com versão
+  anterior à v44 ainda grava às cegas.
+- Coberto em `tests/sem-sinal.spec.js`, que usa a **nuvem falsa com estado**
+  (`__nuvem`, `__semRede`, `__lento` no armazenamento local, em
+  `tests/app.js`): recarregar a página é o app descartado e aberto de novo, e
+  "outro aparelho" é o teste mexendo direto no documento.
 
 ### Trocar o exercício no meio do treino
 
