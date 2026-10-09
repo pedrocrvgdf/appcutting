@@ -197,6 +197,13 @@ for (const largura of [390, 320]) {
       expect(fora).toEqual([]);
     });
 
+    test('o atalho do peso no Início não corta o texto', async ({ page }) => {
+      const h = require('./app').diaISO;
+      await abrirApp(page, estadoBase({ weights: [{ d: h(3), w: 103.4 }] }));
+      const e = await page.evaluate(() => { const x = document.getElementById('fdPesoTx'); return [x.textContent, x.scrollWidth <= x.clientWidth + 1]; });
+      expect(e).toEqual(['Peso · último 103,4 kg', true]);
+    });
+
     test('o feed do Início não corta os números das sessões', async ({ page }) => {
       /* A unidade saiu do valor para o rótulo justamente porque "310 kcal" não
          cabia em 320px e era cortado no meio. */

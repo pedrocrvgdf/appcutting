@@ -3445,7 +3445,7 @@ function abrirSessao(id){
     }
     return `<div class="ss-ex">
       <div class="ssn">${esc(e.n)} ${comp}</div>
-      ${(e.sets||[]).map((x,k)=>`<button class="ss-serie" type="button" data-ssc="${ei}:${k}" aria-label="Corrigir a série ${k+1}"><span class="i">${k+1}</span><span class="c">${serieTxt(x)}</span><span class="r">${x.rir!=null?"RIR "+x.rir:""}</span><svg class="ed" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>`).join("")}
+      ${(e.sets||[]).map((x,k)=>`<button class="ss-serie" type="button" data-ssc="${ei}:${k}" aria-label="Série ${k+1}: ${serieTxt(x)}${x.rir!=null?", RIR "+x.rir:""}. Corrigir"><span class="i">${k+1}</span><span class="c">${serieTxt(x)}</span><span class="r">${x.rir!=null?"RIR "+x.rir:""}</span><svg class="ed" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>`).join("")}
     </div>`;
   }).join("")||'<div class="fd-vazio">Sem detalhe de séries neste registro.</div>';
   $("ssDica").hidden=!(w.ex||[]).length;
@@ -3579,11 +3579,8 @@ const T_ACTS=[
  {n:"Lutas",met:7.5},{n:"Dança",met:5.5},{n:"Elíptico",met:5},{n:"Escada",met:8.8},{n:"Yoga / alongamento",met:2.8}
 ];
 $("taAct").innerHTML=T_ACTS.map((a,i)=>`<option value="${i}">${a.n}</option>`).join("");
-function userWeight(){
-  const ws=(store.weights||[]).slice().sort((a,b)=>a.d<b.d?-1:1);
-  if(ws.length)return ws[ws.length-1].w;
-  return parseFloat((store.goals||{}).pesoAtual)||75;
-}
+/* O peso do cardio é o mesmo dos passos: o do dia (pesoNoDia). */
+function userWeight(){return pesoNoDia(todayKey())||75;}
 function metKcal(met,min){return met*3.5*userWeight()/200*min;}
 function netKcal(met,min){return Math.max(0,met-1)*3.5*userWeight()/200*min;} // líquido: acima do repouso (o GETD já cobre o repouso)
 function tToday(){const k=todayKey();store.tdays=store.tdays||{};if(!store.tdays[k])store.tdays[k]=[];return store.tdays[k];}
@@ -6977,8 +6974,10 @@ function render(){
     if(ring){ring.style.strokeDashoffset=(RC*(1-frac)).toFixed(1);ring.style.stroke=over?"var(--warn)":"var(--primary)";}
     const burn=burnedKcal(viewKey),ps=passosDia(viewKey);
     if($("burnShow"))$("burnShow").textContent="+"+r0(burn);
-    if(ps&&ps.calculavel)$("statusLine").textContent=`Gasto do dia — ${r0(baseSemRotina())} (GETD sem a rotina) + ${r0(ps.kcal)} (passos)${burn>0?` + ${r0(burn)} (treino)`:""} = ${r0(gastoDia(viewKey))} kcal`;
-    else $("statusLine").textContent=burn>0?`Gasto do dia — ${r0(getd)} (GETD) + ${r0(burn)} (treino) = ${r0(getd+burn)} kcal`:`GETD — ${r0(getd)} kcal`;
+    /* o GETD e a base DO DIA visto: num dia passado, os de então */
+    const gb=gastoBase(viewKey);
+    if(ps&&ps.calculavel)$("statusLine").textContent=`Gasto do dia — ${r0(gb.base)} (GETD sem a rotina) + ${r0(ps.kcal)} (passos)${burn>0?` + ${r0(burn)} (treino)`:""} = ${r0(gastoDia(viewKey))} kcal`;
+    else $("statusLine").textContent=burn>0?`Gasto do dia — ${r0(gb.getd)} (GETD) + ${r0(burn)} (treino) = ${r0(gb.getd+burn)} kcal`:`GETD — ${r0(gb.getd)} kcal`;
     $("statusLine").style.color="var(--muted)";
   }
   renderPassos();
@@ -7406,8 +7405,19 @@ function burnedKcal(dk){return ((store.tdays&&store.tdays[dk])||[]).reduce((a,w)
    o cardio: a mesma caminhada não pode valer dois números. */
 function pesoConta(g){g=g||{};return parseFloat(g.pesoConta)||parseFloat(g.pesoAtual)||0;}
 function pesoNoDia(dk){
+  const g=store.goals||{},pa=parseFloat(g.pesoAtual)||0;
   const ws=(store.weights||[]).filter(x=>x&&x.w>0&&x.d<=dk).sort((a,b)=>a.d<b.d?-1:1);
-  return ws.length?ws[ws.length-1].w:(parseFloat((store.goals||{}).pesoAtual)||0);
+  const u=ws.length?ws[ws.length-1]:null;
+  /* Pesagem de antes do início do plano é mais velha que o peso de partida
+     digitado nele: no plano, vale o de partida até a próxima pesagem. */
+  if(pa>0&&g.inicio&&dk>=g.inicio&&(!u||u.d<g.inicio))return pa;
+  return u?u.w:pa;
+}
+/* A pesagem que pode propor ajustar a meta: a mais recente do plano. */
+function pesagemDoPlano(){
+  const h=todayKey(),ini=(store.goals||{}).inicio||"";
+  const ws=(store.weights||[]).filter(x=>x&&x.w>0&&x.d<=h&&x.d>=ini).sort((a,b)=>a.d<b.d?-1:1);
+  return ws.length?ws[ws.length-1]:null;
 }
 function ultimaPesagem(){
   const h=todayKey(),ws=(store.weights||[]).filter(x=>x&&x.w>0&&x.d<=h).sort((a,b)=>a.d<b.d?-1:1);
@@ -7445,8 +7455,8 @@ function baseSemRotina(){
    estimada valia (e sai) e quanto a meta muda de fato. O dono via "+421 kcal"
    no selo e a meta parada, porque a rotina que saiu valia quase o mesmo.
    A conta não mudou; ela passou a aparecer inteira na tela. */
-function rotinaKcal(){return Math.max(0,Math.round((store.getd||0)-baseSemRotina()));}
-function efeitoPassos(p){return p&&p.calculavel?Math.round(p.kcal-rotinaKcal()):0;}
+function rotinaKcal(dk){const b=gastoBase(dk||todayKey());return Math.max(0,Math.round((b.getd||0)-b.base));}
+function efeitoPassos(p,dk){return p&&p.calculavel?Math.round(p.kcal-rotinaKcal(dk)):0;}
 const sinal=v=>(v>0?"+":v<0?"−":"")+nPt(Math.abs(v));
 /* ---- O GETD de cada dia ----
    Mudar o GETD (pelo peso, pelo objetivo, pelo exógeno ou à mão) não pode
@@ -7456,16 +7466,20 @@ const sinal=v=>(v>0?"+":v<0?"−":"")+nPt(Math.abs(v));
    passado usa o seu, hoje usa o atual. Sem histórico (ninguém mudou nada
    ainda), vale o atual, como sempre foi. */
 function fotoGetd(){return {getd:store.getd||0,base:baseSemRotina()};}
+/* Grava quando o GETD OU a base mudam: com GETD digitado à mão, mudar o
+   perfil muda a base (a rotina sai do GETD pela taxa basal) sem mudar o
+   número, e o dia virando passado ficaria com a base nova. */
 function mudarGetd(novo,foto){
   novo=Math.round(novo);
-  if(!(novo>0)||novo===store.getd)return false;
+  if(novo>0)store.getd=novo;
+  if(document.activeElement!==$("getdInput"))$("getdInput").value=store.getd>0?store.getd:"";
+  const agora=fotoGetd();
+  if(!foto||(agora.getd===foto.getd&&agora.base===foto.base))return false;
   const hoje=todayKey(),h=Array.isArray(store.getdHist)?store.getdHist.slice():[];
-  if(!h.length&&foto&&foto.getd>0)h.push({desde:"0000-01-01",getd:foto.getd,base:foto.base});
-  store.getd=novo;
-  const e={desde:hoje,getd:novo,base:baseSemRotina()},i=h.findIndex(x=>x&&x.desde===hoje);
+  if(!h.length&&foto.getd>0)h.push({desde:"0000-01-01",getd:foto.getd,base:foto.base});
+  const e={desde:hoje,getd:agora.getd,base:agora.base},i=h.findIndex(x=>x&&x.desde===hoje);
   if(i>-1)h[i]=e;else h.push(e);
   store.getdHist=h;
-  if(document.activeElement!==$("getdInput"))$("getdInput").value=store.getd;
   return true;
 }
 function gastoBase(dk){
@@ -8058,7 +8072,13 @@ function montarExog(ids,onChange){
   };
 }
 let exogForm=null;
-function readGoalForm(){const x=exogForm?exogForm.get():{exog:[],clenDose:0,exogAceite:"",exogLocal:true};return {sexo:$("gSexo").value,idade:inteiroBR($("gIdade").value),altura:alturaCm($("gAltura").value),pesoAtual:numBR($("gPesoAtual").value),ativ:$("gAtiv").value,pesoAlvo:numBR($("gPesoAlvo").value),meses:numBR($("gMeses").value),liquidTarget:inteiroBR($("gLiquid").value),exog:x.exog,clenDose:x.clenDose,exogAceite:x.exogAceite,exogLocal:x.exogLocal};}
+function readGoalForm(){const g=(()=>{const x=exogForm?exogForm.get():{exog:[],clenDose:0,exogAceite:"",exogLocal:true};return {sexo:$("gSexo").value,idade:inteiroBR($("gIdade").value),altura:alturaCm($("gAltura").value),pesoAtual:numBR($("gPesoAtual").value),ativ:$("gAtiv").value,pesoAlvo:numBR($("gPesoAlvo").value),meses:numBR($("gMeses").value),liquidTarget:inteiroBR($("gLiquid").value),exog:x.exog,clenDose:x.clenDose,exogAceite:x.exogAceite,exogLocal:x.exogLocal};})();
+  /* A prévia (GETD, consumo, segurança) usa o peso da conta que o
+     salvamento vai usar: com o mesmo plano, o aceito em "Atualizar". */
+  const prev=store.goals||{},obj=selectedObj||(g.pesoAlvo>g.pesoAtual?"bulking":"cutting");
+  if(prev.pesoConta&&parseFloat(prev.pesoAtual)===g.pesoAtual&&parseFloat(prev.pesoAlvo)===g.pesoAlvo&&parseFloat(prev.meses)===g.meses&&prev.objetivo===obj)g.pesoConta=prev.pesoConta;
+  return g;
+}
 exogForm=montarExog({seg:"gExogSeg",lista:"gExogLista",doseWrap:"gExogDoseWrap",dose:"gExogDose",doseNota:"gExogDoseNota",localWrap:"gExogLocalWrap",local:"gExogLocal"},()=>{
   const g=readGoalForm(),n=$("gExogNota"),f=exogFator(g),getd=computeGETD(g);
   n.style.display=g.exog.length?"block":"none";
@@ -8148,7 +8168,7 @@ $("saveGoals").onclick=()=>{
   if(sameplan&&prev.mantido)store.goals.mantido=prev.mantido;
   const getd=computeGETD(store.goals);
   if(getd>0&&!store.goals.getdManual)mudarGetd(getd,foto);
-  else if(store.goals.getdManual&&store.getd>0)flash(`O GETD continua ${nPt(store.getd)} kcal, digitado à mão`);
+  else{mudarGetd(store.getd,foto);if(store.goals.getdManual&&store.getd>0)flash(`O GETD continua ${nPt(store.getd)} kcal, digitado à mão`);}
   save();render();goalsOverlay.classList.remove("open");
   if(onboarding){onboarding=false;fillUser();showView("inicio");}
 };
@@ -8169,7 +8189,7 @@ function pintarPassos(){
   if(n<=0)nota.textContent="Digite os passos que o celular ou o relógio mostra.";
   else if(!c.calculavel)nota.textContent="Defina altura e peso no perfil para o app converter os passos em calorias.";
   else{
-    const rot=rotinaKcal(),ef=Math.round(c.kcal-rot);
+    const rot=rotinaKcal(passosDk),ef=Math.round(c.kcal-rot);
     nota.innerHTML=`${nPt(n)} passos ≈ <b>${kgTxt(c.km)} km</b>`+(c.inclui?`, ${nPt(c.sobra)} além da atividade`:"")+` = <b>${nPt(c.kcal)} kcal</b>.`
       +(rot>0?` Eles entram <b>no lugar</b> da sua rotina do dia a dia, que já contava ${nPt(rot)} kcal de movimento. <b>Na meta: ${sinal(ef)} kcal.</b>`+(ef<0?" Hoje você andou menos do que a rotina estimava.":"")
              :` <b>Na meta: +${nPt(c.kcal)} kcal.</b>`);
@@ -8257,8 +8277,15 @@ const GETD_AVISO=25;
 function propostaGetd(){
   const g=store.goals||{};
   if(g.getdManual||!(store.getd>0))return null;
-  const ult=ultimaPesagem();
-  if(!ult||g.mantido===ult.d)return null;
+  /* Sem pesagem no plano (a que foi aceita em "Atualizar" foi apagada), a
+     referência volta a ser o peso de partida: senão o GETD ficaria preso num
+     peso que não existe mais. */
+  let ult=pesagemDoPlano();
+  if(!ult){if(!g.pesoConta)return null;ult={d:"inicio",w:parseFloat(g.pesoAtual)||0};}
+  /* "Manter" vale para aquela pesagem: data e peso. Corrigir o peso do mesmo
+     dia pergunta de novo. */
+  const m=g.mantido;
+  if(m&&typeof m==="object"&&m.d===ult.d&&Math.abs((+m.w||0)-ult.w)<0.05)return null;
   const atual=pesoConta(g);
   if(!(atual>0)||Math.abs(ult.w-atual)<0.05)return null;
   const antes=computeGETD(g),depois=computeGETD(Object.assign({},g,{pesoConta:ult.w}));
@@ -8281,7 +8308,8 @@ function pintarAjuste(el){
   el.hidden=!p;
   if(!p){el.innerHTML="";return;}
   const t=goalTargets(),meta=t.configured?goalMeta(t,todayKey()):0,depois=meta>0?metaComAjuste(p,t):0;
-  el.innerHTML=`<p class="am-tx">Com <b>${kgTxt(p.peso)} kg</b> (pesagem de ${quandoTxt(p.d)}), seu gasto estimado ${p.dif<0?"cai":"sobe"} <b>${nPt(Math.abs(p.dif))} kcal</b> por dia.${meta>0?` Meta de hoje: <b>${nPt(depois)}</b> (era ${nPt(meta)}).`:""}</p>`
+  const origem=p.d==="inicio"?"o peso de partida do plano, sem pesagem registrada":"pesagem de "+quandoTxt(p.d);
+  el.innerHTML=`<p class="am-tx">Com <b>${kgTxt(p.peso)} kg</b> (${origem}), seu gasto estimado ${p.dif<0?"cai":"sobe"} <b>${nPt(Math.abs(p.dif))} kcal</b> por dia.${meta>0?` Meta de hoje: <b>${nPt(depois)}</b> (era ${nPt(meta)}).`:""}</p>`
     +`<div class="am-bts"><button class="btn" type="button" data-ajuste="sim">Atualizar</button><button class="btn secondary" type="button" data-ajuste="nao">Manter</button></div>`;
   el.querySelector('[data-ajuste="sim"]').onclick=()=>aplicarAjuste(true);
   el.querySelector('[data-ajuste="nao"]').onclick=()=>aplicarAjuste(false);
@@ -8290,7 +8318,7 @@ function aplicarAjuste(sim){
   const p=propostaGetd();if(!p)return;
   const g=store.goals;
   if(sim){const foto=fotoGetd();g.pesoConta=p.peso;delete g.mantido;mudarGetd(p.novo,foto);flash(`Meta ajustada ao peso de ${kgTxt(p.peso)} kg`);}
-  else g.mantido=p.d;
+  else g.mantido={d:p.d,w:p.peso};
   save();render();renderInicio();
 }
 function renderPeso(){
@@ -8304,7 +8332,7 @@ function renderPeso(){
 function renderFdPeso(){
   const el=$("fdPesoTx");if(!el)return;
   const h=todayKey(),w=pesoDoDia(h),ult=ultimaPesagem();
-  el.textContent=w?`Peso de hoje: ${kgTxt(w)} kg`:ult?`Lançar o peso · último ${kgTxt(ult.w)} kg (${quandoTxt(ult.d)})`:"Lançar o peso de hoje";
+  el.textContent=w?`Peso de hoje: ${kgTxt(w)} kg`:ult?`Peso · último ${kgTxt(ult.w)} kg`:"Lançar o peso de hoje";
   pintarAjuste($("fdAjuste"));
 }
 /* A linha na Alimentação (dia visto) e o selo no Início (sempre hoje). */
@@ -8313,14 +8341,14 @@ function renderPassos(){
   const p=passosDia(viewKey);
   if(!p){$("passosTit").textContent="Passos do dia";$("passosSub").textContent="Toque para lançar o que o celular contou";return;}
   $("passosTit").textContent=`${nPt(p.n)} passos · ${kgTxt(p.km)} km`;
-  const rot=rotinaKcal();
+  const rot=rotinaKcal(viewKey);
   $("passosSub").textContent=!p.calculavel?"Defina altura e peso para converter em kcal"
-    :(p.inclui?`${nPt(p.sobra)} além da atividade · `:"")+(rot>0?`${nPt(p.kcal)} no lugar de ${nPt(rot)} da rotina · ${sinal(efeitoPassos(p))} na meta`:`+${nPt(p.kcal)} kcal na meta`);
+    :(p.inclui?`${nPt(p.sobra)} além da atividade · `:"")+(rot>0?`${nPt(p.kcal)} no lugar de ${nPt(rot)} da rotina · ${sinal(efeitoPassos(p,viewKey))} na meta`:`+${nPt(p.kcal)} kcal na meta`);
 }
 function renderFdPassos(){
   const el=$("fdPassosTx");if(!el)return;
   const p=passosDia(todayKey());
-  el.textContent=p?`${nPt(p.n)} passos hoje${p.calculavel?` · ${sinal(efeitoPassos(p))} kcal na meta`:""}`:"Lançar os passos de hoje";
+  el.textContent=p?`${nPt(p.n)} passos hoje${p.calculavel?` · ${sinal(efeitoPassos(p,todayKey()))} kcal na meta`:""}`:"Lançar os passos de hoje";
 }
 
 /* O "+" do Início: quem já usava o app avisa aqui que começou (ou parou) a

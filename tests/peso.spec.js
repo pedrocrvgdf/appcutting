@@ -217,6 +217,83 @@ test.describe('A meta acompanha o peso', () => {
   });
 });
 
+test.describe('A meta acompanha o peso: casos da revisão', () => {
+
+  test('corrigir o peso do mesmo dia depois de "Manter" pergunta de novo', async ({ page }) => {
+    await abrirApp(page, base({}, { weights: [{ d: hoje, w: 72 }] }));
+    await clicar(page, '#fdAjuste [data-ajuste="nao"]');
+    await page.waitForTimeout(200);
+    expect(await cartao(page)).toBeNull();
+    await clicar(page, '#fdPeso');
+    await digitar(page, '#pesoN', '71');
+    await clicar(page, '#pesoSalvar');
+    await page.waitForTimeout(300);
+    expect(await cartao(page), '"Manter" valia para 72 kg, não para o dia').toContain('Com 71 kg');
+  });
+
+  test('apagar a pesagem aceita propõe voltar ao peso de partida', async ({ page }) => {
+    await abrirApp(page, base({}, { weights: [{ d: hoje, w: 72 }] }));
+    await clicar(page, '#fdAjuste [data-ajuste="sim"]');
+    await page.waitForTimeout(200);
+    await clicar(page, '#fdPeso');
+    await clicar(page, '#pesoApagar');
+    await responder(page, true);
+    const txt = await cartao(page);
+    expect(txt).toContain('peso de partida do plano');
+    expect(txt).toContain('sobe 120 kcal');
+  });
+
+  test('pesagem de antes do início do plano não propõe nada, e os passos usam o peso de partida', async ({ page }) => {
+    /* O plano foi salvo depois dela, com o peso de partida digitado: ele é a
+       informação mais nova. */
+    await abrirApp(page, base({ inicio: anteontem }, { weights: [{ d: diaISO(10), w: 90 }] }));
+    expect(await cartao(page)).toBeNull();
+    expect(await page.evaluate(h => __t.pesoNoDia(h), hoje)).toBe(80);
+  });
+
+  test('a prévia do objetivo usa o peso aceito em "Atualizar", como o salvamento', async ({ page }) => {
+    await abrirApp(page, base({ pesoConta: 72 }));
+    await irPara(page, 'perfil');
+    await clicar(page, '#pfEdit'); await page.waitForTimeout(400);
+    await clicar(page, '#gNext'); await page.waitForTimeout(150);
+    await clicar(page, '#gNext'); await page.waitForTimeout(150);
+    const previa = await page.evaluate(() => document.getElementById('goalPreview').textContent);
+    /* com a rotina que o formulário mostra (o 1,5 do estado de teste não é
+       opção da lista) */
+    const salvo = Math.round(await page.evaluate(() => __t.computeGETD(Object.assign({}, __t.store.goals, { ativ: document.getElementById('gAtiv').value }))));
+    expect(previa).toContain(`GETD estimado: ${salvo}`);
+    expect(salvo, 'com 72 kg, não com o peso de partida').toBe(Math.round((10 * 72 + 6.25 * 180 - 5 * 30 + 5) * (parseFloat(await page.evaluate(() => document.getElementById('gAtiv').value)) || 1.2)));
+  });
+
+  test('com GETD à mão, mudar o perfil não muda o saldo dos dias passados', async ({ page }) => {
+    /* A base da rotina sai do GETD pela taxa basal: mudar a rotina no perfil
+       muda a base sem mudar o número digitado. */
+    await abrirApp(page, base({ getdManual: true }, { passos: { [ontem]: { n: 10000, inclui: false, peso: 80 } } }));
+    const antes = await page.evaluate(o => __t.gastoDia(o), ontem);
+    await irPara(page, 'perfil');
+    await clicar(page, '#pfEdit'); await page.waitForTimeout(400);
+    await page.evaluate(() => { const c = document.getElementById('gAtiv'); c.value = '1.7'; c.dispatchEvent(new Event('change', { bubbles: true })); });
+    await clicar(page, '#gNext'); await page.waitForTimeout(150);
+    await clicar(page, '#gNext'); await page.waitForTimeout(150);
+    await clicar(page, '#saveGoals'); await page.waitForTimeout(300);
+    expect((await store(page)).getd, 'o número à mão fica').toBe(3000);
+    expect(await page.evaluate(o => __t.gastoDia(o), ontem), 'e o dia que passou também').toBe(antes);
+  });
+
+  test('num dia passado, a linha do gasto usa o GETD daquele dia', async ({ page }) => {
+    await abrirApp(page, base({}, { weights: [{ d: hoje, w: 72 }] }));
+    await clicar(page, '#fdAjuste [data-ajuste="sim"]');
+    await page.waitForTimeout(200);
+    await irPara(page, 'food');
+    await clicar(page, '#dayPrev');
+    await page.waitForTimeout(200);
+    expect(await page.evaluate(() => document.getElementById('statusLine').textContent)).toContain('3000');
+    await clicar(page, '#dayNext');
+    await page.waitForTimeout(200);
+    expect(await page.evaluate(() => document.getElementById('statusLine').textContent)).toContain('2880');
+  });
+});
+
 test.describe('Passos com o peso do dia', () => {
 
   test('passos e cardio usam o mesmo peso, e a pesagem nova não muda os passos de ontem', async ({ page }) => {
