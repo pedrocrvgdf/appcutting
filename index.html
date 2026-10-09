@@ -1232,6 +1232,12 @@ window.APP_RELEASE = "tresults-v45";
     background:var(--saldo-bg);color:var(--ink);box-shadow:none}
   .fd-resumo:active{box-shadow:none}
   .hero .ringwrap{border-radius:18px;padding:14px 16px;margin-top:10px}
+  /* Em 320 px o anel de 148 deixava 100 px para os números: "Consumido"
+     ficava sem o valor e "+320" saía do cartão. */
+  @media (max-width:359px){
+    .hero .ringwrap{gap:12px;padding:12px}
+    .hero .ringwrap>svg{flex:none;width:112px;height:112px}
+  }
   /* O objetivo no perfil é da mesma família do saldo: o mesmo verde fosco.
      Em verde vivo ele virava um bloco menta no tema escuro. */
   .pfgoal{background:var(--saldo-bg)}

@@ -177,6 +177,26 @@ for (const largura of [390, 320]) {
       expect(await cortados(page, '.datenav .chip, .ringstats > div > *')).toEqual([]);
     });
 
+    test('com números de verdade, os valores do anel ficam dentro do cartão', async ({ page }) => {
+      /* Com "0" e "+0" cabia; com meta de 4 dígitos, 195 consumidos e +320 de
+         treino, em 320px o "Consumido" ficava sem valor e o "+320" saía do
+         cartão. O teste de cima, com estado vazio, não pegava. */
+      const h = require('./app').diaISO(0);
+      await abrirApp(page, estadoBase({
+        tdays: { [h]: [{ id: 's', name: 'Treino', min: 50, kcal: 320 }] },
+        days: { [h]: [{ id: 'a', name: 'Arroz', kcal: 195, p: 4, c: 42, g: 0, status: 'consumido' }] },
+      }));
+      await page.evaluate(() => document.querySelector('#tabbar [data-tab="food"]').click());
+      await page.waitForTimeout(300);
+      const fora = await page.evaluate(() => {
+        const caixa = document.querySelector('.hero .ringwrap').getBoundingClientRect();
+        return [...document.querySelectorAll('.ringstats b')]
+          .filter(b => { const r = b.getBoundingClientRect(); return r.width === 0 || r.right > caixa.right - 4 || r.left < caixa.left; })
+          .map(b => b.id + '=' + b.textContent);
+      });
+      expect(fora).toEqual([]);
+    });
+
     test('o feed do Início não corta os números das sessões', async ({ page }) => {
       /* A unidade saiu do valor para o rótulo justamente porque "310 kcal" não
          cabia em 320px e era cortado no meio. */
