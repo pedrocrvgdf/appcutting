@@ -152,6 +152,26 @@ test.describe('Vírgula', () => {
     expect(g.meses, 'prazo decimal não vira 45').toBe(4.5);
   });
 
+  test('prazo de "1,5" mês aparece como 1,5 mês, e o ritmo e o RIR com vírgula', async ({ page }) => {
+    /* r0 arredondava o prazo ("2 meses" para 1,5) e toFixed/número cru
+       escreviam ponto ("0.31 kg/semana", "RIR médio 1.5"). */
+    await abrirApp(page, estadoBase({ tdays: { [hoje]: [{ id: 's0', name: 'Treino A', tid: 'w1', min: 40, kcal: 200, vol: 600, rir: 1.5, ex: [{ n: 'Supino reto', g: 'peito', sets: [{ kg: 60, rep: 10, rir: 1 }] }] }] } }));
+    await irPara(page, 'perfil');
+    await clicar(page, '#pfEdit');
+    await page.waitForTimeout(400);
+    await digitar(page, '#gMeses', '1,5');
+    await clicar(page, '#gNext'); await page.waitForTimeout(200);
+    await clicar(page, '#gNext'); await page.waitForTimeout(200);
+    expect(await page.evaluate(() => document.getElementById('goalPreview').textContent)).toContain('em 1,5 mês');
+    const seg = await page.evaluate(() => document.getElementById('safetyBox').textContent);
+    expect(seg).toMatch(/\d,\d\d kg\/semana/);
+    expect(seg).not.toMatch(/\d\.\d/);
+    await clicar(page, '#saveGoals'); await page.waitForTimeout(400);
+    expect(await page.evaluate(() => document.getElementById('pfPrazo').textContent)).toBe('1,5 mês');
+    await irPara(page, 'treino');
+    expect(await page.evaluate(() => document.getElementById('tTodayList').textContent)).toContain('RIR médio 1,5');
+  });
+
   test('objetivo: peso "82,5" e altura "178,5" ficam com a vírgula no lugar', async ({ page }) => {
     await abrirApp(page, estadoBase());
     await irPara(page, 'perfil');

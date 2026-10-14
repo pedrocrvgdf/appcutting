@@ -344,20 +344,30 @@ depois (`metaComAjuste`, a conta inteira, com passos e treino):
   `inicio` e o `pesoAtual` não mudam.
 - "Manter" grava a pesagem (`goals.mantido = {d, w}`): a próxima pesagem, ou
   o peso do mesmo dia corrigido, pergunta de novo.
-- **Só pesagem do plano propõe** (`pesagemDoPlano`, data a partir de
-  `goals.inicio`): a de antes é mais velha que o peso de partida digitado no
-  plano. Pelo mesmo motivo, nos passos e no cardio (`pesoNoDia`, que
-  `userWeight` usa) vale o peso de partida até a primeira pesagem do plano.
+- **Só pesagem desde o peso de partida propõe** (`pesagemDoPlano`, data a
+  partir de `pesoDesde(g)`): a de antes é mais velha que ele. Pelo mesmo
+  motivo, nos passos e no cardio (`pesoNoDia`, que `userWeight` usa) vale o
+  peso de partida até a primeira pesagem depois dele.
+- **A data é a do peso, não a do plano** (`goals.pesoDesde`). Mudar só o
+  prazo, o ritmo, o alvo ou o objetivo reinicia o plano (`inicio` vira hoje),
+  mas o campo "Peso" vem preenchido com o peso de partida antigo: ele não
+  ficou mais novo que a pesagem de ontem. Quando a regra usava `inicio`, mudar
+  só o prazo jogava fora todas as pesagens. `saveGoals` grava hoje quando o
+  peso de partida muda e mantém a data quando não muda. Objetivo salvo antes
+  de existir a data usa `inicio`.
 - **Sem pesagem no plano** (a aceita foi apagada), a proposta volta ao peso de
   partida, em vez de o GETD ficar preso num peso que não existe mais.
-- A prévia do formulário do objetivo usa o mesmo peso da conta que o
-  salvamento vai usar (`readGoalForm`).
+- A prévia do formulário do objetivo, os cartões de ritmo e a dica do passo
+  1 usam o mesmo peso da conta que o salvamento vai usar (`readGoalForm`); a
+  dica diz qual peso entra quando não é o do campo.
 - O limiar é decisão de produto: abaixo dele a diferença some no erro da
   própria estimativa.
-- `saveGoals` remonta `store.goals` do zero: **`pesoConta`, `getdManual` e
-  `mantido` são carregados junto**, como `nasc` e o exógeno. Com o mesmo
-  plano, `pesoConta` fica; com plano novo (outro peso de partida, alvo,
-  prazo ou objetivo), a conta parte do peso de partida.
+- `saveGoals` remonta `store.goals` do zero: **`pesoConta`, `pesoDesde`,
+  `getdManual` e `mantido` são carregados junto**, como `nasc` e o exógeno.
+  Com o mesmo peso de partida, `pesoConta` e `mantido` ficam, mesmo com
+  outro prazo, alvo ou objetivo; com outro peso de partida, a conta parte
+  dele. Depois de salvar, o Perfil e o Início são redesenhados: o prazo
+  antigo ficava na tela até trocar de aba.
 
 **O GETD de cada dia** (`store.getdHist`, `{desde, getd, base}`): mudar o
 GETD não pode reescrever o saldo dos dias que passaram — a semana, o mês e a
@@ -367,7 +377,9 @@ que muda `store.getd` passa por `mudarGetd(novo, foto)`**, com a `foto`
 vira a entrada `"0000-01-01"`, que vale para todo o passado. Grava quando o
 GETD **ou a base** mudam: com GETD à mão, mudar o perfil muda a base da
 rotina sem mudar o número. `gastoBase(dk)` devolve, para dia passado, a
-entrada mais recente até ele; hoje usa o atual. **Os textos de um dia passado
+entrada mais recente até ele; hoje usa o atual. Dia anterior a todo o
+histórico (a primeira configuração não deixa semente) usa a **primeira**
+entrada, e não o atual, que mudaria esses dias a cada ajuste. **Os textos de um dia passado
 usam a do dia** (`rotinaKcal(dk)`, `efeitoPassos(p, dk)`, a linha "Gasto do
 dia"), como a meta.
 Sem histórico, vale o atual, como sempre foi. É campo de primeiro nível na
@@ -377,6 +389,16 @@ nuvem, em `CAMPOS_NUVEM`, e segue "campo ausente não é lista vazia".
 nem pelo objetivo, nem pelo "+" do exógeno, nem pela pesagem (o cartão nem
 aparece). A nota `#getdNota` diz isso embaixo do campo, com "Usar o
 calculado" (`#getdAuto`), que tira a marca.
+
+- **Campo vazio ou abaixo de `GETD_MIN` (500) não grava nada**: o número de
+  antes volta e a tela diz por quê, **embaixo do campo** (`#getdAviso`) — o
+  `#flash` mora no cartão de lançar comida, longe de onde a pessoa olha. Antes virava 500 calado, **marcado como
+  digitado à mão** — um número que ninguém digitou travando a meta em 77
+  kcal. "3,050" é 3,05 (vírgula é decimal), e cai nessa regra.
+- **Num dia passado, o campo mostra o GETD daquele dia e é só leitura**
+  (`pintarGetdInput`, `#getdPassado`). Ele mostrava e editava o de hoje, ao
+  lado da linha do dia com outro número. Todo caminho que escreve no campo
+  passa por `pintarGetdInput`.
 
 - Coberto em `tests/peso.spec.js`.
 
@@ -472,7 +494,11 @@ para uma casa e troca o ponto pela vírgula, **sem forçar decimal** — 5 km sa
 use-o para contas, nunca direto no HTML. Já apareceram com ponto o peso das
 séries, a diferença de carga e a distância do cardio; hoje há teste para os três
 (`tests/feed.spec.js`). Os macros do dia na Alimentação ("3.8") foram o
-quarto, achado por captura de tela (`tests/virgula.spec.js`).
+quarto, achado por captura de tela (`tests/virgula.spec.js`). Depois vieram o
+ritmo do objetivo ("0.31 kg/semana", hoje `dec2` para duas casas fixas), o
+"RIR médio 1.5" da aba Treino e o prazo, que aceita meio mês e saía
+arredondado ("2 meses" para 1,5): `mesesTxt` escreve "1,5 mês". `toFixed`
+também escreve ponto.
 
 ### Números digitados: a vírgula não multiplica por dez
 
@@ -617,10 +643,10 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 |---|---|
 | `tests/treino.spec.js` | Persistência da sessão, retomada após o app ser descartado, desconto do tempo fora do app |
 | `tests/nuvem.spec.js` | Sincronização: outra conta no celular não herda exógeno, academias, líquidos nem treino em andamento; campo ausente não apaga; quem não sabe não envia; campo de versão mais nova volta como chegou; histórico de líquidos sobe |
-| `tests/virgula.spec.js` | Nenhum `type="number"`; carga, peso, ml, rótulo e objetivo com vírgula; macros na tela; conferências de peso, carga e quantidade; corrigir série salva |
-| `tests/peso-corpo.spec.js` | Flexão com reps, prancha com segundos, feed sem "registro manual", referência e diferença em reps, "+ carga" sem matar o descanso, selo em reps, 1RM sem série sem carga, classificação por nome |
-| `tests/peso.spec.js` | Peso do dia no Início e na Alimentação, conferência, apagar; cartão "Atualizar/Manter", plano que não reinicia, dia passado que não muda, proteína; GETD manual; passos com o peso do dia; nuvem |
-| `tests/sem-sinal.spec.js` | Treino feito sem sinal sobrevive ao app descartado; dois aparelhos sem sinal juntam; apagado não volta; água soma; transação não apaga o de outro aparelho; envio ao sair do app; aviso atrasado; excluir dados substitui; a mescla direto na função |
+| `tests/virgula.spec.js` | Nenhum `type="number"`; carga, peso, ml, rótulo e objetivo com vírgula; macros na tela; conferências de peso, carga e quantidade; corrigir série salva; prazo "1,5 mês", ritmo e RIR com vírgula |
+| `tests/peso-corpo.spec.js` | Flexão com reps, prancha com segundos, feed sem "registro manual", referência e diferença em reps, "+ carga" sem matar o descanso, selo em reps, 1RM sem série sem carga, classificação por nome; "contar em reps/segundos" nos dois sentidos, desfazer a troca devolve o digitado, medida que não fica presa à posição, referência sem carga quando nunca houve carga |
+| `tests/peso.spec.js` | Peso do dia no Início e na Alimentação, conferência, apagar; cartão "Atualizar/Manter", plano que não reinicia, dia passado que não muda, proteína; GETD manual, vazio ou abaixo de 500 recusado, só leitura num dia passado; prazo novo que não descarta pesagens nem o peso aceito; dia anterior ao histórico de GETD; passos com o peso do dia; nuvem |
+| `tests/sem-sinal.spec.js` | Treino feito sem sinal sobrevive ao app descartado; dois aparelhos sem sinal juntam; apagado não volta; água soma; transação não apaga o de outro aparelho; envio ao sair do app; aviso atrasado; excluir dados substitui; a mescla direto na função (água sem base, GETD pelo histórico, peso da conta com o peso de partida) |
 | `tests/protocolos.spec.js` | Protocolos com nome: "Meu protocolo" virtual sem regravar nada, criar/renomear/excluir, sugestão que preenche ou cria, mover treino, selo que não mistura dois "Treino A", sessão com `tid`/`prot`, nuvem com versão anterior |
 | `tests/inventario.spec.js` | Inventário: catálogo inteiro reconhecido, "não informado" sem aviso, gravação por toque, aviso no cartão/treino/editor, troca com o que tem primeiro, "Tem, sim" sem matar o descanso, alternativas, nome desconhecido sem aviso |
 | `tests/academias.spec.js` | Academias: sem cadastro o app fica igual, filtro por academia, treino novo nascendo na escolhida, sessão gravando onde foi, referência e selo na mesma academia, excluir sem apagar treino nem histórico, nuvem, 320px |
@@ -917,7 +943,10 @@ do conserto. São três peças, todas no bloco da nuvem do `index.html`:
     base (aparelho vindo da v43, ou sem espaço para gravá-la), vale a da
     nuvem, porque este pode ser um celular parado há semanas — mas o que só
     ele tem entra assim mesmo;
-  - o objetivo junta chave por chave;
+  - o objetivo junta chave por chave, **menos o que pertence ao peso de
+    partida** (`pesoConta`, `mantido`, `pesoDesde`): esses vêm do lado cujo
+    peso de partida ficou. Misturados, um plano novo feito num aparelho
+    herdava o peso aceito no outro para o plano velho;
   - **líquido**: o total do dia é a lista de horários (mesclada por id, que
     não conta nada duas vezes) mais o "resto" sem horário, e **só o resto é
     contador** (o que cada lado somou desde a base soma; lados iguais não
@@ -925,9 +954,13 @@ do conserto. São três peças, todas no bloco da nuvem do `index.html`:
     chegou à nuvem sem a base acompanhar — o app descartado logo depois de
     gravar, ou o SDK repetindo a transação depois de um commit que deu
     certo. Lado sem lista (versão antiga) conta como se fosse a da base;
-  - **o GETD anda com o histórico dele** (`getdHist`): se os dois aparelhos
-    o mudaram, vale o da mudança mais recente no histórico, senão o GETD de
-    hoje desmentiria o histórico;
+    **sem base, como se fosse a mesclada** — senão a água que o outro lado
+    anotou com horário contava de novo como resto (300 virava 600);
+  - **o GETD anda com o histórico dele** (`getdHist`): a mudança mais
+    recente do histórico, se só um lado a tem (com base: se não estava na
+    base), é desse lado, e o GETD é o dele. Senão o GETD de hoje desmentiria
+    o histórico. Decidir pela igualdade dos números falhava quando um lado
+    só mudou a base, ou mudou e desfez;
   - campo ausente na nuvem não é vazio (a regra de sempre); campo de versão
     mais nova vale o da nuvem.
 
@@ -992,23 +1025,39 @@ segundos.
   fica atrás de "+ carga (colete, anilha)"; nas isometrias o campo é de
   segundos e o plano diz "segure com a forma certa". **Sinal de carga vence o
   movimento** (`EX_CARGA_RE`: máquina, polia, cabo, corda, halter, anilha,
-  pegada, joelho, punho…): "Mergulho máquina", "Abdominal na corda", "Flexão
-  de joelho" e "Puxada pegada paralela" têm carga. "Abdominal na prancha" é
-  de reps (a prancha é o banco); "Prancha com anilha" é de tempo, com a carga
-  à vista. A carga aparece sozinha se já foi usada hoje ou da última vez.
+  punho…): "Mergulho máquina", "Abdominal na corda", "Abdominal com halter"
+  e "Flexão de joelho" (mesa flexora, regra própria) têm carga. **O nome é
+  lido sem o que não fala de carga** (`exSinal`): "sem carga" não é sinal de
+  carga, e a pegada ("Flexão com pegada fechada", "Puxada pegada paralela")
+  é a mão, não o aparelho — "paralela" ali não é a barra de mergulho.
+  "Abdominal na prancha" é de reps (a prancha é o banco), "Abdominal
+  isométrico" é de tempo; "Prancha com anilha" é de tempo, com a carga à
+  vista. A carga aparece sozinha se já foi usada hoje ou da última vez.
   Existe tabela de nomes no teste — achou outro errado, ponha nela.
 - **Errar a classificação custa um toque, nunca um número:** "+ carga" mostra
-  a carga, e "contar em reps" troca os segundos por reps. Os três campos
-  (kg, reps, seg) são sempre desenhados, e o escondido **não grava**
-  (`campoVisivel`): os segundos digitados antes de trocar o exercício iam para
-  o histórico do exercício novo.
-- **"+ carga" e "contar em reps" não chamam `renderTr()`**: ele termina em
+  a carga, e **"contar em reps" / "contar em segundos"** troca a medida nos
+  dois sentidos. Os três campos (kg, reps, seg) são sempre desenhados e
+  **todos guardam o que foi digitado** na sessão: trocar o exercício por
+  engano e tocar "Desfazer" devolve os segundos. **Quem filtra é
+  `serieDe(l, e)`, pela medida do exercício** (`medidaEx`): só ela vai para
+  o histórico, para a contagem de séries do descanso e para o volume. Zerar o
+  campo escondido, como já se fez, perdia o que a pessoa digitou.
+- **A medida escolhida é do exercício, não da posição:** trocar o exercício
+  ou desfazer a troca apaga `medida` e `comCarga`. Exercício de tempo que da
+  última vez foi contado em reps (referência com reps e sem segundos)
+  **começa em reps**: senão as 20 reps de hoje entrariam como 20 segundos.
+- **"+ carga" e "contar em…" não chamam `renderTr()`**: ele termina em
   `stopRest()` e mataria o descanso. Mostram o campo pelo DOM e gravam
   `comCarga`/`medida` no exercício da sessão (`trPersist` leva). Existe teste.
-- **Série feita é carga, reps ou segundos** (`serieFeita`), e o mesmo critério
-  vale no finalizar e nos avisos do fim do descanso.
-- **Exercício de carga feito com o kg em branco não vira a referência**
-  (`lastExSession`): ela apagaria da tela a última carga de verdade.
+- **Série feita é carga, reps ou segundos** (`serieFeita` sobre `serieDe`), e
+  o mesmo critério vale no finalizar e nos avisos do fim do descanso.
+- **Exercício de carga feito com o kg em branco não vira a referência se
+  houver, mais para trás, uma vez com carga** (`lastExSession`): ela apagaria
+  da tela a última carga de verdade. **Sem nenhuma com carga** ("Tríceps
+  banco" sempre sem anilha), a sem carga é a referência, em reps — pular
+  sempre apagava a referência de quem treina só com o corpo. Na mesma
+  academia, a sem carga vem antes da de outra: o exercício já foi feito ali,
+  e "primeira vez nesta academia" seria falso.
 - **Nunca "kg movidos" inventados.** A fração do corpo que a flexão levanta
   muda com a variação (Ebben et al., *J Strength Cond Res*
   2011;25:2891-2894), então o volume em kg desses exercícios é zero e eles

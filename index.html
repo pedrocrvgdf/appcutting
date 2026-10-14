@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v45";
+window.APP_RELEASE = "tresults-v46";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -1193,6 +1193,8 @@ window.APP_RELEASE = "tresults-v45";
   .ajuste-meta .am-bts .btn{flex:1;margin:0;min-height:42px;padding:0 10px;font-size:14px}
   .getd-nota{margin:6px 0 0;font-size:12px;line-height:1.45;color:var(--muted)}
   .getd-nota[hidden]{display:none}
+  .getd-nota.aviso{color:var(--warn)}
+  .getd input[readonly]{background:transparent}
   .getd-nota .link{padding:0;border:0;background:none;font-size:12px;cursor:pointer}
   #serieNota:empty{display:none}
 
@@ -1527,6 +1529,8 @@ window.APP_RELEASE = "tresults-v45";
       <div class="m2"><div class="r"><span class="t">Gord</span><span><b id="mGord">0</b><small id="mGordT">g</small></span></div><div class="bar2"><span id="mGordBar" style="width:0%"></span></div></div>
     </div>
     <div class="getd">Meta diária (GETD): <input class="num" id="getdInput" type="text" data-num="int" inputmode="numeric" value="3050"> kcal</div>
+    <p class="getd-nota aviso" id="getdAviso" role="status" hidden></p>
+    <p class="getd-nota" id="getdPassado" hidden>O GETD deste dia fica como era. O de hoje se muda em Hoje.</p>
     <p class="getd-nota" id="getdNota" hidden>Digitado à mão: não muda com o peso, o objetivo nem o exógeno. <button class="link" id="getdAuto" type="button">Usar o calculado</button></p>
     <!-- Passos do dia: o que o celular contou vira distância e calorias, e
          entra no gasto deste dia. Abre o pop-up #passosOverlay. -->
@@ -3691,6 +3695,10 @@ const inteiroBR=v=>Math.round(qtdBR(v));
 /* Altura em metros ("1,78") vira centímetros. O campo antigo, type=number,
    descartava a vírgula e "1,78" virava 178 por acaso; respeitada a vírgula,
    seria 1,78 cm e a taxa basal desabaria (cerca de 830 kcal de GETD). */
+/* Prazo em meses aceita meio mês: "1,5 mês", "0,5 mês", "4 meses".
+   Duas casas fixas, para o ritmo semanal (0,31 kg). */
+const mesesTxt=m=>`${kgTxt(m)} ${Math.abs(m)<2?"mês":"meses"}`;
+const dec2=v=>(+v||0).toFixed(2).replace(".",",");
 const alturaCm=v=>{const a=numBR(v);return a>0&&a<3?Math.round(a*100):a;};
 /* Número para dentro de um campo de texto: vírgula, e sem casas à toa. */
 const campoBR=v=>{const n=+v;return (v===""||v==null||!isFinite(n))?"":String(Math.round(n*100)/100).replace(".",",");};
@@ -3843,7 +3851,7 @@ function renderTreino(){
   // treinos de hoje
   const td=((store.tdays||{})[todayKey()])||[];
   $("tCount").textContent=td.length+(td.length===1?" treino":" treinos");
-  $("tTodayList").innerHTML=td.length?td.map(w=>`<div class="proto-meal-row"><div><div class="n">${esc(w.name)}</div><div class="m">${r0(w.min)} min${w.km?` · ${kgTxt(w.km)} km`:""}${w.inc?` · ${kgTxt(w.inc)}% de inclinação`:""}${w.ganho?` · ${r0(w.ganho)} m de ganho`:""} · ${r0(w.kcal)} kcal${w.intens?` · ${w.intens}`:""}${w.rir!=null?` · RIR médio ${w.rir}`:""}${w.vol?` · ${r0(w.vol)} kg movimentados`:""}${acadNomeDe(w)?` · ${esc(acadNomeDe(w))}`:""}${fdProtTxt(w)?` · ${esc(fdProtTxt(w))}`:""}</div></div><div class="acts"><button class="del" data-tdel="${w.id}">Excluir</button></div></div>`).join(""):'<div class="proto-empty">Nenhum treino registrado hoje.</div>';
+  $("tTodayList").innerHTML=td.length?td.map(w=>`<div class="proto-meal-row"><div><div class="n">${esc(w.name)}</div><div class="m">${r0(w.min)} min${w.km?` · ${kgTxt(w.km)} km`:""}${w.inc?` · ${kgTxt(w.inc)}% de inclinação`:""}${w.ganho?` · ${r0(w.ganho)} m de ganho`:""} · ${r0(w.kcal)} kcal${w.intens?` · ${w.intens}`:""}${w.rir!=null?` · RIR médio ${kgTxt(w.rir)}`:""}${w.vol?` · ${r0(w.vol)} kg movimentados`:""}${acadNomeDe(w)?` · ${esc(acadNomeDe(w))}`:""}${fdProtTxt(w)?` · ${esc(fdProtTxt(w))}`:""}</div></div><div class="acts"><button class="del" data-tdel="${w.id}">Excluir</button></div></div>`).join(""):'<div class="proto-empty">Nenhum treino registrado hoje.</div>';
   $("tTodayList").querySelectorAll("[data-tdel]").forEach(b=>b.onclick=()=>{
     store.tdays[todayKey()]=tToday().filter(x=>x.id!==b.dataset.tdel);save();renderTreino();render();renderInicio();
   });
@@ -5414,7 +5422,7 @@ let restPopT=null;
 function abrirRestPop(){
   const p=$("restPop");if(!p||!trS)return;
   const e=trS.w.ex[trS.idx];
-  const feitas=(trS.logs[trS.idx]||[]).filter(serieFeita).length;
+  const feitas=(trS.logs[trS.idx]||[]).filter(l=>serieFeita(serieDe(l,e))).length;
   $("rpSub").textContent=`${e.n} · série ${Math.min(feitas+1,e.s)} de ${e.s}`;
   p.classList.remove("sair");p.classList.add("open");
   clearTimeout(restPopT);
@@ -5434,7 +5442,7 @@ function fecharRestPop(){
 function abrirRestDone(){
   const ov=$("restDone");if(!ov||!trS)return;
   const e=trS.w.ex[trS.idx];
-  const feitas=(trS.logs[trS.idx]||[]).filter(serieFeita).length;
+  const feitas=(trS.logs[trS.idx]||[]).filter(l=>serieFeita(serieDe(l,e))).length;
   $("rdEx").textContent=e.n;
   $("rdSet").textContent=`Série ${Math.min(feitas+1,e.s)} de ${e.s}`;
   ov.classList.add("open");
@@ -5507,9 +5515,12 @@ function trSaveInputs(){
   document.querySelectorAll("#trSets .tr-set").forEach(row=>{
     const i=+row.dataset.i,l=trS.logs[trS.idx][i];
     const ikg=row.querySelector(".ikg"),irep=row.querySelector(".irep"),iseg=row.querySelector(".iseg");
-    l.kg=campoVisivel(ikg)?numBR(ikg.value):0;
-    l.rep=campoVisivel(irep)?inteiroBR(irep.value):0;
-    l.seg=campoVisivel(iseg)?inteiroBR(iseg.value):0;
+    /* O campo escondido também guarda: são os segundos da prancha trocada
+       por engano, que o "Desfazer" devolve. Quem filtra pela medida do
+       exercício é serieDe, ao contar e ao finalizar. */
+    if(ikg)l.kg=numBR(ikg.value);
+    if(irep)l.rep=inteiroBR(irep.value);
+    if(iseg)l.seg=inteiroBR(iseg.value);
   });
 }
 /* ============================================================
@@ -5530,21 +5541,40 @@ let trPrevRef=null;
    2011;25:2891-2894). O volume em kg desses exercícios é zero; eles contam
    por séries e reps, que é o que a literatura de dose-resposta usa. */
 const EX_TEMPO_RE=/\b(prancha|isometri[a-z]*|wall sit|cadeirinha|hollow hold|dead hang|suspensao na barra)\b/;
-const EX_CORPO_RE=/\b(flexao|barra fixa|chin ?up|pull ?up|mergulho|paralelas|dips?|abdominal|elevacao de (pernas|joelhos)|burpees?|polichinelos?|escalador|canivete|superman)\b/;
+const EX_CORPO_RE=/\b(flexao|barra fixa|chin ?up|pull ?up|mergulho|paralelas?|dips?|abdominal|elevacao de (pernas?|joelhos?)|burpees?|polichinelos?|escalador|canivete|superman)\b/;
 /* Sinal de carga externa vence o nome do movimento: "Mergulho máquina",
-   "Abdominal na polia", "Flexão de joelho" (mesa flexora), "Flexão de
-   punho", "Puxada pegada paralela" têm carga. */
-const EX_CARGA_RE=/\b(maquina|polia|cabo|corda|crossover|smith|halteres?|anilhas?|kettlebell|caneleira|pegada|joelho|punho|plantar|lateral de tronco|carga)\b/;
+   "Abdominal na polia", "Abdominal com halter", "Flexão de punho" têm
+   carga. */
+const EX_CARGA_RE=/\b(maquina|polia|cabo|corda|crossover|smith|halter(e|es)?|anilhas?|kettlebell|caneleira|punho|plantar|lateral de tronco|carga)\b/;
+/* O nome sem o que não diz nada sobre a carga: "sem carga" não é sinal de
+   carga, e a pegada ("Flexão com pegada fechada", "Puxada pegada paralela")
+   é a mão, não o aparelho — "paralela" ali não é a barra de mergulho. */
 const exNome=n=>norm(String(n||"")).replace(/[^a-z0-9]+/g," ").trim();
+const exSinal=n=>exNome(n).replace(/\bsem (carga|peso)\b/g," ").replace(/\bpegada (paralela|neutra|fechada|aberta|larga|supinada|pronada|invertida|mista)\b/g," ").replace(/\s+/g," ").trim();
 function exTipo(nome){
-  const t=exNome(nome);
+  const t=exSinal(nome);
   if(/\b(barra fixa|chin ?up|pull ?up)\b/.test(t))return "corpo";     // pegada supinada ou neutra continua peso do corpo
-  if(/^abdominal\b/.test(t))return EX_CARGA_RE.test(t)?"carga":"corpo"; // "Abdominal na prancha declinada": a prancha é o banco
+  if(/\bflexao de joelhos?\b/.test(t))return "carga";                  // mesa flexora; "flexão com joelhos apoiados" é de braço
+  if(/^abdominal\b/.test(t)){                                         // "Abdominal na prancha declinada": a prancha é o banco
+    if(EX_CARGA_RE.test(t))return "carga";
+    return EX_TEMPO_RE.test(t.replace(/\bprancha\b/g," "))?"tempo":"corpo"; // "Abdominal isométrico" segura tempo
+  }
   if(EX_TEMPO_RE.test(t))return "tempo";                                // "Prancha com anilha" continua de tempo, com a carga à vista
   if(EX_CARGA_RE.test(t))return "carga";
   if(EX_CORPO_RE.test(t))return "corpo";
   return "carga";
 }
+/* A medida do exercício nesta sessão: segundos ou reps. Quem decide é a
+   pessoa ("contar em reps" / "contar em segundos"); sem escolha, o nome. */
+function medidaEx(e){
+  if(e&&e.medida==="reps")return "rep";
+  if(e&&e.medida==="seg")return "seg";
+  return exTipo(e&&e.n)==="tempo"?"seg":"rep";
+}
+/* A série como ela vale: só a medida do exercício conta. O campo escondido
+   continua guardado na sessão (o "Desfazer" da troca o devolve), mas não
+   entra no histórico, na contagem de séries nem no volume. */
+function serieDe(l,e){const m=medidaEx(e);return {kg:l.kg||0,rep:m==="rep"?(l.rep||0):0,seg:m==="seg"?(l.seg||0):0,rir:l.rir};}
 /* Série feita: carga, reps ou segundos. Um critério só, para o finalizar e
    os avisos do descanso contarem igual. */
 const serieFeita=l=>(l.kg||0)>0||(l.rep||0)>0||(l.seg||0)>0;
@@ -5571,21 +5601,26 @@ const melhorTxt=m=>m.un==="kg"?`${kgTxt(m.v)} kg`:`${r0(m.v)} ${m.un}`;
 function lastExSession(nome,acad){
   const alvo=norm(nome||""),tds=store.tdays||{},deCarga=exTipo(nome)==="carga";
   const dias=Object.keys(tds).sort().reverse(); // datas ISO: ordem alfabética = cronológica
-  let deOutra=null;
+  /* Exercício de carga feito com o kg em branco (esquecido) não vira a
+     referência se houver, mais para trás, uma vez com carga: ela apagaria
+     da tela a última carga de verdade, e a conferência de carga perderia a
+     régua. Sem nenhuma com carga — "Tríceps banco" sempre sem anilha —, a
+     sem carga é a referência, em reps. Na mesma academia, mesmo sem carga,
+     ela vem antes da de outra: o exercício já foi feito ali. */
+  let deOutra=null,semKg=null,semKgOutra=null;
   for(const dk of dias){
     const regs=tds[dk]||[];
     for(let i=regs.length-1;i>=0;i--){ // dentro do dia, o último registrado é o mais recente
       const ex=(regs[i].ex||[]).find(x=>norm(x.n)===alvo);
       if(!ex||!(ex.sets||[]).length)continue;
-      /* Exercício de carga feito com o kg em branco (esquecido) não vira a
-         referência: ela apagaria da tela a última carga de verdade, e a
-         conferência de carga perderia a régua. */
-      if(deCarga&&!ex.sets.some(x=>(x.kg||0)>0))continue;
-      if(mesmaAcad(acad,regs[i].acad))return {dk,sets:ex.sets,treino:regs[i].name};
-      if(!deOutra)deOutra={dk,sets:ex.sets,treino:regs[i].name,outra:acadNomeDe(regs[i])};
+      const comKg=!deCarga||ex.sets.some(x=>(x.kg||0)>0);
+      const r={dk,sets:ex.sets,treino:regs[i].name};
+      if(mesmaAcad(acad,regs[i].acad)){if(comKg)return r;if(!semKg)semKg=r;continue;}
+      r.outra=acadNomeDe(regs[i]);
+      if(comKg){if(!deOutra)deOutra=r;}else if(!semKgOutra)semKgOutra=r;
     }
   }
-  return deOutra;
+  return semKg||deOutra||semKgOutra;
 }
 const kgTxt=v=>(Math.round((v||0)*10)/10).toString().replace(".",",");
 /* diferença de carga em relação à mesma série da última vez */
@@ -5620,29 +5655,34 @@ function renderTr(){
   const onde=acadNomeDe(trS);
   $("trProg").textContent=`Exercício ${trS.idx+1} de ${w.ex.length}${onde?" · "+onde:""}`;
   $("trExName").textContent=e.n;
-  $("trPlan").textContent=`${e.s} séries · descanso ${fmtSec(e.rest||90)} · `+(exTipo(e.n)==="tempo"&&e.medida!=="reps"?"segure com a forma certa até perto do limite":"busque a falha entre 6–12 reps");
   const av=$("trTrocado");
   av.classList.toggle("on",!!e.orig);
   if(e.orig)av.innerHTML=`<span>No lugar de <b>${esc(e.orig)}</b>, só hoje</span><button id="trDesfazer">Desfazer</button>`;
   if(e.orig)$("trDesfazer").onclick=()=>{
-    trSaveInputs();e.n=e.orig;delete e.orig;renderTr();trPersist();
+    trSaveInputs();e.n=e.orig;delete e.orig;delete e.medida;delete e.comCarga;renderTr();trPersist();
   };
   /* A referência da última vez segue o exercício que está sendo feito: comparar
      a carga de hoje no leg press com a do agachamento não diria nada. */
   trPrevRef=lastExSession(e.n,trS.acad);
+  const tipo=exTipo(e.n);
+  /* Exercício de tempo que da última vez foi contado em reps começa em reps:
+     senão as 20 reps de hoje entrariam como 20 segundos. */
+  if(tipo==="tempo"&&!e.medida&&trPrevRef&&trPrevRef.sets.some(x=>(x.rep||0)>0)&&!trPrevRef.sets.some(x=>(x.seg||0)>0))e.medida="reps";
+  const emSeg=medidaEx(e)==="seg";
+  const planoTx=()=>`${e.s} séries · descanso ${fmtSec(e.rest||90)} · `+(medidaEx(e)==="seg"?"segure com a forma certa até perto do limite":"busque a falha entre 6–12 reps");
+  $("trPlan").textContent=planoTx();
   /* Referência de outra academia: dita UMA vez, acima das séries. Dentro de
      cada linha o nome partia a referência em duas em telas comuns. */
-  const tipo=exTipo(e.n),emSeg=tipo==="tempo"&&e.medida!=="reps";
   /* A carga aparece no peso do corpo quando ela já foi usada (hoje ou da
      última vez), quando o nome fala dela ("Prancha com anilha") ou quando a
      pessoa pediu "+ carga". */
-  const cargaVis=tipo==="carga"||!!e.comCarga||EX_CARGA_RE.test(exNome(e.n))||logs.some(l=>(l.kg||0)>0)||!!(trPrevRef&&trPrevRef.sets.some(x=>(x.kg||0)>0));
+  const cargaVis=tipo==="carga"||!!e.comCarga||EX_CARGA_RE.test(exSinal(e.n))||logs.some(l=>(l.kg||0)>0)||!!(trPrevRef&&trPrevRef.sets.some(x=>(x.kg||0)>0));
   const refOutra=trPrevRef&&trPrevRef.outra?`<div class="tr-ref-outra">Primeira vez deste exercício na <b>${esc(acadNomeDe(trS))}</b>. As cargas de referência são da <b>${esc(trPrevRef.outra)}</b>, só como ponto de partida.</div>`:"";
   /* Errar a classificação custa um toque: "+ carga" mostra a carga, e
-     "contar em reps" troca os segundos por reps. Nenhum dos dois redesenha
-     a tela, que mataria o descanso. */
+     "contar em reps" / "contar em segundos" troca a medida, nos dois
+     sentidos. Nenhum dos dois redesenha a tela, que mataria o descanso. */
   const botoes=(cargaVis?"":`<button class="tr-maiscarga" type="button" id="trMaisCarga">+ carga (colete, anilha)</button>`)
-    +(emSeg?`<button class="tr-maiscarga" type="button" id="trEmReps">contar em reps</button>`:"");
+    +(tipo==="tempo"?`<button class="tr-maiscarga" type="button" id="trEmReps">${emSeg?"contar em reps":"contar em segundos"}</button>`:"");
   $("trSets").innerHTML=refOutra+(botoes?`<div class="tr-botoes">${botoes}</div>`:"")+logs.map((l,i)=>{
     const p=trPrevRef&&trPrevRef.sets[i];
     return `<div class="tr-set" data-i="${i}">
@@ -5659,11 +5699,13 @@ function renderTr(){
     const c=$("trSets").querySelector(".ikg");if(c)c.focus();
   };
   if($("trEmReps"))$("trEmReps").onclick=()=>{
-    e.medida="reps";
-    $("trSets").querySelectorAll(".frep").forEach(f=>f.classList.remove("oculto"));
-    $("trSets").querySelectorAll(".fseg").forEach(f=>f.classList.add("oculto"));
-    $("trEmReps").remove();semBotoesVazios();
-    $("trPlan").textContent=`${e.s} séries · descanso ${fmtSec(e.rest||90)} · busque a falha entre 6–12 reps`;
+    trSaveInputs();
+    e.medida=medidaEx(e)==="seg"?"reps":"seg";
+    const seg=e.medida==="seg";
+    $("trSets").querySelectorAll(".frep").forEach(f=>f.classList.toggle("oculto",seg));
+    $("trSets").querySelectorAll(".fseg").forEach(f=>f.classList.toggle("oculto",!seg));
+    $("trEmReps").textContent=seg?"contar em reps":"contar em segundos";
+    $("trPlan").textContent=planoTx();
     trPersist();
     $("trSets").querySelectorAll(".tr-set").forEach(trDelta);
   };
@@ -5769,6 +5811,9 @@ function aplicarTroca(){
 
   trSaveInputs();                       // o que já foi digitado não se perde na troca
   const prescrito=e.orig||e.n;
+  /* "contar em reps" e "+ carga" foram escolhidos para o exercício de
+     antes; o novo começa pelo nome dele. */
+  if(norm(novo)!==norm(e.n)){delete e.medida;delete e.comCarga;}
   if(norm(novo)===norm(prescrito)){ delete e.orig; e.n=prescrito; }  // voltou ao original
   else { if(!e.orig)e.orig=prescrito; e.n=novo; }
 
@@ -5809,12 +5854,14 @@ $("trNext").onclick=async()=>{
   // finalizar: duração pelo cronômetro (sem o tempo fora do app); esforço = total − descansos; intensidade pelo RIR
   const min=Math.max(1,Math.round(trElapsedMs()/60000));
   let vol=0,rirSum=0,rirN=0,setsDoneTotal=0;
+  /* Cada série pela medida do exercício: o campo escondido não conta. */
+  const series=trS.w.ex.map((e,i)=>(trS.logs[i]||[]).map(l=>serieDe(l,e)));
   const feita=serieFeita;
-  trS.logs.forEach(sets=>sets.forEach(l=>{vol+=(l.kg||0)*(l.rep||0);if(feita(l))setsDoneTotal++;if(l.rir!==null&&l.rir!==undefined){rirSum+=l.rir;rirN++;}}));
+  series.forEach(sets=>sets.forEach(l=>{vol+=(l.kg||0)*(l.rep||0);if(feita(l))setsDoneTotal++;if(l.rir!==null&&l.rir!==undefined){rirSum+=l.rir;rirN++;}}));
   // descanso estimado: (séries − 1) × descanso cadastrado, por exercício
   let restSec=0;
   trS.w.ex.forEach((e,i)=>{
-    const done=setsDoneTotal>0?(trS.logs[i]||[]).filter(feita).length:e.s;
+    const done=setsDoneTotal>0?series[i].filter(feita).length:e.s;
     restSec+=Math.max(0,done-1)*(e.rest||90);
   });
   let restMin=Math.min(restSec/60,min*0.75); // trava de sanidade
@@ -5831,7 +5878,7 @@ $("trNext").onclick=async()=>{
   // líquido: esforço no MET do RIR; descanso entre séries ≈ MET 2 (em pé/circulando)
   const kcal=Math.round(netKcal(met,workMin)+netKcal(2,restMin));
   const avgTxt=rirN>0?(rirSum/rirN):null;
-  const exDetail=trS.w.ex.map((e,i)=>({n:e.n,g:e.g||"outros",sec:(e.sec!==undefined?e.sec:synFor(e.g||"")),sets:(trS.logs[i]||[]).filter(l=>(l.rep||0)>0||(l.seg||0)>0).map(l=>Object.assign({kg:l.kg||0,rep:l.rep||0,rir:l.rir},(l.seg||0)>0?{seg:l.seg}:{}))})).filter(x=>x.sets.length);
+  const exDetail=trS.w.ex.map((e,i)=>({n:e.n,g:e.g||"outros",sec:(e.sec!==undefined?e.sec:synFor(e.g||"")),sets:series[i].filter(l=>(l.rep||0)>0||(l.seg||0)>0).map(l=>Object.assign({kg:l.kg||0,rep:l.rep||0,rir:l.rir},(l.seg||0)>0?{seg:l.seg}:{}))})).filter(x=>x.sets.length);
   const reg={id:uid(),name:trS.w.nome,min,kcal,vol:Math.round(vol),intens:label,rir:avgTxt!==null?Math.round(avgTxt*10)/10:null,ex:exDetail};
   if(trS.acad){reg.acad=trS.acad;reg.acadNome=acadNomeDe(trS);}
   /* Qual treino, de qual protocolo: dois protocolos podem ter "Treino A" com
@@ -6143,7 +6190,7 @@ function renderPerfil(){
       $("pfObjTitle").textContent=(bulking?"Bulking":"Cutting")+" · "+kgTxt(parseFloat(g.pesoAtual)||0)+" → "+kgTxt(parseFloat(g.pesoAlvo)||0)+" kg";
       $("pfGetd").textContent=r0(store.getd);
       $("pfMeta").textContent=r0(goalMeta(t,todayKey()));
-      $("pfPrazo").textContent=r0(t.meses)+(t.meses==1?" mês":" meses");
+      $("pfPrazo").textContent=mesesTxt(t.meses);
     }else{
       $("pfObjTitle").textContent="Nenhum objetivo definido";
       $("pfGetd").textContent="—";$("pfMeta").textContent="—";$("pfPrazo").textContent="—";
@@ -6611,9 +6658,11 @@ function mesclar(B,L,R){
      total inteiro contava em dobro a gravação que chegou à nuvem sem a base
      acompanhar (o app descartado logo depois de gravar, ou a transação que o
      SDK repete depois de um commit que deu certo). Lado sem lista de
-     horários (versão antiga) conta como se a lista fosse a da base. */
+     horários (versão antiga) conta como se a lista fosse a da base; sem base,
+     como se fosse a mesclada — senão a água que o outro lado anotou com
+     horário contaria de novo como resto. */
   const somaLog=(log,d)=>((log&&log[d])||[]).reduce((a,x)=>a+(+(x&&x.ml)||0),0);
-  const logDe=X=>(X.liqLog&&typeof X.liqLog==="object")?X.liqLog:(B.liqLog||null);
+  const logDe=X=>(X.liqLog&&typeof X.liqLog==="object")?X.liqLog:(temBase?(B.liqLog||null):(M.liqLog||null));
   campo("liquids",porDia((b,l,r,d)=>{
     const rl=(+l||0)-somaLog(logDe(L),d),rr=(+r||0)-somaLog(logDe(R),d);
     const rb=(b===undefined||b===null)?undefined:(+b||0)-somaLog(B.liqLog,d);
@@ -6632,13 +6681,30 @@ function mesclar(B,L,R){
   campo("academias",lista(porId));
   campo("tprotos",lista(porId));
   campo("getdHist",lista(x=>"d:"+(x&&x.desde)));
-  /* O GETD anda com o histórico dele: se os dois aparelhos o mudaram, vale o
-     da mudança mais recente no histórico, e não simplesmente "o daqui" —
-     senão o GETD de hoje desmentiria o histórico, e o saldo do dia mudaria
-     quando ele virasse passado. */
-  if(!igual(L.getd,R.getd)&&!igual(L.getd,B.getd)&&!igual(R.getd,B.getd)&&Array.isArray(M.getdHist)){
+  /* O GETD anda com o histórico dele. A mudança mais recente do histórico,
+     se só um lado a tem (com base: se ela não estava na base), é desse lado,
+     e o GETD é o dele — e não simplesmente "o daqui", nem o de quem mexeu
+     por último no número. Senão o GETD de hoje desmentiria o histórico, e o
+     saldo do dia mudaria quando ele virasse passado. Decidir pela igualdade
+     dos números falhava quando um lado só mudou a base, ou mudou e desfez. */
+  if(Array.isArray(M.getdHist)&&M.getdHist.length&&M.getd!==undefined){
     const u=M.getdHist.reduce((a,x)=>x&&(!a||x.desde>a.desde)?x:a,null);
-    if(u&&(igual(u.getd,L.getd)||igual(u.getd,R.getd)))M.getd=u.getd;
+    const tem=X=>Array.isArray(X.getdHist)&&X.getdHist.some(x=>igual(x,u));
+    const novo=(X,Y)=>tem(X)&&!(temBase?tem(B):tem(Y));
+    if(u&&novo(L,R)&&igual(L.getd,u.getd))M.getd=L.getd;
+    else if(u&&novo(R,L)&&igual(R.getd,u.getd))M.getd=R.getd;
+  }
+  /* Peso da conta, "Manter" e a data do peso de partida pertencem ao peso
+     de partida: misturados chave por chave, um plano novo feito num aparelho
+     herdaria o peso aceito no outro para o plano velho. Vêm do lado cujo
+     peso de partida ficou. */
+  if(M.goals&&typeof M.goals==="object"&&L.goals&&R.goals){
+    const plano=g=>JSON.stringify([parseFloat(g.pesoAtual)||0,g.pesoDesde||g.inicio||""]);
+    const pm=plano(M.goals),lOk=plano(L.goals)===pm,rOk=plano(R.goals)===pm;
+    if(lOk!==rOk){
+      const S=lOk?L.goals:R.goals;
+      for(const k of ["pesoConta","mantido","pesoDesde"]){if(S[k]!==undefined)M.goals[k]=S[k];else delete M.goals[k];}
+    }
   }
   /* O total do dia nunca fica abaixo do que a lista de horários soma: o anel
      e a lista não podem se desmentir. */
@@ -6706,7 +6772,7 @@ function aplicarNuvem(data,manterDia){
   if(meu)Object.assign(store.goals,meu);
   if(!manterDia){viewKey=todayKey();realToday=todayKey();}
   localStorage.setItem(KEY,JSON.stringify(store));
-  if(document.activeElement!==$("getdInput"))$("getdInput").value=store.getd>0?store.getd:"";
+  pintarGetdInput();
   render();
   renderTreino();   // academias e protocolos vindos de outro aparelho
   equipRevisar();   // pop-up de aparelhos aberto: redesenha, ou fecha se a academia sumiu
@@ -7320,13 +7386,44 @@ const getdInput=$("getdInput");getdInput.value=store.getd>0?store.getd:"";
 /* GETD digitado à mão ganha a marca "manual" e não é mais trocado sozinho:
    nem pelo objetivo, nem pelo exógeno, nem pelo peso. "usar o calculado"
    tira a marca. */
+/* Abaixo de GETD_MIN (ou vazio) não grava nada: o número de antes volta ao
+   campo e a tela diz por quê. Antes virava 500 calado, marcado como
+   digitado à mão — um número que ninguém digitou, travando a meta. */
+const GETD_MIN=500;
 getdInput.addEventListener("change",()=>{
-  let v=inteiroBR(getdInput.value);if(v<500)v=500;
+  /* Dia que passou mostra o GETD dele, que não se edita daqui: mudar o
+     número mudaria o de hoje, com a tela mostrando outro dia. */
+  if(getdInput.readOnly){pintarGetdInput();return;}
+  const txt=getdInput.value.trim(),v=inteiroBR(txt);
+  if(!(v>=GETD_MIN)){
+    pintarGetdInput(true);
+    avisoGetd(txt?`O GETD não muda: ${nPt(v)} kcal está abaixo de ${GETD_MIN}.`:"O GETD não muda: o campo ficou vazio.");
+    return;
+  }
+  if(v===store.getd){pintarGetdInput(true);return;}
   const foto=fotoGetd();
   store.goals=store.goals||{};
-  if(v!==store.getd)store.goals.getdManual=true;
-  mudarGetd(v,foto);getdInput.value=store.getd;save();render();renderInicio();
+  store.goals.getdManual=true;
+  mudarGetd(v,foto);pintarGetdInput(true);save();render();renderInicio();
 });
+/* O aviso fica embaixo do campo, onde a pessoa está olhando: o #flash mora
+   no cartão de lançar comida, longe dali. */
+let getdAvisoT=null;
+function avisoGetd(msg){
+  const n=$("getdAviso");if(!n)return;
+  n.textContent=msg;n.hidden=false;
+  clearTimeout(getdAvisoT);getdAvisoT=setTimeout(()=>{n.hidden=true;},5000);
+}
+/* O campo mostra o GETD do dia visto. Num dia que passou, é o daquele dia,
+   só para leitura. */
+function pintarGetdInput(forcar){
+  const el=$("getdInput");if(!el)return;
+  const passado=viewKey<todayKey();
+  el.readOnly=passado;
+  if(forcar||document.activeElement!==el){const v=passado?gastoBase(viewKey).getd:store.getd;el.value=v>0?v:"";}
+  const n=$("getdPassado");if(n)n.hidden=!passado;
+  $("getdNota").hidden=passado||!(store.goals&&store.goals.getdManual);
+}
 $("getdAuto").onclick=async()=>{
   const g=store.goals||{},calc=Math.round(computeGETD(g));
   if(!(calc>0)){appAlert("Defina seu perfil e objetivo para o app calcular o GETD.");return;}
@@ -7408,14 +7505,21 @@ function pesoNoDia(dk){
   const g=store.goals||{},pa=parseFloat(g.pesoAtual)||0;
   const ws=(store.weights||[]).filter(x=>x&&x.w>0&&x.d<=dk).sort((a,b)=>a.d<b.d?-1:1);
   const u=ws.length?ws[ws.length-1]:null;
-  /* Pesagem de antes do início do plano é mais velha que o peso de partida
-     digitado nele: no plano, vale o de partida até a próxima pesagem. */
-  if(pa>0&&g.inicio&&dk>=g.inicio&&(!u||u.d<g.inicio))return pa;
+  /* Pesagem de antes do dia em que o peso de partida foi digitado é mais
+     velha que ele: dali em diante vale o de partida, até a próxima pesagem.
+     A data é a do peso (pesoDesde), não a do plano: mudar só o prazo ou o
+     alvo reinicia o plano, mas não torna o peso de partida mais novo. */
+  const desde=pesoDesde(g);
+  if(pa>0&&desde&&dk>=desde&&(!u||u.d<desde))return pa;
   return u?u.w:pa;
 }
-/* A pesagem que pode propor ajustar a meta: a mais recente do plano. */
+/* O dia em que o peso de partida foi digitado. Objetivo salvo antes de
+   existir a data: o início do plano, que era quando ele mudava. */
+function pesoDesde(g){g=g||{};return g.pesoDesde||g.inicio||"";}
+/* A pesagem que pode propor ajustar a meta: a mais recente desde o peso de
+   partida. */
 function pesagemDoPlano(){
-  const h=todayKey(),ini=(store.goals||{}).inicio||"";
+  const h=todayKey(),ini=pesoDesde(store.goals);
   const ws=(store.weights||[]).filter(x=>x&&x.w>0&&x.d<=h&&x.d>=ini).sort((a,b)=>a.d<b.d?-1:1);
   return ws.length?ws[ws.length-1]:null;
 }
@@ -7472,7 +7576,7 @@ function fotoGetd(){return {getd:store.getd||0,base:baseSemRotina()};}
 function mudarGetd(novo,foto){
   novo=Math.round(novo);
   if(novo>0)store.getd=novo;
-  if(document.activeElement!==$("getdInput"))$("getdInput").value=store.getd>0?store.getd:"";
+  pintarGetdInput();
   const agora=fotoGetd();
   if(!foto||(agora.getd===foto.getd&&agora.base===foto.base))return false;
   const hoje=todayKey(),h=Array.isArray(store.getdHist)?store.getdHist.slice():[];
@@ -7485,7 +7589,15 @@ function mudarGetd(novo,foto){
 function gastoBase(dk){
   const h=store.getdHist;
   if(dk&&dk<todayKey()&&Array.isArray(h)){
-    let e=null;for(const x of h)if(x&&x.desde<=dk&&(!e||x.desde>e.desde))e=x;
+    let e=null,primeira=null;
+    for(const x of h)if(x){
+      if(x.desde<=dk&&(!e||x.desde>e.desde))e=x;
+      if(!primeira||x.desde<primeira.desde)primeira=x;
+    }
+    /* Dia anterior a todo o histórico (a primeira configuração, sem GETD
+       antes, não deixa semente): vale o primeiro GETD, que não muda mais —
+       e não o atual, que mudaria esses dias a cada ajuste. */
+    e=e||primeira;
     if(e)return {getd:e.getd,base:e.base};
   }
   return {getd:store.getd,base:baseSemRotina()};
@@ -7686,7 +7798,7 @@ function renderGoals(){
   if(t.configured){
     const bulking=t.mode==="bulking";
     $("ghGoal").textContent=(bulking?"+":"−")+kgTxt(t.kg)+" kg";
-    $("ghPrazo").textContent=r0(t.meses)+(t.meses==1?" mês":" meses");
+    $("ghPrazo").textContent=mesesTxt(t.meses);
     $("ghWeek").textContent=r0(t.weekly)+" kcal";
     const meta=goalMeta(t,viewKey);
     const dcap=dk=>Math.min(dayMetric(t,dk),t.daily);
@@ -7884,7 +7996,7 @@ function assessSafety(g){
   const bulking=selectedObj==="bulking";
   const weeks=m*4.345,weeklyKg=kg/weeks,pct=weeklyKg/pa*100;
   const getd=computeGETD(g),tmb=computeTMB(g),daily=kg*KPKG/(m*30.44);
-  const notes=[`Ritmo exigido: <b>${weeklyKg.toFixed(2)} kg/semana</b> (${pct.toFixed(2)}% do seu peso).`];
+  const notes=[`Ritmo exigido: <b>${dec2(weeklyKg)} kg/semana</b> (${dec2(pct)}% do seu peso).`];
   let tier="ok",verdict="Seguro ✓";
   if((bulking&&pv<=pa)||(!bulking&&pv>=pa)){return {tier:"bad",verdict:"Peso alvo incoerente ✕",html:bulking?"Para <b>bulking</b>, o peso alvo deve ser <b>maior</b> que o atual.":"Para <b>cutting</b>, o peso alvo deve ser <b>menor</b> que o atual."};}
   if(bulking){
@@ -8073,10 +8185,11 @@ function montarExog(ids,onChange){
 }
 let exogForm=null;
 function readGoalForm(){const g=(()=>{const x=exogForm?exogForm.get():{exog:[],clenDose:0,exogAceite:"",exogLocal:true};return {sexo:$("gSexo").value,idade:inteiroBR($("gIdade").value),altura:alturaCm($("gAltura").value),pesoAtual:numBR($("gPesoAtual").value),ativ:$("gAtiv").value,pesoAlvo:numBR($("gPesoAlvo").value),meses:numBR($("gMeses").value),liquidTarget:inteiroBR($("gLiquid").value),exog:x.exog,clenDose:x.clenDose,exogAceite:x.exogAceite,exogLocal:x.exogLocal};})();
-  /* A prévia (GETD, consumo, segurança) usa o peso da conta que o
-     salvamento vai usar: com o mesmo plano, o aceito em "Atualizar". */
-  const prev=store.goals||{},obj=selectedObj||(g.pesoAlvo>g.pesoAtual?"bulking":"cutting");
-  if(prev.pesoConta&&parseFloat(prev.pesoAtual)===g.pesoAtual&&parseFloat(prev.pesoAlvo)===g.pesoAlvo&&parseFloat(prev.meses)===g.meses&&prev.objetivo===obj)g.pesoConta=prev.pesoConta;
+  /* A prévia (GETD, consumo, segurança, cartões de ritmo) usa o peso da
+     conta que o salvamento vai usar: com o mesmo peso de partida, o aceito
+     em "Atualizar", qualquer que seja o prazo. */
+  const prev=store.goals||{};
+  if(prev.pesoConta&&parseFloat(prev.pesoAtual)===g.pesoAtual)g.pesoConta=prev.pesoConta;
   return g;
 }
 exogForm=montarExog({seg:"gExogSeg",lista:"gExogLista",doseWrap:"gExogDoseWrap",dose:"gExogDose",doseNota:"gExogDoseNota",localWrap:"gExogLocalWrap",local:"gExogLocal"},()=>{
@@ -8128,10 +8241,10 @@ function updateGoalPreview(){
   if(getd>0)txt+=`GETD estimado: <b>${r0(getd)}</b> kcal/dia${fx>0?` (inclui +${Math.round(fx*100)}% da taxa basal pelo exógeno)`:""}.<br>`;
   if(kg>0&&m>0){
     if(selectedObj==="bulking"){
-      txt+=`Ganhar <b>${kgTxt(kg)} kg</b> em ${r0(m)} ${m==1?"mês":"meses"} → superávit de <b>${r0(daily)}</b> kcal/dia (<b>${r0(daily*7)}</b>/semana).`;
+      txt+=`Ganhar <b>${kgTxt(kg)} kg</b> em ${mesesTxt(m)} → superávit de <b>${r0(daily)}</b> kcal/dia (<b>${r0(daily*7)}</b>/semana).`;
       if(getd>0)txt+=`<br>Consumir cerca de <b>${r0(getd+daily)}</b> kcal/dia.`;
     }else{
-      txt+=`Perder <b>${kgTxt(kg)} kg</b> em ${r0(m)} ${m==1?"mês":"meses"} → déficit de <b>${r0(daily)}</b> kcal/dia (<b>${r0(daily*7)}</b>/semana).`;
+      txt+=`Perder <b>${kgTxt(kg)} kg</b> em ${mesesTxt(m)} → déficit de <b>${r0(daily)}</b> kcal/dia (<b>${r0(daily*7)}</b>/semana).`;
       if(getd>0)txt+=`<br>Consumir cerca de <b>${r0(getd-daily)}</b> kcal/dia.`;
     }
   }
@@ -8161,15 +8274,23 @@ $("saveGoals").onclick=()=>{
   const anos=idadeDe(nasc);
   store.goals={nome,inicio,nasc,objetivo:obj,sexo:g.sexo,idade:anos>0?anos:(parseFloat(g.idade)||0),altura:parseFloat(g.altura)||0,pesoAtual:parseFloat(g.pesoAtual)||0,ativ:parseFloat(g.ativ)||1.2,pesoAlvo:parseFloat(g.pesoAlvo)||0,meses:parseFloat(g.meses)||0,liquidTarget:parseInt(g.liquidTarget)||3000,exog:g.exog||[],clenDose:g.clenDose||0,exogAceite:g.exogAceite||"",exogLocal:g.exogLocal!==false};
   /* Também remontados do zero, e por isso carregados aqui: o peso aceito em
-     "Atualizar" (só com o mesmo plano: plano novo parte do peso de partida),
-     a marca de GETD manual e o "Manter" da última pesagem. */
-  if(sameplan&&prev.pesoConta)store.goals.pesoConta=prev.pesoConta;
+     "Atualizar" e o "Manter" da última pesagem (os dois só com o mesmo peso
+     de partida: peso de partida novo é uma pesagem mais nova que eles), a
+     data em que o peso de partida foi digitado e a marca de GETD manual.
+     Mudar só o prazo, o alvo ou o objetivo reinicia o plano, mas o peso
+     continua o mesmo: as pesagens desde ele continuam valendo. */
+  const mesmoPeso=parseFloat(prev.pesoAtual)===(parseFloat(g.pesoAtual)||0);
+  store.goals.pesoDesde=mesmoPeso&&pesoDesde(prev)?pesoDesde(prev):todayKey();
+  if(mesmoPeso&&prev.pesoConta)store.goals.pesoConta=prev.pesoConta;
   if(prev.getdManual)store.goals.getdManual=true;
-  if(sameplan&&prev.mantido)store.goals.mantido=prev.mantido;
+  if(mesmoPeso&&prev.mantido)store.goals.mantido=prev.mantido;
   const getd=computeGETD(store.goals);
   if(getd>0&&!store.goals.getdManual)mudarGetd(getd,foto);
   else{mudarGetd(store.getd,foto);if(store.goals.getdManual&&store.getd>0)flash(`O GETD continua ${nPt(store.getd)} kcal, digitado à mão`);}
-  save();render();goalsOverlay.classList.remove("open");
+  /* O objetivo é editado a partir do Perfil: sem redesenhá-lo, o prazo e a
+     meta antigos ficavam na tela até trocar de aba. O cartão do peso, no
+     Início, também depende do objetivo. */
+  save();render();renderInicio();renderPerfil();goalsOverlay.classList.remove("open");
   if(onboarding){onboarding=false;fillUser();showView("inicio");}
 };
 $("cancelGoals").onclick=()=>{goalsOverlay.classList.remove("open");if(onboarding){onboarding=false;showView("inicio");}};
@@ -8327,7 +8448,7 @@ function renderPeso(){
   if(w){$("pesoTit").textContent=`${kgTxt(w)} kg`;$("pesoSub").textContent=ant?`${difKg(w-ant.w)} desde ${quandoTxt(ant.d)}`:"Primeira pesagem registrada";}
   else{$("pesoTit").textContent="Peso do dia";$("pesoSub").textContent=ant?`Último: ${kgTxt(ant.w)} kg (${quandoTxt(ant.d)}) · toque para lançar`:"Toque para lançar quando quiser";}
   pintarAjuste($("alAjuste"));
-  $("getdNota").hidden=!(store.goals&&store.goals.getdManual);
+  pintarGetdInput();
 }
 function renderFdPeso(){
   const el=$("fdPesoTx");if(!el)return;
@@ -8398,8 +8519,12 @@ function gGoStep(n){
   const md=goalsOverlay.querySelector(".modal");if(md)md.scrollTop=0;
 }
 function gwHint(){
-  const getd=computeGETD(readGoalForm());
-  $("getdHint").innerHTML=getd>0?"Seu GETD estimado: <b>"+r0(getd)+" kcal/dia</b> — atualiza conforme você preenche.":"Preencha os campos para estimar seu GETD.";
+  const g=readGoalForm(),getd=computeGETD(g);
+  /* Com o peso aceito em "Atualizar", a conta não usa o peso do campo: dizer
+     qual entra, senão baixar o campo um quilo faria o GETD subir sem motivo
+     visível. */
+  const aceito=g.pesoConta>0&&Math.abs(g.pesoConta-g.pesoAtual)>=0.05?` (com o peso aceito em "Atualizar", ${kgTxt(g.pesoConta)} kg)`:"";
+  $("getdHint").innerHTML=getd>0?"Seu GETD estimado: <b>"+r0(getd)+" kcal/dia</b>"+aceito+" — atualiza conforme você preenche.":"Preencha os campos para estimar seu GETD.";
 }
 $("gNext").onclick=()=>{
   if(goalStep===1){

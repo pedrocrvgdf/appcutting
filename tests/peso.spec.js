@@ -346,3 +346,109 @@ test.describe('Nuvem', () => {
     expect((await store(page)).getdHist.length, 'versão anterior não apaga o histórico do GETD').toBe(2);
   });
 });
+
+test.describe('A meta acompanha o peso: segunda revisão', () => {
+  const salvarObjetivo = async (page, mexer) => {
+    await irPara(page, 'perfil');
+    await clicar(page, '#pfEdit'); await page.waitForTimeout(400);
+    if (mexer) await mexer();
+    await clicar(page, '#gNext'); await page.waitForTimeout(150);
+    await clicar(page, '#gNext'); await page.waitForTimeout(150);
+    await clicar(page, '#saveGoals'); await page.waitForTimeout(300);
+  };
+
+  test('mudar só o prazo reinicia o plano, mas a pesagem de ontem continua valendo', async ({ page }) => {
+    /* O peso de partida veio preenchido no formulário: ele não ficou mais
+       novo que a pesagem de ontem só porque o prazo mudou. */
+    await abrirApp(page, base({}, { weights: [{ d: ontem, w: 72 }] }));
+    expect(await cartao(page)).toContain('Com 72 kg (pesagem de ontem)');
+    await salvarObjetivo(page, () => digitar(page, '#gMeses', '5'));
+    const s = await store(page);
+    expect(s.goals.inicio, 'o plano reinicia').toBe(hoje);
+    expect(s.goals.pesoDesde, 'o peso de partida não fica mais novo').toBe('2026-09-01');
+    expect(await page.evaluate(h => __t.pesoNoDia(h), hoje)).toBe(72);
+    expect(await cartao(page), 'a pesagem continua propondo').toContain('Com 72 kg (pesagem de ontem)');
+  });
+
+  test('mudar só o prazo mantém o peso aceito em "Atualizar"', async ({ page }) => {
+    await abrirApp(page, base({}, { weights: [{ d: ontem, w: 72 }] }));
+    await clicar(page, '#fdAjuste [data-ajuste="sim"]');
+    await page.waitForTimeout(200);
+    await salvarObjetivo(page, () => digitar(page, '#gMeses', '5'));
+    const s = await store(page);
+    expect(s.goals.pesoConta).toBe(72);
+    expect(s.getd, 'o GETD não volta ao peso de partida').toBe(Math.round(await page.evaluate(() => __t.computeGETD(__t.store.goals))));
+    expect(await page.evaluate(() => __t.computeTMB(__t.store.goals)), 'a taxa basal é a de 72 kg').toBe(10 * 72 + 6.25 * 180 - 5 * 30 + 5);
+    expect(await cartao(page)).toBeNull();
+  });
+
+  test('peso de partida novo é a informação mais nova: a pesagem de ontem não vale mais', async ({ page }) => {
+    await abrirApp(page, base({}, { weights: [{ d: ontem, w: 72 }] }));
+    await salvarObjetivo(page, () => digitar(page, '#gPesoAtual', '76'));
+    const s = await store(page);
+    expect(s.goals.pesoDesde).toBe(hoje);
+    expect(await page.evaluate(h => __t.pesoNoDia(h), hoje)).toBe(76);
+    expect(await cartao(page)).toBeNull();
+  });
+
+  test('o número da prévia num prazo novo é o que o salvamento grava', async ({ page }) => {
+    /* Os cartões de ritmo trocam o prazo: com o mesmo peso de partida, o peso
+       aceito continua valendo, na prévia e no salvamento. */
+    await abrirApp(page, base({ pesoConta: 72 }));
+    await irPara(page, 'perfil');
+    await clicar(page, '#pfEdit'); await page.waitForTimeout(400);
+    expect(await page.evaluate(() => document.getElementById('getdHint').textContent), 'a dica diz qual peso entra').toContain('72 kg');
+    await digitar(page, '#gMeses', '5');
+    await clicar(page, '#gNext'); await page.waitForTimeout(150);
+    await clicar(page, '#gNext'); await page.waitForTimeout(150);
+    const previa = await page.evaluate(() => document.getElementById('goalPreview').textContent);
+    await clicar(page, '#saveGoals'); await page.waitForTimeout(300);
+    const s = await store(page);
+    expect(s.goals.pesoConta).toBe(72);
+    expect(previa).toContain(`GETD estimado: ${s.getd}`);
+  });
+
+  test('GETD vazio ou abaixo de 500 não grava nada, nem marca como digitado à mão', async ({ page }) => {
+    await abrirApp(page, base());
+    await irPara(page, 'food');
+    for (const txt of ['', '280', '3,050']) {
+      await digitar(page, '#getdInput', txt);
+      await page.waitForTimeout(100);
+      const s = await store(page);
+      expect(s.getd, `"${txt}"`).toBe(3000);
+      expect(s.goals.getdManual, `"${txt}"`).toBeUndefined();
+      expect(await page.evaluate(() => document.getElementById('getdInput').value)).toBe('3000');
+      expect(await page.evaluate(() => { const n = document.getElementById('getdAviso'); return n.hidden ? '' : n.textContent; }), 'o aviso fica embaixo do campo').toContain('O GETD não muda');
+    }
+  });
+
+  test('num dia passado, o campo do GETD mostra o daquele dia e não muda o de hoje', async ({ page }) => {
+    await abrirApp(page, base({}, { weights: [{ d: hoje, w: 72 }] }));
+    await clicar(page, '#fdAjuste [data-ajuste="sim"]');
+    await page.waitForTimeout(200);
+    await irPara(page, 'food');
+    expect(await page.evaluate(() => document.getElementById('getdInput').value)).toBe('2880');
+    await clicar(page, '#dayPrev');
+    await page.waitForTimeout(200);
+    expect(await page.evaluate(() => document.getElementById('getdInput').value)).toBe('3000');
+    expect(await page.evaluate(() => document.getElementById('getdInput').readOnly)).toBe(true);
+    expect(await page.evaluate(() => document.getElementById('getdPassado').hidden)).toBe(false);
+    await digitar(page, '#getdInput', '2500');
+    await page.waitForTimeout(100);
+    const s = await store(page);
+    expect(s.getd).toBe(2880);
+    expect(s.goals.getdManual).toBeUndefined();
+    await clicar(page, '#dayNext');
+    await page.waitForTimeout(200);
+    expect(await page.evaluate(() => document.getElementById('getdInput').readOnly)).toBe(false);
+    expect(await page.evaluate(() => document.getElementById('getdInput').value)).toBe('2880');
+  });
+
+  test('dia anterior a todo o histórico de GETD fica com o primeiro, e não muda com o atual', async ({ page }) => {
+    /* Primeira configuração: sem GETD antes, não há semente. */
+    await abrirApp(page, base({}, { getd: 2300, getdHist: [{ desde: ontem, getd: 2500, base: 2000 }] }));
+    expect(await page.evaluate(d => __t.gastoBase(d).getd, diaISO(5))).toBe(2500);
+    expect(await page.evaluate(d => __t.gastoBase(d).getd, ontem)).toBe(2500);
+    expect(await page.evaluate(d => __t.gastoBase(d).getd, hoje)).toBe(2300);
+  });
+});

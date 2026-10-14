@@ -479,6 +479,56 @@ test.describe('A mescla', () => {
     expect(M.getd).toBe(2800);
   });
 
+  test('GETD mudado só de um lado, com a mudança mais recente do outro só na base: vale o histórico', async ({ page }) => {
+    /* Este aparelho mudou o GETD no dia 2; o outro, depois, mudou só a base
+       da rotina (GETD à mão, perfil novo) no dia 3. Pela igualdade dos
+       números o GETD daqui ganhava, e o histórico dizia outra coisa. */
+    await abrirSimples(page);
+    const M = await page.evaluate(() => {
+      const s = { desde: '0000-01-01', getd: 3200, base: 2600 }, d1 = { desde: '2026-10-01', getd: 3000, base: 2500 };
+      return __t.mesclar(
+        { getd: 3000, getdHist: [s, d1] },
+        { getd: 2800, getdHist: [s, d1, { desde: '2026-10-02', getd: 2800, base: 2300 }] },
+        { getd: 3000, getdHist: [s, d1, { desde: '2026-10-03', getd: 3000, base: 2400 }] });
+    });
+    expect(M.getd).toBe(3000);
+    // sem base: a entrada que só um lado tem é dele
+    const N = await page.evaluate(() => __t.mesclar(null,
+      { getd: 3000, getdHist: [{ desde: '0000-01-01', getd: 3200, base: 2600 }, { desde: '2026-10-01', getd: 3000, base: 2500 }] },
+      { getd: 3200, getdHist: [{ desde: '0000-01-01', getd: 3200, base: 2600 }, { desde: '2026-10-05', getd: 3200, base: 2500 }] }));
+    expect(N.getd).toBe(3200);
+  });
+
+  test('sem base, a água anotada com horário de um lado não volta como resto do outro', async ({ page }) => {
+    /* Lado sem lista de horários (versão antiga): o total dele já inclui o
+       que o outro anotou. Contado como resto, dava 600. */
+    await abrirSimples(page);
+    const r = await page.evaluate(() => {
+      const comLog = { liquids: { d: 300 }, liqLog: { d: [{ id: 'a', ml: 300 }] } }, semLog = { liquids: { d: 300 } };
+      const maisAgua = { liquids: { d: 500 } };
+      return [
+        __t.mesclar(null, comLog, semLog).liquids.d,
+        __t.mesclar(null, semLog, comLog).liquids.d,
+        __t.mesclar(null, comLog, maisAgua).liquids.d,
+      ];
+    });
+    expect(r).toEqual([300, 300, 500]);
+  });
+
+  test('plano novo num aparelho e "Atualizar" no outro: o peso da conta segue o peso de partida que ficou', async ({ page }) => {
+    /* Misturado chave por chave, o plano novo herdava o peso aceito no
+       outro aparelho para o plano velho. */
+    await abrirSimples(page);
+    const r = await page.evaluate(() => {
+      const B = { goals: { pesoAtual: 80, meses: 3, inicio: '2026-09-01' } };
+      const novo = { goals: { pesoAtual: 85, meses: 4, inicio: '2026-10-10', pesoDesde: '2026-10-10' } };
+      const atualizou = { goals: { pesoAtual: 80, meses: 3, inicio: '2026-09-01', pesoConta: 74, mantido: { d: '2026-10-09', w: 74 } } };
+      const a = __t.mesclar(B, novo, atualizou).goals, b = __t.mesclar(B, atualizou, novo).goals;
+      return [[a.pesoAtual, 'pesoConta' in a, 'mantido' in a], [b.pesoAtual, 'pesoConta' in b, 'mantido' in b]];
+    });
+    expect(r).toEqual([[85, false, false], [85, false, false]]);
+  });
+
   test('dois itens iguais sem id no mesmo dia continuam dois', async ({ page }) => {
     await abrirSimples(page);
     const item = { name: 'Banana', kcal: 90 };

@@ -128,7 +128,9 @@ test.describe('Peso do corpo e tempo', () => {
     /* Achou um nome classificado errado? Ponha na tabela. Os de baixo da
        primeira linha em branco vieram da revisão: máquina, cabo, pegada e o
        abdominal no banco declinado ("prancha") eram tratados como peso do
-       corpo ou como tempo. */
+       corpo ou como tempo. Os de baixo da segunda, da segunda revisão:
+       "halter" no singular, "sem carga", "paralela" no singular, a pegada da
+       flexão e o abdominal isométrico. */
     const esperado = {
       'Flexão de braço': 'corpo', 'Flexão com joelhos apoiados': 'corpo', 'Barra fixa': 'corpo', 'Mergulho': 'corpo',
       'Abdominal': 'corpo', 'Abdominal infra': 'corpo', 'Abdominal na roda': 'corpo', 'Elevação de pernas': 'corpo',
@@ -141,12 +143,18 @@ test.describe('Peso do corpo e tempo', () => {
       'Desenvolvimento pegada paralela': 'carga', 'Flexão lateral de tronco com halter': 'carga',
       'Abdominal na prancha declinada': 'corpo', 'Abdominal na prancha': 'corpo', 'Prancha abdominal': 'tempo',
       'Prancha com anilha': 'tempo', 'Barra fixa pegada supinada': 'corpo', 'Mergulho nas paralelas': 'corpo',
+
+      'Abdominal com halter': 'carga', 'Flexão lateral com halter': 'carga', 'Prancha com halter': 'tempo',
+      'Paralela': 'corpo', 'Tríceps paralela': 'corpo', 'Mergulho sem carga': 'corpo', 'Flexão sem carga': 'corpo',
+      'Flexão com pegada fechada': 'corpo', 'Elevação de joelho na paralela': 'corpo',
+      'Abdominal isométrico': 'tempo', 'Abdominal hollow hold': 'tempo', 'Abdominal joelho no peito': 'corpo',
+      'Flexão de joelhos': 'carga', 'Supino com halteres': 'carga', 'Rosca com haltere': 'carga',
     };
     const r = await page.evaluate(n => Object.fromEntries(n.map(x => [x, __t.exTipo(x)])), Object.keys(esperado));
     expect(r).toEqual(esperado);
   });
 
-  test('prancha classificada errado vira reps com um toque, sem matar o descanso', async ({ page }) => {
+  test('prancha classificada errado vira reps com um toque, e volta, sem matar o descanso', async ({ page }) => {
     await abrirApp(page, calistenia());
     await iniciarTreino(page);
     await proximo(page);   // prancha
@@ -159,8 +167,65 @@ test.describe('Peso do corpo e tempo', () => {
     expect(await visivel(page, `${serie(0)} .irep`)).toBe(true);
     expect(await visivel(page, `${serie(0)} .iseg`)).toBe(false);
     expect(await page.evaluate(() => __t.trRestEnd), 'o descanso continua').toBe(fim);
+    expect(await page.evaluate(() => document.getElementById('trEmReps').textContent), 'e tem volta').toBe('contar em segundos');
     await digitar(page, `${serie(0)} .irep`, '20');
-    expect(await page.evaluate(() => __t.trS.logs[1][0]), 'os segundos escondidos não ficam').toMatchObject({ rep: 20, seg: 0 });
+    // volta: os 45 s digitados antes reaparecem
+    await clicar(page, '#trEmReps');
+    await page.waitForTimeout(100);
+    expect(await visivel(page, `${serie(0)} .iseg`)).toBe(true);
+    expect(await page.evaluate(s => document.querySelector(s).value, `${serie(0)} .iseg`)).toBe('45');
+    expect(await page.evaluate(() => document.getElementById('trPlan').textContent)).toContain('segure');
+    expect(await page.evaluate(() => __t.trRestEnd), 'o descanso continua').toBe(fim);
+    // e de novo para reps: só a medida escolhida vai para o histórico
+    await clicar(page, '#trEmReps');
+    await proximo(page);
+    const s = await page.evaluate(h => __t.store.tdays[h][0], hoje);
+    const pr = s.ex.find(e => e.n === 'Prancha');
+    expect(pr.sets.map(x => [x.rep, x.seg || 0]), 'os segundos escondidos não ficam').toEqual([[20, 0]]);
+  });
+
+  test('trocar por engano e desfazer devolve os segundos digitados', async ({ page }) => {
+    await abrirApp(page, calistenia());
+    await iniciarTreino(page);
+    await proximo(page);   // prancha
+    await digitar(page, `${serie(0)} .iseg`, '45');
+    await clicar(page, '#trTrocar'); await page.waitForTimeout(250);
+    await page.evaluate(() => { const c = document.getElementById('trocaNome'); c.value = 'Abdominal'; c.dispatchEvent(new Event('input', { bubbles: true })); });
+    await clicar(page, '#trocaOk'); await page.waitForTimeout(300);
+    await clicar(page, '#trDesfazer'); await page.waitForTimeout(200);
+    expect(await page.evaluate(s => document.querySelector(s).value, `${serie(0)} .iseg`)).toBe('45');
+    await proximo(page);
+    const s = await page.evaluate(h => __t.store.tdays[h][0], hoje);
+    expect(s.ex.find(e => e.n === 'Prancha').sets.map(x => x.seg)).toEqual([45]);
+  });
+
+  test('"contar em reps" é do exercício: trocar ou desfazer volta à medida do nome', async ({ page }) => {
+    await abrirApp(page, calistenia());
+    await iniciarTreino(page);
+    await proximo(page);   // prancha
+    await clicar(page, '#trEmReps');
+    await clicar(page, '#trTrocar'); await page.waitForTimeout(250);
+    await page.evaluate(() => { const c = document.getElementById('trocaNome'); c.value = 'Prancha lateral'; c.dispatchEvent(new Event('input', { bubbles: true })); });
+    await clicar(page, '#trocaOk'); await page.waitForTimeout(300);
+    expect(await visivel(page, `${serie(0)} .iseg`), 'a prancha lateral começa em segundos').toBe(true);
+    expect(await visivel(page, `${serie(0)} .irep`)).toBe(false);
+    await clicar(page, '#trEmReps');
+    await clicar(page, '#trDesfazer'); await page.waitForTimeout(200);
+    expect(await visivel(page, `${serie(0)} .iseg`), 'e a prancha de volta também').toBe(true);
+  });
+
+  test('exercício de tempo contado em reps da última vez começa em reps', async ({ page }) => {
+    await abrirApp(page, calistenia({
+      tdays: { [ontem]: [{ id: 's0', name: 'Calistenia', tid: 'wc', min: 20, kcal: 90, vol: 0, ex: [
+        { n: 'Prancha', g: 'abdomen', sets: [{ kg: 0, rep: 20 }, { kg: 0, rep: 18 }] },
+      ] }] },
+    }));
+    await iniciarTreino(page);
+    await proximo(page);
+    expect(await visivel(page, `${serie(0)} .irep`)).toBe(true);
+    expect(await visivel(page, `${serie(0)} .iseg`)).toBe(false);
+    expect(await page.evaluate(s => document.querySelector(s).textContent, `${serie(0)} .tp-v`)).toBe('20 reps');
+    expect(await page.evaluate(() => document.getElementById('trEmReps').textContent)).toBe('contar em segundos');
   });
 
   test('o que foi digitado antes de trocar o exercício não fica escondido na série', async ({ page }) => {
@@ -197,6 +262,35 @@ test.describe('Peso do corpo e tempo', () => {
     } }));
     await iniciarTreino(page);
     expect(await page.evaluate(s => document.querySelector(s).textContent, `${serie(0)} .tp-v`)).toBe('60 kg × 10');
+  });
+
+  test('exercício de carga sempre feito sem carga mantém a referência em reps', async ({ page }) => {
+    /* "Tríceps banco" é do catálogo e se classifica como carga, mas em casa
+       vai sem anilha: sem nenhuma vez com carga, a referência é a sem. */
+    await abrirApp(page, estadoBase({
+      tprotocol: [{ id: 'wt', nome: 'Casa', cat: 'A', ex: [{ n: 'Tríceps banco', s: 2, rest: 60, g: 'triceps', sec: [] }] }],
+      tdays: { [ontem]: [{ id: 's0', name: 'Casa', tid: 'wt', min: 10, kcal: 40, vol: 0, ex: [{ n: 'Tríceps banco', g: 'triceps', sets: [{ kg: 0, rep: 15 }, { kg: 0, rep: 12 }] }] }] },
+    }));
+    await iniciarTreino(page);
+    expect(await page.evaluate(s => document.querySelector(s).textContent, `${serie(0)} .tp-v`)).toBe('15 reps');
+    await digitar(page, `${serie(0)} .irep`, '17');
+    expect(await page.evaluate(s => document.querySelector(s).textContent, `${serie(0)} .tp-d`)).toBe('+2 reps');
+  });
+
+  test('com academia, a vez sem carga feita ali vem antes da de outra academia', async ({ page }) => {
+    await abrirApp(page, estadoBase());
+    const r = await page.evaluate(([d5, d1, d9]) => {
+      const st = __t.store;
+      st.academias = [{ id: 'a1', nome: 'Centro' }, { id: 'a2', nome: 'Bairro' }];
+      const ses = (id, acad, sets) => ({ id, name: 'Treino A', tid: 'w1', acad, min: 40, kcal: 200, vol: 0, ex: [{ n: 'Supino reto', g: 'peito', sets }] });
+      st.tdays = { [d5]: [ses('s0', 'a2', [{ kg: 60, rep: 10 }])], [d1]: [ses('s1', 'a1', [{ kg: 0, rep: 10 }])] };
+      const semCarga = __t.lastExSession('Supino reto', 'a1');
+      st.tdays[d9] = [ses('s2', 'a1', [{ kg: 50, rep: 10 }])];
+      const comCarga = __t.lastExSession('Supino reto', 'a1');
+      return { semCarga: [semCarga.outra || '', semCarga.sets[0].rep, semCarga.sets[0].kg], comCarga: [comCarga.outra || '', comCarga.sets[0].kg] };
+    }, [diaISO(5), ontem, diaISO(9)]);
+    expect(r.semCarga, 'não é "primeira vez nesta academia"').toEqual(['', 10, 0]);
+    expect(r.comCarga, 'havendo carga ali, ela é a régua').toEqual(['', 50]);
   });
 
   test('o aviso do fim do descanso conta as séries de tempo', async ({ page }) => {
