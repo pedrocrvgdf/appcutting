@@ -167,6 +167,10 @@ tokens do `:root`.
 - Fundo tingido pede tinta escura por cima: `--selo-bg`/`--selo-ink` e
   `--macro-ink`/`--macro-num` existem porque reaproveitar `--mg` como fundo de
   texto escuro deixou o selo "+25% de carga" ilegível no tema claro.
+- **Em 320 px o anel do saldo da Alimentação encolhe** (112 px abaixo de 360
+  px): com 148 px, "Consumido" ficava sem o valor e "+320" do treino saía do
+  cartão. O teste antigo usava estado vazio ("0", "+0") e não pegava; o novo
+  usa números de verdade (`tests/interface.spec.js`).
 - **O tema escuro segue a mesma estrutura**: grafite esverdeado, fio fino, o
   mesmo saldo fosco um tom acima. Ainda não houve rodada de revisão dele com
   o dono.
@@ -338,8 +342,16 @@ depois (`metaComAjuste`, a conta inteira, com passos e treino):
 
 - "Atualizar" troca `pesoConta` e o GETD (`aplicarAjuste`); o plano, o
   `inicio` e o `pesoAtual` não mudam.
-- "Manter" grava a data daquela pesagem em `goals.mantido`; a próxima
-  pesagem pergunta de novo.
+- "Manter" grava a pesagem (`goals.mantido = {d, w}`): a próxima pesagem, ou
+  o peso do mesmo dia corrigido, pergunta de novo.
+- **Só pesagem do plano propõe** (`pesagemDoPlano`, data a partir de
+  `goals.inicio`): a de antes é mais velha que o peso de partida digitado no
+  plano. Pelo mesmo motivo, nos passos e no cardio (`pesoNoDia`, que
+  `userWeight` usa) vale o peso de partida até a primeira pesagem do plano.
+- **Sem pesagem no plano** (a aceita foi apagada), a proposta volta ao peso de
+  partida, em vez de o GETD ficar preso num peso que não existe mais.
+- A prévia do formulário do objetivo usa o mesmo peso da conta que o
+  salvamento vai usar (`readGoalForm`).
 - O limiar é decisão de produto: abaixo dele a diferença some no erro da
   própria estimativa.
 - `saveGoals` remonta `store.goals` do zero: **`pesoConta`, `getdManual` e
@@ -352,8 +364,12 @@ GETD não pode reescrever o saldo dos dias que passaram — a semana, o mês e a
 sequência mudariam sem a pessoa ter comido nada diferente. **Todo caminho
 que muda `store.getd` passa por `mudarGetd(novo, foto)`**, com a `foto`
 (`fotoGetd`) tirada **antes** de mexer no objetivo: na primeira mudança ela
-vira a entrada `"0000-01-01"`, que vale para todo o passado. `gastoBase(dk)`
-devolve, para dia passado, a entrada mais recente até ele; hoje usa o atual.
+vira a entrada `"0000-01-01"`, que vale para todo o passado. Grava quando o
+GETD **ou a base** mudam: com GETD à mão, mudar o perfil muda a base da
+rotina sem mudar o número. `gastoBase(dk)` devolve, para dia passado, a
+entrada mais recente até ele; hoje usa o atual. **Os textos de um dia passado
+usam a do dia** (`rotinaKcal(dk)`, `efeitoPassos(p, dk)`, a linha "Gasto do
+dia"), como a meta.
 Sem histórico, vale o atual, como sempre foi. É campo de primeiro nível na
 nuvem, em `CAMPOS_NUVEM`, e segue "campo ausente não é lista vazia".
 
@@ -466,10 +482,14 @@ vírgula, e o `type="number"` a descartava antes de o JavaScript enxergar:
 "57,5" virava 575 na carga da série, e contaminava o selo, o 1RM, o volume e
 a referência da próxima vez.
 
-- Todo campo numérico é `type="text"` com `data-num="dec"` (aceita dígito,
-  vírgula e ponto) ou `data-num="int"` (dígito e ponto de milhar), e o
-  `inputmode` certo. Um filtro único, em captura, limpa o resto antes de
-  qualquer outro ouvinte ler o campo.
+- Todo campo numérico é `type="text"` com `data-num="dec"` ou
+  `data-num="int"` e o `inputmode` certo. Um filtro único, em captura, tira
+  o que não é dígito, vírgula ou ponto antes de qualquer outro ouvinte ler o
+  campo. **A vírgula fica até nos campos inteiros**: apagada, "45,5" virava
+  455; com ela, `inteiroBR` arredonda para 46.
+- **Altura digitada em metros vira centímetros** (`alturaCm`: "1,78" → 178, e
+  o campo mostra 178). O campo antigo descartava a vírgula e acertava por
+  acaso; respeitada a vírgula, seriam 1,78 cm e um GETD de ~830 kcal.
 - **Leitura:** `numBR` para kg e cm (o ponto é decimal: "82.4" é 82,4, porque
   há teclado que só tem ponto); `qtdBR` para gramas, ml e kcal ("1.500" é mil
   e quinhentos, não um e meio); `inteiroBR` para o que é inteiro (reps,
@@ -484,7 +504,9 @@ a referência da próxima vez.
   - carga de série no dobro da maior da última vez (e 10 kg a mais) pergunta
     antes de seguir para o próximo exercício (`confereCargas`); referência de
     outra academia não serve de régua;
-  - mais de 2 kg (ou 2 L) num lançamento de comida pergunta (`confereQtd`).
+  - mais de 2 kg (ou 2 L) num lançamento de comida pergunta (`confereQtd`);
+    o alimento próprio só é guardado **depois** da resposta, senão "Corrigir"
+    deixava no banco os macros por 100 g da quantidade errada.
 - **Corrigir série** (`#serieOverlay`, `abrirSerie`): na sessão inteira,
   tocar numa série abre a correção. Antes, um número errado só saía apagando
   a sessão inteira. Corrigir recalcula o `vol` da sessão (e com ele o selo);
@@ -896,8 +918,16 @@ do conserto. São três peças, todas no bloco da nuvem do `index.html`:
     nuvem, porque este pode ser um celular parado há semanas — mas o que só
     ele tem entra assim mesmo;
   - o objetivo junta chave por chave;
-  - **líquido é contador**: o que cada lado somou desde a base soma, e o total
-    do dia nunca fica abaixo do que a lista de horários soma;
+  - **líquido**: o total do dia é a lista de horários (mesclada por id, que
+    não conta nada duas vezes) mais o "resto" sem horário, e **só o resto é
+    contador** (o que cada lado somou desde a base soma; lados iguais não
+    mudam nada). Somar o total inteiro contava em dobro a gravação que
+    chegou à nuvem sem a base acompanhar — o app descartado logo depois de
+    gravar, ou o SDK repetindo a transação depois de um commit que deu
+    certo. Lado sem lista (versão antiga) conta como se fosse a da base;
+  - **o GETD anda com o histórico dele** (`getdHist`): se os dois aparelhos
+    o mudaram, vale o da mudança mais recente no histórico, senão o GETD de
+    hoje desmentiria o histórico;
   - campo ausente na nuvem não é vazio (a regra de sempre); campo de versão
     mais nova vale o da nuvem.
 
@@ -918,13 +948,19 @@ Como as peças se encaixam:
   vez de trocar, e o resultado sobe. Sem marca, segue a nuvem, como sempre: o
   aparelho em dia não tem o que defender, e o que foi apagado em outro
   aparelho não pode voltar por ele.
+- **A leitura da abertura que chega depois de uma transação é descartada**
+  (`geracao`): o sinal voltou com ela viajando, a transação subiu o que foi
+  lançado sem sinal, e a leitura, pedida antes, trazia a versão de antes.
 - **O aviso da nuvem (`onSnapshot`) não é aplicado direto.** Ele pode chegar
   atrasado, com o documento de antes da última gravação daqui, e aplicado
   direto tiraria da tela o que acabou de subir. Ele só dispara uma transação,
   que lê a versão de verdade.
 - **Excluir dados substitui, não mescla** (`marcarPendente(true)` →
   `substituir`): sem isso, o que outro aparelho gravou depois da última
-  leitura daqui sobreviveria à exclusão.
+  leitura daqui sobreviveria à exclusão. E o `blankStore` traz os campos
+  "quem não sabe não envia" **vazios de verdade** (`liqLog:{}`, `academias`,
+  `tprotos`, `getdHist`): ausente, o outro aparelho entendia "versão
+  anterior, mantenha o seu" e devolvia o histórico de líquidos apagado.
 - **Outra conta entrando descarta a marca e a base da anterior**
   (`limparSync`), junto com o treino em andamento.
 - Recusa que não é falta de sinal (documento grande demais, permissão) manda
@@ -934,9 +970,13 @@ Como as peças se encaixam:
   uma regra desta página e precisa ser combinada. E aparelho com versão
   anterior à v44 ainda grava às cegas.
 - Coberto em `tests/sem-sinal.spec.js`, que usa a **nuvem falsa com estado**
-  (`__nuvem`, `__semRede`, `__lento` no armazenamento local, em
-  `tests/app.js`): recarregar a página é o app descartado e aberto de novo, e
-  "outro aparelho" é o teste mexendo direto no documento.
+  (`__nuvem`, `__semRede`, `__lento`, `__lentoPrimeiro` no armazenamento
+  local, em `tests/app.js`): recarregar a página é o app descartado e aberto
+  de novo, e "outro aparelho" é o teste mexendo direto no documento. A
+  leitura devolve o documento **do momento do pedido**, como um servidor. Para
+  simular o Android descartando a página sem sinal, o sinal volta só na
+  página nova (`reabrirComSinal`): senão o envio do `pagehide` da página
+  velha mascara a abertura.
 
 ### Peso do corpo e tempo: flexão, barra fixa e prancha
 
@@ -948,24 +988,36 @@ segundos.
 - **A série vale com reps — ou segundos — acima de zero**, com ou sem carga.
   Gravada como `{kg, rep, rir}` e, nas de tempo, `seg`. Exercício de carga
   feito sem carga também fica ("10 reps"); "Corrigir série" acerta depois.
-- **O nome decide só a cara da linha** (`exTipo`, `EX_CORPO_RE`,
-  `EX_TEMPO_RE`): no peso do corpo a carga fica atrás de "+ carga (colete,
-  anilha)"; nas isometrias o campo é de segundos (`.iseg`) e o plano diz
-  "segure com a forma certa". Errar a classificação custa um toque, nunca um
-  número. A carga aparece sozinha se já foi usada hoje ou da última vez.
-  Existe tabela de nomes no teste ("Flexão de punho" e "Abdominal na polia"
-  têm carga).
-- **"+ carga" não chama `renderTr()`**: ele termina em `stopRest()` e
-  mataria o descanso. Mostra o campo pelo DOM e grava `comCarga` no exercício
-  da sessão (`trPersist` leva). Existe teste.
+- **O nome decide só a cara da linha** (`exTipo`): no peso do corpo a carga
+  fica atrás de "+ carga (colete, anilha)"; nas isometrias o campo é de
+  segundos e o plano diz "segure com a forma certa". **Sinal de carga vence o
+  movimento** (`EX_CARGA_RE`: máquina, polia, cabo, corda, halter, anilha,
+  pegada, joelho, punho…): "Mergulho máquina", "Abdominal na corda", "Flexão
+  de joelho" e "Puxada pegada paralela" têm carga. "Abdominal na prancha" é
+  de reps (a prancha é o banco); "Prancha com anilha" é de tempo, com a carga
+  à vista. A carga aparece sozinha se já foi usada hoje ou da última vez.
+  Existe tabela de nomes no teste — achou outro errado, ponha nela.
+- **Errar a classificação custa um toque, nunca um número:** "+ carga" mostra
+  a carga, e "contar em reps" troca os segundos por reps. Os três campos
+  (kg, reps, seg) são sempre desenhados, e o escondido **não grava**
+  (`campoVisivel`): os segundos digitados antes de trocar o exercício iam para
+  o histórico do exercício novo.
+- **"+ carga" e "contar em reps" não chamam `renderTr()`**: ele termina em
+  `stopRest()` e mataria o descanso. Mostram o campo pelo DOM e gravam
+  `comCarga`/`medida` no exercício da sessão (`trPersist` leva). Existe teste.
+- **Série feita é carga, reps ou segundos** (`serieFeita`), e o mesmo critério
+  vale no finalizar e nos avisos do fim do descanso.
+- **Exercício de carga feito com o kg em branco não vira a referência**
+  (`lastExSession`): ela apagaria da tela a última carga de verdade.
 - **Nunca "kg movidos" inventados.** A fração do corpo que a flexão levanta
   muda com a variação (Ebben et al., *J Strength Cond Res*
   2011;25:2891-2894), então o volume em kg desses exercícios é zero e eles
   contam por séries e reps, que é o que a literatura de dose-resposta usa.
   O 1RM (`evoData`) ignora série sem carga: Epley com 0 kg dá 0.
-- **O selo compara a mesma coisa** (`medidaSessao`): volume em kg; sem carga
-  nenhuma, o total de reps ("+11% de reps"), ou de segundos. Nunca um com o
-  outro. A referência diz "15 reps" e "45 s" (`serieTxt`), e a diferença por
+- **O selo compara a medida que as duas sessões têm** (`medidasSessao`,
+  `medidaComum`): volume em kg; sem carga, o total de reps ("+11% de reps"),
+  ou de segundos. Nunca um com o outro. Feito antes, mas medido de outro
+  jeito, o selo diz isso — e não "primeira vez". A referência diz "15 reps" e "45 s" (`serieTxt`), e a diferença por
   série também ("+2 reps", "mesmo tempo").
 - Coberto em `tests/peso-corpo.spec.js`.
 
