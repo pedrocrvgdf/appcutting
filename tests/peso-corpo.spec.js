@@ -305,6 +305,21 @@ test.describe('Peso do corpo e tempo', () => {
     expect(txt, 'uma série de 45 s feita: a próxima é a 2').toMatch(/série 2 de 2/i);
   });
 
+  test('o aviso do fim do descanso só conta a medida do exercício', async ({ page }) => {
+    /* 45 s digitados e depois "contar em reps": a série 1 ainda não foi
+       feita em reps, e os segundos guardados não contam. */
+    await abrirApp(page, calistenia());
+    await iniciarTreino(page);
+    await proximo(page);
+    await digitar(page, `${serie(0)} .iseg`, '45');
+    await clicar(page, '#trEmReps');
+    await clicar(page, '#trRest');
+    await page.evaluate(() => __t.forcarFimDoDescanso());
+    await page.waitForTimeout(300);
+    const txt = await page.evaluate(() => (document.getElementById('restPop') || {}).textContent + ' ' + (document.getElementById('restDone') || {}).textContent);
+    expect(txt).toMatch(/série 1 de 2/i);
+  });
+
   test('exercício de carga feito sem carga também fica registrado', async ({ page }) => {
     /* Reps sem kg num exercício de carga: o que foi feito fica, como "10
        reps" — e "Corrigir série" acerta depois, se a carga foi esquecida. */

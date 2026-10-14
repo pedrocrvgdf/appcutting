@@ -382,6 +382,15 @@ test.describe('A meta acompanha o peso: segunda revisão', () => {
     expect(await cartao(page)).toBeNull();
   });
 
+  test('"Manter" também sobrevive a mudar só o prazo', async ({ page }) => {
+    await abrirApp(page, base({}, { weights: [{ d: ontem, w: 72 }] }));
+    await clicar(page, '#fdAjuste [data-ajuste="nao"]');
+    await page.waitForTimeout(200);
+    await salvarObjetivo(page, () => digitar(page, '#gMeses', '5'));
+    expect((await store(page)).goals.mantido).toEqual({ d: ontem, w: 72 });
+    expect(await cartao(page), 'a mesma pesagem não pergunta de novo').toBeNull();
+  });
+
   test('peso de partida novo é a informação mais nova: a pesagem de ontem não vale mais', async ({ page }) => {
     await abrirApp(page, base({}, { weights: [{ d: ontem, w: 72 }] }));
     await salvarObjetivo(page, () => digitar(page, '#gPesoAtual', '76'));
