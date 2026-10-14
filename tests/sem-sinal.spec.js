@@ -51,12 +51,25 @@ const reabrirComSinal = async page => {
   await reabrir(page);
   expect(await page.evaluate(() => localStorage.getItem('__semRede'))).toBeNull();
 };
-/** Espera a fila de envio esvaziar (o envio espera 800 ms depois do último toque). */
+/** Espera a sincronização assentar: sem marca pendente e sem envio no meio.
+    Pelo estado, e não só por tempo: numa máquina lenta (o CI), o envio da
+    abertura sai depois da leitura da nuvem e dos 800 ms de espera, e um
+    tempo fixo lia a nuvem antes dele. Os tempos fixos de antes ficam como
+    piso, para o envio agendado pela mescla ter saído. */
 const assentar = async page => {
+  await page.waitForTimeout(300);
+  await page.waitForFunction(() => !localStorage.getItem('cutting.pendente') && !__t.enviando, null, { timeout: 10000 }).catch(() => {});
   await page.waitForTimeout(1000);
   await page.waitForFunction(() => !__t.enviando, null, { timeout: 5000 });
   await page.waitForTimeout(50);
 };
+/** O estado da sincronização, para a mensagem de um teste que falhar. */
+const estadoSync = page => page.evaluate(() => JSON.stringify({
+  texto: document.getElementById('syncText').textContent,
+  pendente: localStorage.getItem('cutting.pendente'),
+  base: !!localStorage.getItem('cutting.base'),
+  semRede: localStorage.getItem('__semRede'),
+}));
 const nuvem = page => page.evaluate(() => JSON.parse(localStorage.getItem('__nuvem')));
 const semRede = (page, sim) => page.evaluate(s => s ? localStorage.setItem('__semRede', '1') : localStorage.removeItem('__semRede'), sim);
 const outroAparelho = (page, fn) => page.evaluate(`(() => {
@@ -198,7 +211,7 @@ test.describe('Sem sinal', () => {
     await page.waitForTimeout(1000);
     await reabrirComSinal(page);
     await assentar(page);
-    expect((await nuvem(page)).liquids[hoje]).toBe(800);
+    expect((await nuvem(page)).liquids[hoje], await estadoSync(page)).toBe(800);
 
     await semRede(page, true);
     await page.evaluate(h => { __t.store.liquids[h] = 900; __t.store.liqLog[h].push({ id: 'l3', ml: 100, t: '12:00' }); __t.salvar(); }, hoje);
@@ -206,7 +219,7 @@ test.describe('Sem sinal', () => {
     await outroAparelho(page, `d => { d.liquids['${hoje}'] = 1000; d.liqLog['${hoje}'].push({ id: 'l4', ml: 200, t: '13:00' }); }`);
     await reabrirComSinal(page);
     await assentar(page);
-    expect((await nuvem(page)).liquids[hoje]).toBe(1100);
+    expect((await nuvem(page)).liquids[hoje], await estadoSync(page)).toBe(1100);
     expect(await page.evaluate(h => __t.store.liquids[h], hoje)).toBe(1100);
   });
 

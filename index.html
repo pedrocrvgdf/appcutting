@@ -287,7 +287,12 @@ window.APP_RELEASE = "tresults-v46";
     #restPop.open,#restPop.sair{animation:none}
     #restPop.sair{display:none}
   }
-  .view{display:none}
+  /* A marca d'água de cada aba é fixa e passa da borda direita
+     (right:-48px). Durante a entrada da tela (viewIn usa transform) a .view
+     vira o bloco que a contém, e por 0,4 s a página ficava ~70 px mais larga
+     que a tela, rolável de lado, a cada troca de aba. "clip" corta só na
+     horizontal e não cria rolagem própria (sticky continua funcionando). */
+  .view{display:none;overflow-x:clip}
   .view.on{display:block}
   /* Campo é ilha verde clara, e não branco sobre branco. Os cartões e os
      modais são `--surface`, então um campo branco dentro deles não tinha

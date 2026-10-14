@@ -219,6 +219,26 @@ for (const largura of [390, 320]) {
         'número cortado no feed é o defeito que o dono reclamou nos macros').toEqual([]);
     });
 
+    test('nem durante a entrada de uma tela a página fica mais larga', async ({ page }) => {
+      /* A marca d'água passa da borda direita; enquanto a tela entra
+         (transform), ela alargava a página por 0,4 s. Num CI lento isso
+         caía bem na hora de medir, e o teste do feed em 320px falhava às
+         vezes. Aqui a medida é feita de propósito no meio da animação. */
+      await abrirApp(page, estadoBase());
+      const larguras = await page.evaluate(async () => {
+        const out = [];
+        for (const aba of ['food', 'treino', 'perfil', 'inicio']) {
+          document.querySelector(`#tabbar [data-tab="${aba}"]`).click();
+          for (let i = 0; i < 12; i++) {
+            await new Promise(r => requestAnimationFrame(r));
+            out.push(document.documentElement.scrollWidth - document.documentElement.clientWidth);
+          }
+        }
+        return out;
+      });
+      expect(Math.max(...larguras), 'a página ficou mais larga que a tela durante a troca de aba').toBeLessThanOrEqual(0);
+    });
+
     test('nenhuma tela rola para o lado', async ({ page }) => {
       /* Rolagem horizontal é o sintoma de que alguma caixa passou da largura —
          e num app de celular ela nunca é intencional. */

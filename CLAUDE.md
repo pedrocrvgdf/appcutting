@@ -156,7 +156,11 @@ tokens do `:root`.
   Progresso, talheres na Comida, halter no Treino, silhueta no Perfil. É
   máscara SVG sobre `var(--ink)` a 3,5%, em `z-index:-1`, sem criar contexto
   de empilhamento (senão prenderia pop-ups). Some atrás de qualquer cartão,
-  de propósito.
+  de propósito. Ela passa da borda direita (`right:-48px`), e durante a
+  entrada da tela (`viewIn`, com `transform`) a `.view` vira o bloco que a
+  contém: por 0,4 s a página ficava ~70 px mais larga, rolável de lado. Por
+  isso `.view` tem `overflow-x:clip` (corta só na horizontal, sem criar
+  rolagem própria). Existe teste que mede no meio da animação.
 - **Verde como TEXTO é o verde da marca, não o menta.** Menta sobre branco
   não passa de 2:1 de contraste.
 - **Macros:** ilhas neutras com fio; o verde só na barra que enche, do mais
@@ -651,7 +655,7 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 | `tests/inventario.spec.js` | Inventário: catálogo inteiro reconhecido, "não informado" sem aviso, gravação por toque, aviso no cartão/treino/editor, troca com o que tem primeiro, "Tem, sim" sem matar o descanso, alternativas, nome desconhecido sem aviso |
 | `tests/academias.spec.js` | Academias: sem cadastro o app fica igual, filtro por academia, treino novo nascendo na escolhida, sessão gravando onde foi, referência e selo na mesma academia, excluir sem apagar treino nem histórico, nuvem, 320px |
 | `tests/historico.spec.js` | Referência da última sessão, sugestões, indicador de progressão de carga |
-| `tests/interface.spec.js` | Zoom bloqueado, diálogos internos, layout em 390/320px, tema claro e escuro |
+| `tests/interface.spec.js` | Zoom bloqueado, diálogos internos, layout em 390/320px (inclusive no meio da troca de aba), tema claro e escuro |
 | `tests/alarme.spec.js` | Volume e ausência de distorção do alarme de descanso |
 | `tests/sentry.spec.js` | Configuração do monitoramento, limpeza de dados pessoais, app abrindo sem a Sentry |
 | `tests/alarme-descanso.spec.js` | Tela do alarme, interrupção da música, insistência, permissão |
@@ -1002,6 +1006,10 @@ Como as peças se encaixam:
   abertura (a tela espera o `getDoc`); é a ideia "Abrir na hora", que muda
   uma regra desta página e precisa ser combinada. E aparelho com versão
   anterior à v44 ainda grava às cegas.
+- Nos testes, **espere pelo estado, não por tempo** (`assentar`: sem marca
+  pendente e sem envio no meio). O envio da abertura sai depois da leitura
+  da nuvem e dos 800 ms de espera; num CI lento, uma espera fixa de 1 s
+  lia a nuvem antes dele.
 - Coberto em `tests/sem-sinal.spec.js`, que usa a **nuvem falsa com estado**
   (`__nuvem`, `__semRede`, `__lento`, `__lentoPrimeiro` no armazenamento
   local, em `tests/app.js`): recarregar a página é o app descartado e aberto
