@@ -461,3 +461,54 @@ test.describe('A meta acompanha o peso: segunda revisão', () => {
     expect(await page.evaluate(d => __t.gastoBase(d).getd, hoje)).toBe(2300);
   });
 });
+
+test.describe('A meta acompanha o peso: terceira revisão', () => {
+  const salvarObjetivo = async (page, mexer) => {
+    await irPara(page, 'perfil');
+    await clicar(page, '#pfEdit'); await page.waitForTimeout(400);
+    if (mexer) await mexer();
+    await clicar(page, '#gNext'); await page.waitForTimeout(150);
+    await clicar(page, '#gNext'); await page.waitForTimeout(150);
+    await clicar(page, '#saveGoals'); await page.waitForTimeout(300);
+  };
+  const item = (id, kcal) => ({ id, name: 'Comida', grams: 100, unit: 'g', base: null, kcal, p: 0, c: 0, g: 0, status: 'consumido' });
+
+  test('o saldo do Início é sempre o de hoje, mesmo com outro dia aberto na Alimentação', async ({ page }) => {
+    await abrirApp(page, base({}, { days: { [ontem]: [item('a', 2500)], [hoje]: [item('b', 100)] } }));
+    await irPara(page, 'food');
+    await clicar(page, '#dayPrev');
+    await page.waitForTimeout(200);
+    await irPara(page, 'inicio');
+    expect(await page.evaluate(() => document.getElementById('fdSaldoSub').textContent)).toMatch(/^100 de /);
+    // e tocar nele abre a Alimentação em hoje, não no dia que ficou aberto
+    await clicar(page, '#fdDia');
+    await page.waitForTimeout(300);
+    expect(await page.evaluate(() => __t.store && document.getElementById('consumed').textContent)).toBe('100');
+  });
+
+  test('salvar o objetivo não traz de volta a apresentação do Treino', async ({ page }) => {
+    await abrirApp(page, base());
+    await salvarObjetivo(page, () => digitar(page, '#gMeses', '5'));
+    expect((await store(page)).goals.tIntro).toBe(true);
+    await irPara(page, 'treino');
+    await page.waitForTimeout(300);
+    expect(await page.evaluate(() => document.getElementById('tIntroOverlay').classList.contains('open'))).toBe(false);
+  });
+
+  test('o aviso do GETD recusado some quando um número válido é gravado', async ({ page }) => {
+    await abrirApp(page, base());
+    await irPara(page, 'food');
+    const aviso = () => page.evaluate(() => { const n = document.getElementById('getdAviso'); return n.hidden ? '' : n.textContent; });
+    await digitar(page, '#getdInput', '');
+    expect(await aviso()).toContain('O GETD não muda');
+    await digitar(page, '#getdInput', '2800');
+    expect(await aviso()).toBe('');
+    expect((await store(page)).getd).toBe(2800);
+    // e não acompanha a pessoa para um dia que passou
+    await digitar(page, '#getdInput', '300');
+    expect(await aviso()).toContain('abaixo de 500');
+    await clicar(page, '#dayPrev');
+    await page.waitForTimeout(200);
+    expect(await aviso()).toBe('');
+  });
+});

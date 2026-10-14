@@ -130,7 +130,9 @@ test.describe('Peso do corpo e tempo', () => {
        abdominal no banco declinado ("prancha") eram tratados como peso do
        corpo ou como tempo. Os de baixo da segunda, da segunda revisão:
        "halter" no singular, "sem carga", "paralela" no singular, a pegada da
-       flexão e o abdominal isométrico. */
+       flexão e o abdominal isométrico. Os da terceira linha, da terceira:
+       "paralela" que é pegada de puxada, remada ou rosca, o isométrico com
+       carga e a flexão com os joelhos apoiados. */
     const esperado = {
       'Flexão de braço': 'corpo', 'Flexão com joelhos apoiados': 'corpo', 'Barra fixa': 'corpo', 'Mergulho': 'corpo',
       'Abdominal': 'corpo', 'Abdominal infra': 'corpo', 'Abdominal na roda': 'corpo', 'Elevação de pernas': 'corpo',
@@ -149,6 +151,10 @@ test.describe('Peso do corpo e tempo', () => {
       'Flexão com pegada fechada': 'corpo', 'Elevação de joelho na paralela': 'corpo',
       'Abdominal isométrico': 'tempo', 'Abdominal hollow hold': 'tempo', 'Abdominal joelho no peito': 'corpo',
       'Flexão de joelhos': 'carga', 'Supino com halteres': 'carga', 'Rosca com haltere': 'carga',
+
+      'Remada baixa paralela': 'carga', 'Puxada paralela': 'carga', 'Puxada frente paralela': 'carga',
+      'Rosca paralela': 'carga', 'Remada paralela': 'carga', 'Abdominal isométrico com anilha': 'tempo', 'Abdominal hollow hold com halter': 'tempo',
+      'Flexão de joelhos apoiados': 'corpo', 'Flexão de joelhos no chão': 'corpo', 'Tríceps paralela': 'corpo',
     };
     const r = await page.evaluate(n => Object.fromEntries(n.map(x => [x, __t.exTipo(x)])), Object.keys(esperado));
     expect(r).toEqual(esperado);
@@ -199,19 +205,43 @@ test.describe('Peso do corpo e tempo', () => {
     expect(s.ex.find(e => e.n === 'Prancha').sets.map(x => x.seg)).toEqual([45]);
   });
 
-  test('"contar em reps" é do exercício: trocar ou desfazer volta à medida do nome', async ({ page }) => {
+  test('"contar em reps" é do exercício: o substituto começa pelo nome dele, e desfazer devolve a escolha do prescrito', async ({ page }) => {
     await abrirApp(page, calistenia());
     await iniciarTreino(page);
     await proximo(page);   // prancha
     await clicar(page, '#trEmReps');
+    await digitar(page, `${serie(0)} .irep`, '20');
+    await digitar(page, `${serie(1)} .irep`, '18');
     await clicar(page, '#trTrocar'); await page.waitForTimeout(250);
     await page.evaluate(() => { const c = document.getElementById('trocaNome'); c.value = 'Prancha lateral'; c.dispatchEvent(new Event('input', { bubbles: true })); });
     await clicar(page, '#trocaOk'); await page.waitForTimeout(300);
     expect(await visivel(page, `${serie(0)} .iseg`), 'a prancha lateral começa em segundos').toBe(true);
     expect(await visivel(page, `${serie(0)} .irep`)).toBe(false);
-    await clicar(page, '#trEmReps');
     await clicar(page, '#trDesfazer'); await page.waitForTimeout(200);
-    expect(await visivel(page, `${serie(0)} .iseg`), 'e a prancha de volta também').toBe(true);
+    expect(await visivel(page, `${serie(0)} .irep`), 'a prancha volta em reps, como a pessoa escolheu').toBe(true);
+    expect(await page.evaluate(s => document.querySelector(s).value, `${serie(0)} .irep`)).toBe('20');
+    await proximo(page);
+    const s = await page.evaluate(h => __t.store.tdays[h][0], hoje);
+    expect(s.ex.find(e => e.n === 'Prancha').sets.map(x => [x.rep, x.seg || 0]), 'as reps digitadas vão para o histórico').toEqual([[20, 0], [18, 0]]);
+  });
+
+  test('trocar para um exercício de tempo feito em reps da última vez não esconde os segundos já digitados', async ({ page }) => {
+    await abrirApp(page, calistenia({
+      tdays: { [ontem]: [{ id: 's0', name: 'Outro', min: 20, kcal: 90, vol: 0, ex: [
+        { n: 'Prancha lateral', g: 'abdomen', sets: [{ kg: 0, rep: 12 }] },
+      ] }] },
+    }));
+    await iniciarTreino(page);
+    await proximo(page);   // prancha
+    await digitar(page, `${serie(0)} .iseg`, '45');
+    await digitar(page, `${serie(1)} .iseg`, '40');
+    await clicar(page, '#trTrocar'); await page.waitForTimeout(250);
+    await page.evaluate(() => { const c = document.getElementById('trocaNome'); c.value = 'Prancha lateral'; c.dispatchEvent(new Event('input', { bubbles: true })); });
+    await clicar(page, '#trocaOk'); await page.waitForTimeout(300);
+    expect(await visivel(page, `${serie(0)} .iseg`)).toBe(true);
+    await proximo(page);
+    const s = await page.evaluate(h => __t.store.tdays[h].at(-1), hoje);
+    expect(s.ex.find(e => e.n === 'Prancha lateral').sets.map(x => x.seg)).toEqual([45, 40]);
   });
 
   test('exercício de tempo contado em reps da última vez começa em reps', async ({ page }) => {

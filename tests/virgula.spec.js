@@ -168,6 +168,8 @@ test.describe('Vírgula', () => {
     expect(seg).not.toMatch(/\d\.\d/);
     await clicar(page, '#saveGoals'); await page.waitForTimeout(400);
     expect(await page.evaluate(() => document.getElementById('pfPrazo').textContent)).toBe('1,5 mês');
+    // o singular sai do número escrito: 1,96 aparece "2", e é plural
+    expect(await page.evaluate(() => [1.96, 1.94, 1, 0.5, 4].map(m => __t.mesesTxt(m)))).toEqual(['2 meses', '1,9 mês', '1 mês', '0,5 mês', '4 meses']);
     await irPara(page, 'treino');
     expect(await page.evaluate(() => document.getElementById('tTodayList').textContent)).toContain('RIR médio 1,5');
   });

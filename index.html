@@ -3347,9 +3347,11 @@ const FD_ICO_CARDIO='<svg viewBox="0 0 24 24"><path d="M13 3 4 14h7l-1 7 9-11h-7
 function renderInicio(){
   if(!$("fdFeed"))return;
 
-  /* --- saldo do dia, o mesmo número da tela de alimentação --- */
+  /* --- saldo de HOJE: o mesmo número da Alimentação em hoje. O dia visto
+     lá (dayItems) pode ser outro, e a comida de ontem contra a meta de hoje
+     desmentia os passos e o peso do mesmo cartão, que são sempre de hoje. --- */
   const t=goalTargets();
-  const cons=dayItems().filter(i=>i.status==="consumido");
+  const cons=((store.days||{})[todayKey()]||[]).filter(i=>i.status==="consumido");
   const comido=cons.reduce((a,i)=>a+i.kcal,0);
   const arco=$("fdArco");
   if(t.configured){
@@ -3492,7 +3494,9 @@ function showView(name){
 }
 document.querySelectorAll("#tabbar [data-tab]").forEach(b=>b.onclick=()=>showView(b.dataset.tab));
 document.querySelectorAll("[data-volta]").forEach(b=>b.onclick=()=>showView(b.dataset.volta));
-if($("fdDia"))$("fdDia").onclick=()=>showView("food");
+/* O cartão é o saldo de hoje: abre a Alimentação em hoje, e não no dia que
+   tinha ficado aberto lá. */
+if($("fdDia"))$("fdDia").onclick=()=>{viewKey=todayKey();showView("food");};
 if($("fdIrProgresso"))$("fdIrProgresso").onclick=()=>showView("progresso");
 if($("fdIrTreino"))$("fdIrTreino").onclick=()=>showView("treino");
 if($("ssFechar"))$("ssFechar").onclick=fecharSessao;
@@ -3702,7 +3706,7 @@ const inteiroBR=v=>Math.round(qtdBR(v));
    seria 1,78 cm e a taxa basal desabaria (cerca de 830 kcal de GETD). */
 /* Prazo em meses aceita meio mês: "1,5 mês", "0,5 mês", "4 meses".
    Duas casas fixas, para o ritmo semanal (0,31 kg). */
-const mesesTxt=m=>`${kgTxt(m)} ${Math.abs(m)<2?"mês":"meses"}`;
+const mesesTxt=m=>{const r=Math.round((+m||0)*10)/10;return `${kgTxt(r)} ${Math.abs(r)<2?"mês":"meses"}`;};   // singular pelo número escrito: 1,96 sai "2 meses"
 const dec2=v=>(+v||0).toFixed(2).replace(".",",");
 const alturaCm=v=>{const a=numBR(v);return a>0&&a<3?Math.round(a*100):a;};
 /* Número para dentro de um campo de texto: vírgula, e sem casas à toa. */
@@ -5555,14 +5559,20 @@ const EX_CARGA_RE=/\b(maquina|polia|cabo|corda|crossover|smith|halter(e|es)?|ani
    carga, e a pegada ("Flexão com pegada fechada", "Puxada pegada paralela")
    é a mão, não o aparelho — "paralela" ali não é a barra de mergulho. */
 const exNome=n=>norm(String(n||"")).replace(/[^a-z0-9]+/g," ").trim();
-const exSinal=n=>exNome(n).replace(/\bsem (carga|peso)\b/g," ").replace(/\bpegada (paralela|neutra|fechada|aberta|larga|supinada|pronada|invertida|mista)\b/g," ").replace(/\s+/g," ").trim();
+const exSinal=n=>{
+  let t=exNome(n).replace(/\bsem (carga|peso)\b/g," ").replace(/\bpegada (paralela|neutra|fechada|aberta|larga|supinada|pronada|invertida|mista)\b/g," ");
+  /* "Puxada paralela", "Remada baixa paralela", "Rosca paralela": a paralela
+     é a pegada, dita sem a palavra "pegada". */
+  if(/^(puxada|puxador|remada|rosca|pulldown|pull down|desenvolvimento|supino)\b/.test(t))t=t.replace(/\bparalelas?\b/g," ");
+  return t.replace(/\s+/g," ").trim();
+};
 function exTipo(nome){
   const t=exSinal(nome);
   if(/\b(barra fixa|chin ?up|pull ?up)\b/.test(t))return "corpo";     // pegada supinada ou neutra continua peso do corpo
-  if(/\bflexao de joelhos?\b/.test(t))return "carga";                  // mesa flexora; "flexão com joelhos apoiados" é de braço
+  if(/\bflexao de joelhos?\b/.test(t)&&!/\b(apoiad[a-z]*|chao)\b/.test(t))return "carga";   // mesa flexora; com os joelhos apoiados (ou no chão) é flexão de braço
   if(/^abdominal\b/.test(t)){                                         // "Abdominal na prancha declinada": a prancha é o banco
-    if(EX_CARGA_RE.test(t))return "carga";
-    return EX_TEMPO_RE.test(t.replace(/\bprancha\b/g," "))?"tempo":"corpo"; // "Abdominal isométrico" segura tempo
+    if(EX_TEMPO_RE.test(t.replace(/\bprancha\b/g," ")))return "tempo";      // "Abdominal isométrico (com anilha)" segura tempo; a carga aparece pelo nome
+    return EX_CARGA_RE.test(t)?"carga":"corpo";
   }
   if(EX_TEMPO_RE.test(t))return "tempo";                                // "Prancha com anilha" continua de tempo, com a carga à vista
   if(EX_CARGA_RE.test(t))return "carga";
@@ -5575,6 +5585,13 @@ function medidaEx(e){
   if(e&&e.medida==="reps")return "rep";
   if(e&&e.medida==="seg")return "seg";
   return exTipo(e&&e.n)==="tempo"?"seg":"rep";
+}
+/* Volta ao prescrito: a medida e o "+ carga" que a pessoa tinha escolhido
+   para ele, guardados na troca. */
+function devolverMedida(e){
+  if(e.origMedida)e.medida=e.origMedida;
+  if(e.origComCarga)e.comCarga=true;
+  delete e.origMedida;delete e.origComCarga;
 }
 /* A série como ela vale: só a medida do exercício conta. O campo escondido
    continua guardado na sessão (o "Desfazer" da troca o devolve), mas não
@@ -5664,7 +5681,7 @@ function renderTr(){
   av.classList.toggle("on",!!e.orig);
   if(e.orig)av.innerHTML=`<span>No lugar de <b>${esc(e.orig)}</b>, só hoje</span><button id="trDesfazer">Desfazer</button>`;
   if(e.orig)$("trDesfazer").onclick=()=>{
-    trSaveInputs();e.n=e.orig;delete e.orig;delete e.medida;delete e.comCarga;renderTr();trPersist();
+    trSaveInputs();e.n=e.orig;delete e.orig;delete e.medida;delete e.comCarga;devolverMedida(e);renderTr();trPersist();
   };
   /* A referência da última vez segue o exercício que está sendo feito: comparar
      a carga de hoje no leg press com a do agachamento não diria nada. */
@@ -5672,7 +5689,7 @@ function renderTr(){
   const tipo=exTipo(e.n);
   /* Exercício de tempo que da última vez foi contado em reps começa em reps:
      senão as 20 reps de hoje entrariam como 20 segundos. */
-  if(tipo==="tempo"&&!e.medida&&trPrevRef&&trPrevRef.sets.some(x=>(x.rep||0)>0)&&!trPrevRef.sets.some(x=>(x.seg||0)>0))e.medida="reps";
+  if(tipo==="tempo"&&!e.medida&&trPrevRef&&trPrevRef.sets.some(x=>(x.rep||0)>0)&&!trPrevRef.sets.some(x=>(x.seg||0)>0)&&!logs.some(l=>(l.seg||0)>0))e.medida="reps";
   const emSeg=medidaEx(e)==="seg";
   const planoTx=()=>`${e.s} séries · descanso ${fmtSec(e.rest||90)} · `+(medidaEx(e)==="seg"?"segure com a forma certa até perto do limite":"busque a falha entre 6–12 reps");
   $("trPlan").textContent=planoTx();
@@ -5817,9 +5834,15 @@ function aplicarTroca(){
   trSaveInputs();                       // o que já foi digitado não se perde na troca
   const prescrito=e.orig||e.n;
   /* "contar em reps" e "+ carga" foram escolhidos para o exercício de
-     antes; o novo começa pelo nome dele. */
-  if(norm(novo)!==norm(e.n)){delete e.medida;delete e.comCarga;}
-  if(norm(novo)===norm(prescrito)){ delete e.orig; e.n=prescrito; }  // voltou ao original
+     antes: o novo começa pelo nome dele, e os do prescrito ficam guardados
+     para a volta — com eles, o que foi digitado nessa medida. */
+  const volta=norm(novo)===norm(prescrito);
+  if(norm(novo)!==norm(e.n)){
+    if(!e.orig){e.origMedida=e.medida;e.origComCarga=e.comCarga;}
+    delete e.medida;delete e.comCarga;
+    if(volta)devolverMedida(e);
+  }
+  if(volta){ delete e.orig; e.n=prescrito; }  // voltou ao original
   else { if(!e.orig)e.orig=prescrito; e.n=novo; }
 
   $("trocaOverlay").classList.remove("open");
@@ -6634,6 +6657,11 @@ const porId=x=>(x&&x.id!=null)?"id:"+x.id:"j:"+JSON.stringify(x);
    semanas — mas nenhum registro que só este aparelho tem se perde. */
 function mesclar(B,L,R){
   const temBase=!!B;B=B||{};L=L||{};R=R||{};
+  /* Objetivo de antes da v46 não tem pesoDesde: vale o inicio, como em
+     pesoDesde(g). Sem isso, a data escrita pela primeira vez num aparelho
+     pareceria mudança e venceria o peso de partida novo do outro. */
+  const comDesde=X=>{const g=X.goals;return (g&&typeof g==="object"&&!g.pesoDesde&&g.inicio)?Object.assign({},X,{goals:Object.assign({},g,{pesoDesde:g.inicio})}):X;};
+  B=comDesde(B);L=comDesde(L);R=comDesde(R);
   const ganha=temBase?"l":"r";
   const M={};
   /* campos de uma versão mais nova: são dela, vale o que a nuvem tem */
@@ -6686,29 +6714,51 @@ function mesclar(B,L,R){
   campo("academias",lista(porId));
   campo("tprotos",lista(porId));
   campo("getdHist",lista(x=>"d:"+(x&&x.desde)));
+  /* O objetivo junta chave por chave, menos o peso, que anda em pares:
+     o peso de partida (pesoAtual + pesoDesde) e o peso da conta (pesoConta
+     + "Manter"). Cada par vem inteiro do lado que o mudou (os dois mudaram:
+     vale o de sempre, `ganha`). Misturados chave por chave, um plano novo
+     feito num aparelho herdava o peso aceito no outro para o plano velho. */
+  const ultimaDe=X=>(Array.isArray(X.getdHist)?X.getdHist:[]).reduce((a,x)=>x&&(!a||x.desde>a.desde)?x:a,null);
+  if(M.goals&&typeof M.goals==="object"&&L.goals&&R.goals){
+    const par=(g,ks)=>JSON.stringify(ks.map(k=>(g&&g[k]!==undefined)?g[k]:null));
+    const lado=ks=>{
+      const l=par(L.goals,ks),r=par(R.goals,ks);
+      if(l===r)return null;
+      if(temBase){const b=par(B.goals,ks);if(l===b)return "r";if(r===b)return "l";}
+      return ganha;
+    };
+    const poe=(ks,X)=>{for(const k of ks){if(X.goals[k]!==undefined)M.goals[k]=X.goals[k];else delete M.goals[k];}};
+    const PARTIDA=["pesoAtual","pesoDesde"],CONTA=["pesoConta","mantido"];
+    const la=lado(PARTIDA),lc=lado(CONTA);
+    if(la)poe(PARTIDA,la==="l"?L:R);
+    if(lc)poe(CONTA,lc==="l"?L:R);
+    /* Peso da conta de um lado com peso de partida do outro: só fica se foi
+       aceito depois do peso de partida que ficou (a última mudança de GETD
+       daquele lado é a do "Atualizar"). Mais velho que ele, não vale para
+       ele, e a conta volta ao peso de partida. */
+    if(la&&lc&&la!==lc&&M.goals.pesoConta!==undefined){
+      const u=ultimaDe(lc==="l"?L:R);
+      if(!(u&&M.goals.pesoDesde&&u.desde>=M.goals.pesoDesde)){delete M.goals.pesoConta;delete M.goals.mantido;}
+    }
+  }
   /* O GETD anda com o histórico dele. A mudança mais recente do histórico,
      se só um lado a tem (com base: se ela não estava na base), é desse lado,
-     e o GETD é o dele — e não simplesmente "o daqui", nem o de quem mexeu
-     por último no número. Senão o GETD de hoje desmentiria o histórico, e o
-     saldo do dia mudaria quando ele virasse passado. Decidir pela igualdade
-     dos números falhava quando um lado só mudou a base, ou mudou e desfez. */
+     e traz o GETD dele — se aquele lado mudou o número. Se ele só mudou a
+     base (GETD digitado à mão e perfil novo), o número digitado no outro
+     aparelho fica, e é a entrada que passa a dizê-lo. Assim o GETD de hoje
+     nunca desmente o histórico, e o saldo do dia não muda quando ele vira
+     passado. */
   if(Array.isArray(M.getdHist)&&M.getdHist.length&&M.getd!==undefined){
     const u=M.getdHist.reduce((a,x)=>x&&(!a||x.desde>a.desde)?x:a,null);
     const tem=X=>Array.isArray(X.getdHist)&&X.getdHist.some(x=>igual(x,u));
     const novo=(X,Y)=>tem(X)&&!(temBase?tem(B):tem(Y));
-    if(u&&novo(L,R)&&igual(L.getd,u.getd))M.getd=L.getd;
-    else if(u&&novo(R,L)&&igual(R.getd,u.getd))M.getd=R.getd;
-  }
-  /* Peso da conta, "Manter" e a data do peso de partida pertencem ao peso
-     de partida: misturados chave por chave, um plano novo feito num aparelho
-     herdaria o peso aceito no outro para o plano velho. Vêm do lado cujo
-     peso de partida ficou. */
-  if(M.goals&&typeof M.goals==="object"&&L.goals&&R.goals){
-    const plano=g=>JSON.stringify([parseFloat(g.pesoAtual)||0,g.pesoDesde||g.inicio||""]);
-    const pm=plano(M.goals),lOk=plano(L.goals)===pm,rOk=plano(R.goals)===pm;
-    if(lOk!==rOk){
-      const S=lOk?L.goals:R.goals;
-      for(const k of ["pesoConta","mantido","pesoDesde"]){if(S[k]!==undefined)M.goals[k]=S[k];else delete M.goals[k];}
+    const X=u&&novo(L,R)?L:u&&novo(R,L)?R:null;
+    if(X){
+      const Y=X===L?R:L;
+      const mudouNum=temBase?!igual(X.getd,B.getd):!igual(X.getd,Y.getd);
+      if(mudouNum&&igual(X.getd,u.getd))M.getd=X.getd;
+      else if(!igual(u.getd,M.getd))M.getdHist=M.getdHist.map(x=>x===u?Object.assign({},x,{getd:M.getd}):x);
     }
   }
   /* O total do dia nunca fica abaixo do que a lista de horários soma: o anel
@@ -7405,6 +7455,7 @@ getdInput.addEventListener("change",()=>{
     avisoGetd(txt?`O GETD não muda: ${nPt(v)} kcal está abaixo de ${GETD_MIN}.`:"O GETD não muda: o campo ficou vazio.");
     return;
   }
+  esconderAvisoGetd();   // o aviso de uma recusa anterior não vale mais
   if(v===store.getd){pintarGetdInput(true);return;}
   const foto=fotoGetd();
   store.goals=store.goals||{};
@@ -7413,17 +7464,19 @@ getdInput.addEventListener("change",()=>{
 });
 /* O aviso fica embaixo do campo, onde a pessoa está olhando: o #flash mora
    no cartão de lançar comida, longe dali. */
-let getdAvisoT=null;
+var getdAvisoT=null;   // var: pintarGetdInput, que o esconde, pode rodar antes desta linha
 function avisoGetd(msg){
   const n=$("getdAviso");if(!n)return;
   n.textContent=msg;n.hidden=false;
-  clearTimeout(getdAvisoT);getdAvisoT=setTimeout(()=>{n.hidden=true;},5000);
+  clearTimeout(getdAvisoT);getdAvisoT=setTimeout(esconderAvisoGetd,5000);
 }
+function esconderAvisoGetd(){clearTimeout(getdAvisoT);const n=$("getdAviso");if(n)n.hidden=true;}
 /* O campo mostra o GETD do dia visto. Num dia que passou, é o daquele dia,
    só para leitura. */
 function pintarGetdInput(forcar){
   const el=$("getdInput");if(!el)return;
   const passado=viewKey<todayKey();
+  if(passado)esconderAvisoGetd();   // o aviso era do campo de hoje
   el.readOnly=passado;
   if(forcar||document.activeElement!==el){const v=passado?gastoBase(viewKey).getd:store.getd;el.value=v>0?v:"";}
   const n=$("getdPassado");if(n)n.hidden=!passado;
@@ -8288,6 +8341,7 @@ $("saveGoals").onclick=()=>{
   store.goals.pesoDesde=mesmoPeso&&pesoDesde(prev)?pesoDesde(prev):todayKey();
   if(mesmoPeso&&prev.pesoConta)store.goals.pesoConta=prev.pesoConta;
   if(prev.getdManual)store.goals.getdManual=true;
+  if(prev.tIntro)store.goals.tIntro=true;   // a apresentação do Treino já foi vista
   if(mesmoPeso&&prev.mantido)store.goals.mantido=prev.mantido;
   const getd=computeGETD(store.goals);
   if(getd>0&&!store.goals.getdManual)mudarGetd(getd,foto);

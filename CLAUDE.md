@@ -367,7 +367,9 @@ depois (`metaComAjuste`, a conta inteira, com passos e treino):
 - O limiar é decisão de produto: abaixo dele a diferença some no erro da
   própria estimativa.
 - `saveGoals` remonta `store.goals` do zero: **`pesoConta`, `pesoDesde`,
-  `getdManual` e `mantido` são carregados junto**, como `nasc` e o exógeno.
+  `getdManual`, `mantido` e `tIntro` são carregados junto**, como `nasc` e
+  o exógeno (sem o `tIntro`, a apresentação do Treino voltava depois de
+  cada salvamento).
   Com o mesmo peso de partida, `pesoConta` e `mantido` ficam, mesmo com
   outro prazo, alvo ou objetivo; com outro peso de partida, a conta parte
   dele. Depois de salvar, o Perfil e o Início são redesenhados: o prazo
@@ -396,7 +398,9 @@ calculado" (`#getdAuto`), que tira a marca.
 
 - **Campo vazio ou abaixo de `GETD_MIN` (500) não grava nada**: o número de
   antes volta e a tela diz por quê, **embaixo do campo** (`#getdAviso`) — o
-  `#flash` mora no cartão de lançar comida, longe de onde a pessoa olha. Antes virava 500 calado, **marcado como
+  `#flash` mora no cartão de lançar comida, longe de onde a pessoa olha. O
+  aviso some quando um número válido é gravado e num dia passado
+  (`esconderAvisoGetd`): não pode desmentir o campo. Antes virava 500 calado, **marcado como
   digitado à mão** — um número que ninguém digitou travando a meta em 77
   kcal. "3,050" é 3,05 (vírgula é decimal), e cai nessa regra.
 - **Num dia passado, o campo mostra o GETD daquele dia e é só leitura**
@@ -501,8 +505,9 @@ séries, a diferença de carga e a distância do cardio; hoje há teste para os 
 quarto, achado por captura de tela (`tests/virgula.spec.js`). Depois vieram o
 ritmo do objetivo ("0.31 kg/semana", hoje `dec2` para duas casas fixas), o
 "RIR médio 1.5" da aba Treino e o prazo, que aceita meio mês e saía
-arredondado ("2 meses" para 1,5): `mesesTxt` escreve "1,5 mês". `toFixed`
-também escreve ponto.
+arredondado ("2 meses" para 1,5): `mesesTxt` escreve "1,5 mês", e decide
+singular ou plural pelo número **escrito** (1,96 sai "2 meses", não "2
+mês"). `toFixed` também escreve ponto.
 
 ### Números digitados: a vírgula não multiplica por dez
 
@@ -586,7 +591,9 @@ horário, embaixo do anel de água (`renderLiqHist`).
 
 O Início é a tela de entrada (`showView("inicio")`). Ele reúne três coisas:
 
-- **o saldo do dia**, que leva para a Alimentação ao toque (`#fdDia`)
+- **o saldo de hoje**, que leva para a Alimentação **em hoje** ao toque
+  (`#fdDia`). É sempre hoje, mesmo com outro dia aberto na Alimentação: a
+  comida de ontem contra a meta de hoje desmentia o resto do cartão.
 - **os atalhos** para Progresso (`#fdIrProgresso`) e para treinar
 - **o feed**, o histórico das sessões já feitas, da mais recente para a mais
   antiga (`renderInicio()`)
@@ -947,10 +954,15 @@ do conserto. São três peças, todas no bloco da nuvem do `index.html`:
     base (aparelho vindo da v43, ou sem espaço para gravá-la), vale a da
     nuvem, porque este pode ser um celular parado há semanas — mas o que só
     ele tem entra assim mesmo;
-  - o objetivo junta chave por chave, **menos o que pertence ao peso de
-    partida** (`pesoConta`, `mantido`, `pesoDesde`): esses vêm do lado cujo
-    peso de partida ficou. Misturados, um plano novo feito num aparelho
-    herdava o peso aceito no outro para o plano velho;
+  - o objetivo junta chave por chave, **menos o peso, que anda em pares**:
+    o peso de partida (`pesoAtual` + `pesoDesde`) e o peso da conta
+    (`pesoConta` + `mantido`), cada par inteiro do lado que o mudou (os
+    dois: vale o de sempre). O peso da conta de um lado só fica com o peso
+    de partida do outro se foi aceito **depois** dele (a última entrada do
+    `getdHist` daquele lado é a do "Atualizar"); mais velho, sai, e a conta
+    volta ao peso de partida. `pesoDesde` ausente vale o `inicio` (objetivo
+    de antes da v46): escrevê-lo pela primeira vez não é mudança, e não
+    vence o peso de partida novo do outro aparelho;
   - **líquido**: o total do dia é a lista de horários (mesclada por id, que
     não conta nada duas vezes) mais o "resto" sem horário, e **só o resto é
     contador** (o que cada lado somou desde a base soma; lados iguais não
@@ -962,9 +974,11 @@ do conserto. São três peças, todas no bloco da nuvem do `index.html`:
     anotou com horário contava de novo como resto (300 virava 600);
   - **o GETD anda com o histórico dele** (`getdHist`): a mudança mais
     recente do histórico, se só um lado a tem (com base: se não estava na
-    base), é desse lado, e o GETD é o dele. Senão o GETD de hoje desmentiria
-    o histórico. Decidir pela igualdade dos números falhava quando um lado
-    só mudou a base, ou mudou e desfez;
+    base), é desse lado, e traz o GETD dele **se aquele lado mudou o
+    número**. Se ele só mudou a base (GETD à mão e perfil novo), o número
+    digitado no outro aparelho fica, e a entrada passa a dizê-lo. Assim o
+    GETD de hoje nunca desmente o histórico, e um número digitado não some
+    por causa de uma mudança de perfil;
   - campo ausente na nuvem não é vazio (a regra de sempre); campo de versão
     mais nova vale o da nuvem.
 
@@ -1006,6 +1020,10 @@ Como as peças se encaixam:
   abertura (a tela espera o `getDoc`); é a ideia "Abrir na hora", que muda
   uma regra desta página e precisa ser combinada. E aparelho com versão
   anterior à v44 ainda grava às cegas.
+- O semeador dos testes marca que já semeou em `sessionStorage` **e** em
+  `window.name`: numa rodada com a máquina cheia, a reabertura chegou a
+  semear de novo, e o aparelho voltava ao estado inicial — parecia perda de
+  dado do app, e era o teste.
 - Nos testes, **espere pelo estado, não por tempo** (`assentar`: sem marca
   pendente e sem envio no meio). O envio da abertura sai depois da leitura
   da nuvem e dos 800 ms de espera; num CI lento, uma espera fixa de 1 s
@@ -1034,12 +1052,15 @@ segundos.
   segundos e o plano diz "segure com a forma certa". **Sinal de carga vence o
   movimento** (`EX_CARGA_RE`: máquina, polia, cabo, corda, halter, anilha,
   punho…): "Mergulho máquina", "Abdominal na corda", "Abdominal com halter"
-  e "Flexão de joelho" (mesa flexora, regra própria) têm carga. **O nome é
+  e "Flexão de joelho" (mesa flexora, regra própria — com os joelhos
+  apoiados ou no chão é flexão de braço) têm carga. **O nome é
   lido sem o que não fala de carga** (`exSinal`): "sem carga" não é sinal de
   carga, e a pegada ("Flexão com pegada fechada", "Puxada pegada paralela")
-  é a mão, não o aparelho — "paralela" ali não é a barra de mergulho.
+  é a mão, não o aparelho — "paralela" ali não é a barra de mergulho, nem
+  em "Puxada paralela", "Remada baixa paralela" ou "Rosca paralela".
   "Abdominal na prancha" é de reps (a prancha é o banco), "Abdominal
-  isométrico" é de tempo; "Prancha com anilha" é de tempo, com a carga à
+  isométrico" é de tempo, com ou sem carga (o tempo é testado antes da
+  carga, como em "Prancha com anilha"); "Prancha com anilha" é de tempo, com a carga à
   vista. A carga aparece sozinha se já foi usada hoje ou da última vez.
   Existe tabela de nomes no teste — achou outro errado, ponha nela.
 - **Errar a classificação custa um toque, nunca um número:** "+ carga" mostra
@@ -1050,10 +1071,13 @@ segundos.
   `serieDe(l, e)`, pela medida do exercício** (`medidaEx`): só ela vai para
   o histórico, para a contagem de séries do descanso e para o volume. Zerar o
   campo escondido, como já se fez, perdia o que a pessoa digitou.
-- **A medida escolhida é do exercício, não da posição:** trocar o exercício
-  ou desfazer a troca apaga `medida` e `comCarga`. Exercício de tempo que da
+- **A medida escolhida é do exercício, não da posição:** o substituto
+  começa pela medida do nome dele, e a escolha do prescrito (`medida`,
+  `comCarga`) fica guardada na troca (`origMedida`, `origComCarga`) e volta
+  no "Desfazer" (`devolverMedida`) — sem isso, as reps digitadas na prancha
+  ficavam escondidas e não iam para o histórico. Exercício de tempo que da
   última vez foi contado em reps (referência com reps e sem segundos)
-  **começa em reps**: senão as 20 reps de hoje entrariam como 20 segundos.
+  **começa em reps**, a não ser que a sessão já tenha segundos digitados.
 - **"+ carga" e "contar em…" não chamam `renderTr()`**: ele termina em
   `stopRest()` e mataria o descanso. Mostram o campo pelo DOM e gravam
   `comCarga`/`medida` no exercício da sessão (`trPersist` leva). Existe teste.

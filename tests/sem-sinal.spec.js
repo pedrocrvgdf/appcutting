@@ -29,10 +29,15 @@ async function abrir(page, { aparelho, nuvem, base, pendente, extra = {} }) {
     /* O sinal volta só na página NOVA: a velha, ao sair, tenta enviar e
        falha, como acontece com a página que o Android descarta sem sinal. */
     if (sessionStorage.getItem('__ligarRede')) { localStorage.removeItem('__semRede'); sessionStorage.removeItem('__ligarRede'); }
-    if (sessionStorage.getItem('__semeado')) return;
+    /* Semeado uma vez só. A marca fica em dois lugares: numa rodada da suíte
+       com a máquina cheia, a reabertura chegou a semear de novo (o aparelho
+       voltou ao estado inicial, sem o lançado sem sinal nem o que veio da
+       nuvem), o que só pode ser o semeador. window.name sobrevive ao reload. */
+    if (sessionStorage.getItem('__semeado') || window.name === '__semeado') return;
     localStorage.clear();
     for (const k in s) localStorage.setItem(k, s[k]);
     sessionStorage.setItem('__semeado', '1');
+    window.name = '__semeado';
   }, s);
   await page.goto(urlApp());
   await page.waitForFunction(() => !!window.__t, null, { timeout: 15000 });
@@ -492,10 +497,12 @@ test.describe('A mescla', () => {
     expect(M.getd).toBe(2800);
   });
 
-  test('GETD mudado só de um lado, com a mudança mais recente do outro só na base: vale o histórico', async ({ page }) => {
-    /* Este aparelho mudou o GETD no dia 2; o outro, depois, mudou só a base
-       da rotina (GETD à mão, perfil novo) no dia 3. Pela igualdade dos
-       números o GETD daqui ganhava, e o histórico dizia outra coisa. */
+  test('GETD digitado num aparelho e só a base mudada no outro: o número digitado fica, e o histórico o diz', async ({ page }) => {
+    /* Este aparelho digitou 2800 no dia 2; o outro, depois, só mudou a base
+       da rotina (GETD à mão, perfil novo) no dia 3, sem mexer no número.
+       Pela igualdade dos números o histórico perdia; seguindo o histórico
+       cegamente, o 2800 digitado sumia. Fica o número, e a entrada mais
+       recente passa a dizê-lo, com a base nova. */
     await abrirSimples(page);
     const M = await page.evaluate(() => {
       const s = { desde: '0000-01-01', getd: 3200, base: 2600 }, d1 = { desde: '2026-10-01', getd: 3000, base: 2500 };
@@ -504,12 +511,62 @@ test.describe('A mescla', () => {
         { getd: 2800, getdHist: [s, d1, { desde: '2026-10-02', getd: 2800, base: 2300 }] },
         { getd: 3000, getdHist: [s, d1, { desde: '2026-10-03', getd: 3000, base: 2400 }] });
     });
-    expect(M.getd).toBe(3000);
+    expect(M.getd).toBe(2800);
+    expect(M.getdHist.at(-1)).toEqual({ desde: '2026-10-03', getd: 2800, base: 2400 });
+    // o outro aparelho mudou o número de verdade: vale o dele
+    const N = await page.evaluate(() => {
+      const s = { desde: '0000-01-01', getd: 3200, base: 2600 };
+      return __t.mesclar(
+        { getd: 3200, getdHist: [s] },
+        { getd: 3200, getdHist: [s, { desde: '2026-10-01', getd: 3200, base: 2500 }] },
+        { getd: 2900, getdHist: [s, { desde: '2026-10-05', getd: 2900, base: 2500 }] });
+    });
+    expect(N.getd).toBe(2900);
     // sem base: a entrada que só um lado tem é dele
-    const N = await page.evaluate(() => __t.mesclar(null,
+    const O = await page.evaluate(() => __t.mesclar(null,
       { getd: 3000, getdHist: [{ desde: '0000-01-01', getd: 3200, base: 2600 }, { desde: '2026-10-01', getd: 3000, base: 2500 }] },
       { getd: 3200, getdHist: [{ desde: '0000-01-01', getd: 3200, base: 2600 }, { desde: '2026-10-05', getd: 3200, base: 2500 }] }));
-    expect(N.getd).toBe(3200);
+    expect(O.getd).toBe(3200);
+  });
+
+  test('objetivo de antes da v46: escrever a data do peso pela primeira vez não vence o peso de partida novo do outro', async ({ page }) => {
+    await abrirSimples(page);
+    const g = await page.evaluate(() => {
+      const B = { goals: { pesoAtual: 92, inicio: '2026-08-01', liquidTarget: 3000 } };
+      const aqui = { goals: { pesoAtual: 92, inicio: '2026-08-01', pesoDesde: '2026-08-01', liquidTarget: 3500 } };
+      const la = { goals: { pesoAtual: 84, inicio: '2026-10-14', pesoDesde: '2026-10-14', liquidTarget: 3000 } };
+      return __t.mesclar(B, aqui, la).goals;
+    });
+    expect([g.pesoAtual, g.pesoDesde, g.liquidTarget]).toEqual([84, '2026-10-14', 3500]);
+  });
+
+  test('objetivo de antes da v46 com peso aceito: prazo novo aqui e peso de partida novo lá não misturam a data', async ({ page }) => {
+    await abrirSimples(page);
+    const g = await page.evaluate(() => {
+      const B = { goals: { pesoAtual: 80, pesoConta: 78, inicio: '2026-09-04', meses: 3 } };
+      const aqui = { goals: { pesoAtual: 80, pesoConta: 78, inicio: '2026-10-14', pesoDesde: '2026-09-04', meses: 4 } };
+      const la = { goals: { pesoAtual: 79, inicio: '2026-10-14', pesoDesde: '2026-10-14', meses: 3 } };
+      return __t.mesclar(B, aqui, la).goals;
+    });
+    expect([g.pesoAtual, g.pesoDesde, 'pesoConta' in g, g.meses]).toEqual([79, '2026-10-14', false, 4]);
+  });
+
+  test('plano novo num aparelho e "Atualizar" depois no outro: fica o plano novo com o peso aceito, e o GETD dele', async ({ page }) => {
+    await abrirSimples(page);
+    const r = await page.evaluate(() => {
+      const s = { desde: '0000-01-01', getd: 2745, base: 2200 };
+      const B = { getd: 2745, getdHist: [s], goals: { pesoAtual: 85, pesoDesde: '2026-09-24', inicio: '2026-09-24' } };
+      const novo = { getd: 2640, getdHist: [s, { desde: '2026-10-12', getd: 2640, base: 2150 }], goals: { pesoAtual: 78, pesoDesde: '2026-10-12', inicio: '2026-10-12' } };
+      const depois = { getd: 2670, getdHist: [s, { desde: '2026-10-14', getd: 2670, base: 2160 }], goals: { pesoAtual: 85, pesoDesde: '2026-09-24', inicio: '2026-09-24', pesoConta: 80 } };
+      const antes = { getd: 2670, getdHist: [s, { desde: '2026-10-10', getd: 2670, base: 2160 }], goals: { pesoAtual: 85, pesoDesde: '2026-09-24', inicio: '2026-09-24', pesoConta: 80 } };
+      const a = __t.mesclar(B, depois, novo), b = __t.mesclar(B, antes, novo);
+      return {
+        depois: [a.goals.pesoAtual, a.goals.pesoConta, a.getd],
+        antes: [b.goals.pesoAtual, 'pesoConta' in b.goals, b.getd],
+      };
+    });
+    expect(r.depois, 'aceito depois do plano novo: vale para ele').toEqual([78, 80, 2670]);
+    expect(r.antes, 'aceito antes do plano novo: a conta volta ao peso de partida dele').toEqual([78, false, 2640]);
   });
 
   test('sem base, a água anotada com horário de um lado não volta como resto do outro', async ({ page }) => {
