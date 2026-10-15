@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v51";
+window.APP_RELEASE = "tresults-v52";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -847,6 +847,15 @@ window.APP_RELEASE = "tresults-v51";
   .how-imgwrap img{width:100%;display:block;aspect-ratio:4/3;object-fit:contain}
   .how-step{position:absolute;bottom:8px;right:10px;background:rgba(0,0,0,.55);color:#fff;font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:999px;letter-spacing:.04em}
   .pm-item .how{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--surface);font-size:14px;flex:none;margin-right:6px}
+  /* Editar um exercício do treino (#89): o lápis carrega o exercício no
+     formulário de baixo, e a linha fica marcada enquanto ele é editado. */
+  .pm-item .ed{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--surface);flex:none;display:grid;place-items:center;color:var(--primary)}
+  .pm-item .ed svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+  .pm-item .pm-txt{flex:1;min-width:0;text-align:left;background:none;border:0;padding:0;color:inherit;font:inherit}
+  .pm-item .pm-txt .pn{overflow-wrap:anywhere}
+  .pm-item.editando{background:var(--primary-08);border-radius:12px;padding-left:8px;padding-right:4px}
+  .tp-ex-nota{display:block;margin:6px 2px 0;font-size:11.5px;color:var(--muted);line-height:1.45}
+  .tp-ex-nota[hidden]{display:none}
   .pace-opt .pt-row{display:flex;align-items:center;gap:7px}
   .pace-opt .pt{font-size:14px}
   .badge-rec{font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;background:var(--primary);color:#fff;padding:2.5px 8px;border-radius:999px}
@@ -2189,7 +2198,7 @@ window.APP_RELEASE = "tresults-v51";
     <label class="lbl" style="margin:14px 0 6px">Exercícios</label>
     <p style="font-size:12px;color:var(--muted);margin:0 0 8px;line-height:1.5">Carga, repetições e RIR são registrados <b>durante o treino</b> — aqui só o plano: séries e descanso.</p>
     <div id="tpExList"></div>
-    <div class="field" style="margin-top:6px"><label class="lbl" for="tpExName">Exercício</label><input class="in" id="tpExName" placeholder="Ex.: Supino reto"></div>
+    <div class="field" style="margin-top:6px"><label class="lbl" for="tpExName" id="tpExNameLbl">Exercício</label><input class="in" id="tpExName" placeholder="Ex.: Supino reto"><p class="campo-nota tp-ex-nota" id="tpExNota" hidden>A carga de referência segue o nome: com outro nome, o exercício começa sem a da última vez.</p></div>
     <div class="row" style="align-items:flex-end;margin-top:8px">
       <div class="field" style="flex:2"><label class="lbl" for="tpExG">Grupo muscular</label>
         <select class="in" id="tpExG">
@@ -2219,6 +2228,7 @@ window.APP_RELEASE = "tresults-v51";
       <div class="synchips" id="tpExSyn"></div>
     </div>
     <button class="btn secondary" id="tpExAdd" style="margin-top:10px">＋ Adicionar exercício</button>
+    <button class="btn secondary" id="tpExCancelar" style="display:none">Cancelar a edição</button>
     <button id="tpSave" class="btn" style="margin-top:14px">Salvar treino</button>
     <button id="tpCancel" class="btn secondary">Cancelar</button>
   </div>
@@ -4122,7 +4132,7 @@ function acadPadrao(){
   for(const it of fdTodas()){const a=it.w&&it.w.acad;if(a&&acadPorId(a))return a;}
   return lista[0].id;
 }
-function setAcadSel(id){try{if(id)localStorage.setItem(ACAD_KEY,id);else localStorage.removeItem(ACAD_KEY);}catch(e){}}
+function setAcadSel(id){acadRecolhida=false;try{if(id)localStorage.setItem(ACAD_KEY,id);else localStorage.removeItem(ACAD_KEY);}catch(e){}}
 /** As academias do treino que ainda existem. */
 function acadsDoTreino(w){return ((w&&w.acads)||[]).filter(id=>acadPorId(id));}
 /** O treino aparece nesta academia? Sem academia marcada, aparece em todas. */
@@ -4194,10 +4204,17 @@ function acadResumo(id){
    "Iniciar" de um treino ali registra a sessão naquela academia. Os
    protocolos, o "Novo protocolo" e as sugestões (#protArea) moram dentro da
    academia aberta. Sem academia cadastrada, a tela é a de sempre. */
+/* Recolher (pedido do dono, #88): tocar de novo na academia aberta, ou no
+   protocolo aberto, fecha. É só a tela: a academia recolhida continua a
+   escolhida (o treino iniciado depois é dela), e abrir outra academia ou
+   outro protocolo desfaz o recolhido. Não fica guardado: ao abrir o app,
+   a escolhida vem aberta. var, e não let: renderTreino pode rodar antes
+   desta linha. */
+var acadRecolhida=false,protRecolhido=false;
 function renderAcadBar(){
   const el=$("acadBar");if(!el)return;
   const lista=academias(),area=$("protArea");
-  if(area)el.after(area);   // fora do bloco antes de redesenhá-lo: o innerHTML a apagaria
+  if(area){el.after(area);area.hidden=false;}   // fora do bloco antes de redesenhá-lo: o innerHTML a apagaria
   if(!lista.length){
     el.innerHTML='<button type="button" class="acad-primeira" id="acadPrimeira">＋ Treina em mais de uma academia? Cadastre cada uma</button>';
     $("acadPrimeira").onclick=()=>abrirAcademias(true);
@@ -4206,16 +4223,17 @@ function renderAcadBar(){
   const sel=acadSel();
   el.innerHTML=`<div class="acad-topo"><span class="lbl">Suas academias</span><button type="button" class="acad-editar" id="acadEditar">Editar</button></div>
     <div class="acad-blocos">${lista.map(a=>{
-      const ab=a.id===sel;
+      const ab=a.id===sel&&!acadRecolhida;
       return `<div class="acad-bloco${ab?" aberto":""}" data-acadbloco="${esc(a.id)}"><button type="button" class="acad-cab" data-acad="${esc(a.id)}" aria-expanded="${ab}"><span class="acad-tx"><span class="acad-nome">${esc(a.nome)}</span><span class="acad-n">${esc(acadResumo(a.id))}</span></span>${CHEV}</button>${ab?'<div class="acad-corpo" id="acadCorpo"></div>':""}</div>`;
     }).join("")}<button type="button" class="acad-nova-bt" id="acadMais">＋ Outra academia</button></div>`;
   el.querySelectorAll("[data-acad]").forEach(b=>b.onclick=()=>{
-    if(b.dataset.acad===sel)return;   // sempre há uma aberta: o treino continua a um toque
+    if(b.dataset.acad===sel){acadRecolhida=!acadRecolhida;renderTreino();return;}   // a aberta: recolhe ou abre de novo
     setAcadSel(b.dataset.acad);evoAcadEsc=null;renderTreino();
   });
   $("acadEditar").onclick=()=>abrirAcademias(false);
   $("acadMais").onclick=()=>abrirAcademias(true);
   const corpo=$("acadCorpo");
+  if(area&&!corpo)area.hidden=true;   // academia recolhida: os protocolos dela não ficam soltos embaixo da lista
   if(corpo&&area){
     /* O botão do estado vazio, que renderProtLista ainda não trocou, sai
        antes: com dois #acadCopiar na página, o clique ia para o que some. */
@@ -4514,7 +4532,7 @@ function protAbertoAqui(){
   const pa=protAberto(),lista=protsDaAcad(acadSel());
   return (!lista.length||lista.some(p=>p.id===pa))?pa:lista[0].id;
 }
-function setProtAberto(id){try{if(id)localStorage.setItem(PROT_KEY,id);else localStorage.removeItem(PROT_KEY);}catch(e){}}
+function setProtAberto(id){protRecolhido=false;try{if(id)localStorage.setItem(PROT_KEY,id);else localStorage.removeItem(PROT_KEY);}catch(e){}}
 /** Nome livre a partir de outro: "Divisão A/B/C", "Divisão A/B/C 2"… */
 function protNomeLivre(base){
   const usados=new Set(listaProtocolos().map(p=>norm(p.nome)));
@@ -4538,8 +4556,10 @@ function renderProtLista(){
     return;
   }
   const aberto=protAbertoAqui(),varios=lista.length>1;
+  /* Com um protocolo só não há seta, e ele não recolhe. */
+  const recolhido=varios&&protRecolhido;
   el.innerHTML=`<div class="acad-topo"><span class="lbl">${comAcad?"Protocolos desta academia":"Seus protocolos"}</span></div>`+lista.map(p=>{
-    const ws=treinosDoProt(p.id),vis=ws.filter(w=>treinoNaAcad(w,sel)),ab=p.id===aberto;
+    const ws=treinosDoProt(p.id),vis=ws.filter(w=>treinoNaAcad(w,sel)),ab=p.id===aberto&&!recolhido;
     const n=vis.length?vis.length+(vis.length===1?" treino":" treinos"):"nenhum treino";
     const miolo=`<span class="prot-nome">${esc(p.nome)}</span><span class="prot-n">${n}</span>`;
     const cab=varios?`<button type="button" class="prot-cab" data-protabrir="${esc(p.id)}" aria-expanded="${ab}">${miolo}${CHEV}</button>`:`<div class="prot-cab">${miolo}</div>`;
@@ -4547,9 +4567,10 @@ function renderProtLista(){
     return `<div class="prot-bloco${ab?" aberto":""}" data-prot="${esc(p.id)}">${cab}${corpo}</div>`;
   }).join("");
   el.querySelectorAll("[data-protabrir]").forEach(b=>b.onclick=()=>{
-    if(b.dataset.protabrir===aberto)return;   // sempre há um aberto: o treino continua a um toque
-    setProtAberto(b.dataset.protabrir);renderTreino();
+    if(b.dataset.protabrir===aberto&&!recolhido){protRecolhido=true;renderTreino();return;}   // o aberto: recolhe
+    setProtAberto(b.dataset.protabrir);renderTreino();   // outro, ou o mesmo recolhido: abre
   });
+  if(recolhido)return;   // nenhum aberto: sem cartões nem "Editar"
   $("tOpenProtocol").onclick=()=>openTProtocol(aberto);
 
   /* Os cartões do protocolo aberto, só os da academia aberta. O filtro de
@@ -5105,27 +5126,79 @@ function openTpEditor(id){
   else{const sel=acadSel();tpEditing={ex:[],acads:sel?[sel]:[],prot:tpProtAtual,protNome:(protPorId(tpProtAtual)||{}).nome||tpProtNomeIni};$("tpTitle").textContent="Novo treino";$("tpName").value="";$("tpCat").value="A";}
   renderTpProts();
   renderTpAcads();
-  $("tpExName").value="";$("tpExS").value=4;$("tpExRest").value=90;$("tpExG").value="peito";renderSynChips();
+  tpExEdit=-1;$("tpExG").value="peito";limparFormEx();pintarModoEx();
   renderTpEx();tpEditOverlay.classList.add("open");
 }
 $("tpCancel").onclick=()=>tpEditOverlay.classList.remove("open");
 tpEditOverlay.onclick=e=>{if(e.target===tpEditOverlay)tpEditOverlay.classList.remove("open");};
 function renderTpEx(){
   const ex=tpEditing.ex||[];
-  $("tpExList").innerHTML=ex.length?ex.map((e,i)=>`<div class="pm-item"><div><span class="pn">${esc(e.n)}</span><div class="pm-mac">${TG[e.g]||"—"}${(e.sec&&e.sec.length)?` (+${e.sec.map(k=>TG[k]).join(", ")})`:""} · ${e.s} séries · ${r0(e.rest||90)}s de descanso</div></div><button class="how" data-how="${i}" title="Como fazer">🎬</button><button class="rm" data-i="${i}">×</button></div>`).join(""):'<div class="ins-empty" style="padding:4px 0 8px">Nenhum exercício ainda — adicione abaixo.</div>';
+  $("tpExList").innerHTML=ex.length?ex.map((e,i)=>`<div class="pm-item${i===tpExEdit?" editando":""}"><button type="button" class="pm-txt" data-ed="${i}"><span class="pn">${esc(e.n)}</span><div class="pm-mac">${TG[e.g]||"—"}${(e.sec&&e.sec.length)?` (+${e.sec.map(k=>TG[k]).join(", ")})`:""} · ${qtdTxt(e.s,"série","séries")} · ${r0(e.rest||90)}s de descanso</div></button><button type="button" class="ed" data-ed="${i}" title="Editar exercício" aria-label="Editar ${esc(e.n)}"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/></svg></button><button class="how" data-how="${i}" title="Como fazer">🎬</button><button class="rm" data-i="${i}" aria-label="Excluir ${esc(e.n)}">×</button></div>`).join(""):'<div class="ins-empty" style="padding:4px 0 8px">Nenhum exercício ainda — adicione abaixo.</div>';
   $("tpExList").querySelectorAll(".how[data-how]").forEach(b=>b.onclick=()=>openHow(tpEditing.ex[+b.dataset.how].n));
-  $("tpExList").querySelectorAll(".rm[data-i]").forEach(b=>b.onclick=()=>{tpEditing.ex.splice(+b.dataset.i,1);renderTpEx();});
+  $("tpExList").querySelectorAll("[data-ed]").forEach(b=>b.onclick=()=>editarExTp(+b.dataset.ed));
+  $("tpExList").querySelectorAll(".rm[data-i]").forEach(b=>b.onclick=()=>{
+    const i=+b.dataset.i;
+    tpEditing.ex.splice(i,1);
+    /* A edição em andamento acompanha a posição: o exercício editado foi
+       excluído (a edição sai), ou subiu uma casa. */
+    if(i===tpExEdit)sairEdicaoEx();else if(i<tpExEdit)tpExEdit--;
+    renderTpEx();
+  });
   paintTpMap();
   renderTpEquip();
 }
-$("tpExAdd").onclick=()=>{
+/* ---- Editar um exercício do treino (#89) ----
+   Pedido do dono: "posso só mudar o nome (ex.: Elevação lateral máquina ->
+   Elevação lateral halter)". O lápis (ou o toque no exercício) carrega o
+   exercício no formulário de baixo; "Salvar alteração" o troca no lugar,
+   na mesma posição, e guarda o que o exercício tinha e esta versão não
+   conhece. A referência de carga segue o nome (lastExSession): máquina e
+   halter não se comparam, e a nota embaixo do nome diz isso. */
+let tpExEdit=-1;   // posição do exercício no formulário; -1 = adicionando um novo
+function pintarModoEx(){
+  const ed=tpExEdit>-1;
+  $("tpExAdd").textContent=ed?"Salvar alteração":"＋ Adicionar exercício";
+  $("tpExCancelar").style.display=ed?"":"none";
+  $("tpExNameLbl").textContent=ed?"Editar exercício":"Exercício";
+  pintarNotaEx();
+}
+function pintarNotaEx(){
+  const e=tpExEdit>-1&&tpEditing.ex[tpExEdit];
+  $("tpExNota").hidden=!(e&&norm($("tpExName").value.trim())!==norm(e.n)&&$("tpExName").value.trim());
+}
+function limparFormEx(){$("tpExName").value="";$("tpExS").value=4;$("tpExRest").value=90;renderSynChips();}
+function sairEdicaoEx(){tpExEdit=-1;limparFormEx();pintarModoEx();}
+function editarExTp(i){
+  const e=tpEditing.ex[i];if(!e)return;
+  tpExEdit=i;
+  $("tpExName").value=e.n;$("tpExS").value=String(e.s||"");$("tpExRest").value=String(e.rest||90);
+  if([...$("tpExG").options].some(o=>o.value===e.g))$("tpExG").value=e.g;
+  renderSynChips(Array.isArray(e.sec)?e.sec:[]);
+  pintarModoEx();renderTpEx();
+  try{$("tpExName").scrollIntoView({block:"center",behavior:"smooth"});}catch(err){}
+  setTimeout(()=>{try{$("tpExName").focus();}catch(err){}},250);
+}
+/** Grava o formulário: troca o exercício editado no lugar, ou acrescenta.
+    Falso quando o formulário não vale (sem nome ou sem séries). */
+function gravarFormEx(){
   const n=$("tpExName").value.trim(),s=inteiroBR($("tpExS").value),rest=inteiroBR($("tpExRest").value)||90,g=$("tpExG").value;
-  if(!n||s<=0)return;
-  tpEditing.ex.push({n,s,rest,g,sec:[...tpSynSel]});
-  $("tpExName").value="";$("tpExS").value=4;$("tpExRest").value=90;renderSynChips();renderTpEx();$("tpExName").focus();
-};
+  if(!n||s<=0)return false;
+  if(tpExEdit>-1&&tpEditing.ex[tpExEdit]){
+    const ant=tpEditing.ex[tpExEdit];
+    tpEditing.ex[tpExEdit]=Object.assign({},ant,{n,s,rest,g:g||ant.g,sec:[...tpSynSel]});
+    tpExEdit=-1;
+  }else tpEditing.ex.push({n,s,rest,g,sec:[...tpSynSel]});
+  limparFormEx();pintarModoEx();renderTpEx();
+  return true;
+}
+$("tpExAdd").onclick=()=>{const ed=tpExEdit>-1;if(gravarFormEx()&&!ed)$("tpExName").focus();};
+$("tpExCancelar").onclick=()=>{sairEdicaoEx();renderTpEx();};
+$("tpExName").addEventListener("input",pintarNotaEx);
 $("tpExG").addEventListener("change",renderSynChips);
 $("tpSave").onclick=()=>{
+  /* Exercício em edição e não confirmado: a alteração entra, em vez de se
+     perder calada ao salvar o treino. */
+  if(tpExEdit>-1&&!gravarFormEx())return appAlert("O exercício em edição precisa de nome e de ao menos uma série.");
   const nome=$("tpName").value.trim();
   if(!nome)return appAlert("Dê um nome ao treino.");
   if(!tpEditing.ex.length)return appAlert("Adicione ao menos um exercício.");
@@ -6643,10 +6716,13 @@ const TG={peito:"Peito",costas:"Costas",ombro:"Ombro",biceps:"Bíceps",triceps:"
 const SYN={peito:["triceps","ombro"],ombro:["triceps"],costas:["biceps","antebraco"],quadriceps:["gluteo","adutor"],posterior:["gluteo"],gluteo:["posterior"]};
 const synFor=g=>SYN[g]||[];
 let tpSynSel=new Set();
-function renderSynChips(){
+/* `sel`: os sinergistas do exercício sendo editado (sem ele, os sugeridos
+   pelo grupo). Chamada também pelo "change" do grupo, que passa o evento. */
+function renderSynChips(sel){
   const g=$("tpExG").value,sug=synFor(g),el=$("tpExSyn");
-  tpSynSel=new Set(sug);
-  el.innerHTML=sug.length?sug.map(k=>`<button type="button" data-syn="${k}" class="on">${TG[k]}</button>`).join(""):'<span class="none">Nenhum — exercício isolado</span>';
+  const marcados=Array.isArray(sel)?sel.filter(k=>TG[k]):sug,todos=[...new Set([...sug,...marcados])];
+  tpSynSel=new Set(marcados);
+  el.innerHTML=todos.length?todos.map(k=>`<button type="button" data-syn="${k}" class="${tpSynSel.has(k)?"on":""}">${TG[k]}</button>`).join(""):'<span class="none">Nenhum — exercício isolado</span>';
   el.querySelectorAll("[data-syn]").forEach(b=>b.onclick=()=>{
     const k=b.dataset.syn;
     if(tpSynSel.has(k)){tpSynSel.delete(k);b.classList.remove("on");}

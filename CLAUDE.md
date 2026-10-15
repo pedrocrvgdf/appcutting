@@ -658,9 +658,10 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 | `tests/peso-corpo.spec.js` | Flexão com reps, prancha com segundos, feed sem "registro manual", referência e diferença em reps, "+ carga" sem matar o descanso, selo em reps, 1RM sem série sem carga, classificação por nome; "contar em reps/segundos" nos dois sentidos, desfazer a troca devolve o digitado, medida que não fica presa à posição, referência sem carga quando nunca houve carga |
 | `tests/peso.spec.js` | Peso do dia no Início e na Alimentação, conferência, apagar; cartão "Atualizar/Manter", plano que não reinicia, dia passado que não muda, proteína; GETD manual, vazio ou abaixo de 500 recusado, só leitura num dia passado; prazo novo que não descarta pesagens nem o peso aceito; dia anterior ao histórico de GETD; passos com o peso do dia; nuvem |
 | `tests/sem-sinal.spec.js` | Treino feito sem sinal sobrevive ao app descartado; dois aparelhos sem sinal juntam; apagado não volta; água soma; transação não apaga o de outro aparelho; envio ao sair do app; aviso atrasado; excluir dados substitui; a mescla direto na função (água sem base, GETD pelo histórico, peso da conta com o peso de partida) |
-| `tests/protocolos.spec.js` | Protocolos com nome: "Meu protocolo" virtual sem regravar nada, criar/renomear/excluir, sugestão que preenche ou cria, mover treino, selo que não mistura dois "Treino A", sessão com `tid`/`prot`, nuvem com versão anterior |
+| `tests/protocolos.spec.js` | Protocolos com nome: "Meu protocolo" virtual sem regravar nada, criar/renomear/excluir, sugestão que preenche ou cria, mover treino, selo que não mistura dois "Treino A", sessão com `tid`/`prot`, nuvem com versão anterior; tocar de novo no aberto recolhe |
+| `tests/editor.spec.js` | Editor de treino: editar exercício no lugar (nome, séries, descanso, grupo, sinergistas), campo desconhecido preservado, cancelar, edição pendente ao salvar, excluir durante a edição, referência que segue o nome, 320px |
 | `tests/inventario.spec.js` | Inventário: catálogo inteiro reconhecido, "não informado" sem aviso, gravação por toque, aviso no cartão/treino/editor, troca com o que tem primeiro, "Tem, sim" sem matar o descanso, alternativas, nome desconhecido sem aviso |
-| `tests/academias.spec.js` | Academias: sem cadastro o app fica igual; cada academia um bloco que abre os protocolos dela; treino novo nascendo na aberta; "Iniciar" grava a sessão nela; referência, selo e gráfico só da mesma academia ("Academia nova", carga do zero); copiar protocolo independente, levando o já feito ali; excluir sem apagar treino nem histórico; nuvem; 320px |
+| `tests/academias.spec.js` | Academias: sem cadastro o app fica igual; cada academia um bloco que abre os protocolos dela; treino novo nascendo na aberta; "Iniciar" grava a sessão nela; referência, selo e gráfico só da mesma academia ("Academia nova", carga do zero); copiar protocolo independente, levando o já feito ali; excluir sem apagar treino nem histórico; nuvem; 320px; tocar de novo na aberta recolhe e ela segue escolhida |
 | `tests/pausa.spec.js` | Diário de pausas (musculação e cardio): registrar, em aberto, recusas, conferência das datas, excluir, fechar ao treinar (cada tipo o seu), dica, marcador no feed; aviso do recorde: nota, linha, pergunta sem porcentagem, "Mudar a carga", uma vez por exercício, limiar 13/14/28, cardio não zera, outra academia, peso do corpo, vírgula vence, descanso continua, diálogos em fila, trocar e desfazer; nuvem, mescla, privacidade, 320px |
 | `tests/historico.spec.js` | Referência da última sessão, sugestões, indicador de progressão de carga |
 | `tests/interface.spec.js` | Zoom bloqueado, diálogos internos, layout em 390/320px (inclusive no meio da troca de aba), tema claro e escuro |
@@ -758,8 +759,11 @@ treinos (aqui) e tem um **inventário de aparelhos** (seção própria, abaixo).
   um"). O `#protArea` (protocolos, "Novo protocolo", sugestões) é **movido**
   para dentro da academia aberta; `renderAcadBar` o tira de lá antes de
   redesenhar, senão o `innerHTML` o apagaria. Embaixo do nome, quantos
-  treinos ela tem (`acadResumo`). **Sempre há uma aberta**: tocar na aberta
-  não fecha.
+  treinos ela tem (`acadResumo`). **Tocar de novo na aberta a recolhe** (#88:
+  "clico de volta para fechar, ele não fecha"), e tocar de novo a abre;
+  recolhida, ela **continua sendo a escolhida** (`acadRecolhida`, só na
+  memória: ao reabrir o app, ela volta aberta), e "Iniciar" continua gravando
+  nela. Tocar em outra abre a outra.
 - **Não existe mais "Todas".** A carga de um aparelho só vale naquele
   aparelho, e "Todas" gravava sessão sem academia. Sem escolha guardada, ou
   com a escolhida excluída (aqui ou em outro aparelho), abre a do último
@@ -970,7 +974,9 @@ treino avulso (cardio) é treino, um treino cardiovascular. `store.pausas =
 O dono pediu que, ao abrir a aba Treino, aparecessem "os protocolos da pessoa,
 que ela possa batizar com o nome que bem entender". A aba mostra um bloco por
 protocolo (`renderProtLista`), **um aberto por vez**, com os cartões dos
-treinos dele; o aberto é lembrado no aparelho (`tresults.prot`) e, sem
+treinos dele. Com dois ou mais, tocar de novo no aberto o recolhe
+(`protRecolhido`, #88), e tocar de novo, ou em outro, abre; com um só não há
+seta. O aberto é lembrado no aparelho (`tresults.prot`) e, sem
 escolha, é o do último treino feito (`protAberto`). Com academia cadastrada,
 os blocos ficam **dentro da academia aberta** e só aparecem os protocolos
 com treino nela (veja "Academias"); protocolo lembrado que não tem treino ali
@@ -1280,6 +1286,28 @@ segundos.
   jeito, o selo diz isso — e não "primeira vez". A referência diz "15 reps" e "45 s" (`serieTxt`), e a diferença por
   série também ("+2 reps", "mesmo tempo").
 - Coberto em `tests/peso-corpo.spec.js`.
+
+### Editar um exercício do treino
+
+O pedido (#89): "eu devo poder editar aquele exercício pois eu posso só mudar
+o nome (ex.: ELEVAÇÃO LATERAL MÁQUINA -> ELEVAÇÃO LATERAL HALTER)". Antes só
+dava para excluir e adicionar de novo, e o exercício ia para o fim da lista.
+
+- **O lápis (ou o toque no nome) carrega o exercício no formulário** de baixo
+  (`editarExTp`): nome, grupo, séries, descanso e **os sinergistas dele**, não
+  os sugeridos pelo grupo (`renderSynChips(sel)`). O botão vira "Salvar
+  alteração" e aparece "Cancelar a edição" (`pintarModoEx`).
+- **"Salvar alteração" troca no lugar, na mesma posição** (`gravarFormEx`,
+  `tpExEdit`), partindo do exercício que existia (`Object.assign`): campo que
+  esta versão não conhece continua nele, como em `tpSave`.
+- **Edição não confirmada entra ao "Salvar treino"**; sem nome ou sem séries,
+  o app avisa e não salva. Excluir outro exercício durante a edição move a
+  marca junto; excluir o editado encerra a edição. Reabrir o editor começa no
+  modo de adicionar.
+- **A referência de carga segue o nome** (`lastExSession`): renomeado, o
+  exercício começa sem a da última vez — máquina e halter não se comparam. A
+  nota `#tpExNota` diz isso quando o nome muda. O histórico não é reescrito.
+- Coberto em `tests/editor.spec.js`.
 
 ### Trocar o exercício no meio do treino
 

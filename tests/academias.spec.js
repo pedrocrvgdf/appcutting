@@ -175,6 +175,32 @@ test.describe('Academias', () => {
     expect(n).toEqual(['2 treinos', '1 treino']);
   });
 
+  test('tocar de novo na academia aberta a recolhe, e de novo a abre; ela continua a escolhida', async ({ page }) => {
+    /* Pedido do dono (#88): "quando clico de volta para fechar, ele não fecha". */
+    await abrirApp(page, estado({ sel: 'a1' }));
+    await irTreino(page);
+    const tela = () => page.evaluate(() => ({
+      aberta: document.querySelector('#acadBar [data-acad="a1"]').getAttribute('aria-expanded'),
+      cartoes: [...document.querySelectorAll('#tprotoCards .proto-card')].filter(c => c.offsetParent).length,
+      area: !document.getElementById('protArea').hidden,
+      sel: __t.acadSel(),
+    }));
+    expect(await tela()).toEqual({ aberta: 'true', cartoes: 1, area: true, sel: 'a1' });
+    await escolher(page, 'a1');
+    expect(await tela(), 'recolhida: nada solto embaixo da lista').toEqual({ aberta: 'false', cartoes: 0, area: false, sel: 'a1' });
+    await escolher(page, 'a1');
+    expect(await tela()).toEqual({ aberta: 'true', cartoes: 1, area: true, sel: 'a1' });
+    // recolhida e depois outra: a outra abre
+    await escolher(page, 'a1');
+    await escolher(page, 'a2');
+    expect((await chips(page)).map(c => c.on)).toEqual([false, true]);
+    // o treino iniciado depois de recolher e abrir continua gravado na escolhida
+    await escolher(page, 'a2');
+    await escolher(page, 'a2');
+    await iniciar(page, 'w1');
+    expect(await page.evaluate(() => __t.trS.acad)).toBe('a2');
+  });
+
   test('academia sem treino explica o que fazer e oferece copiar de outra', async ({ page }) => {
     await abrirApp(page, estado({ tprotocol: [treino('w2', 'Pernas no smith', ['a1'])], sel: 'a2' }));
     await irTreino(page);
