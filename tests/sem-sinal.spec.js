@@ -154,6 +154,32 @@ test.describe('Sem sinal', () => {
     expect(await page.evaluate(h => __t.store.tdays[h].map(s => s.id), ontem), 'e o daqui recebe o de lá').toEqual(['s9']);
   });
 
+  test('o que muda no próprio objeto depois de um aviso da nuvem sobe, e não é desfeito pela base', async ({ page }) => {
+    /* O aviso da nuvem aplica o documento no aparelho e guarda a base. Se as
+       duas dividissem os mesmos objetos, mudar um registro no lugar (o
+       treino finalizado entra com push na lista do dia) mudaria a base
+       junto, e a mescla seguinte concluiria que só a nuvem mexeu: o treino
+       sumia da tela e não subia. */
+    const x = loja();
+    x.tdays = { [hoje]: [avulso('s0')] };
+    const erros = await abrir(page, { aparelho: x, nuvem: x, base: x });
+    await outroAparelho(page, `d => { d.days['${hoje}'] = [${JSON.stringify(comida('m3'))}]; }`);
+    await page.evaluate(() => window.__aviso({ exists: () => true, data: () => JSON.parse(localStorage.getItem('__nuvem')) }));
+    await assentar(page);
+    expect(await page.evaluate(h => (__t.store.days[h] || []).map(i => i.id), hoje), 'o de lá chegou').toEqual(['m3']);
+    await iniciarTreino(page);
+    await preencherSerie(page, 0, 60, 10);
+    await page.evaluate(() => document.getElementById('trNext').click());
+    await page.waitForTimeout(300);
+    await page.evaluate(() => document.getElementById('trNext').click());
+    await assentar(page);
+    const d = await nuvem(page);
+    expect(d.tdays[hoje].length, await estadoSync(page)).toBe(2);
+    expect(await page.evaluate(h => __t.store.tdays[h].length, hoje), 'e continua na tela').toBe(2);
+    expect(ids(d.days[hoje])).toEqual(['m3']);
+    expect(erros).toEqual([]);
+  });
+
   test('apagado aqui sem sinal continua apagado; apagado lá continua apagado', async ({ page }) => {
     const x = loja();
     const tresDias = diaISO(3);

@@ -1009,6 +1009,14 @@ do conserto. São três peças, todas no bloco da nuvem do `index.html`:
 - **A base** (`cutting.base`, `{uid, doc}`): a nuvem como este aparelho a viu
   por último (o que leu, ou o que gravou). É ela que diz quem mexeu no quê.
   Sem a base, não dá para distinguir "apagado lá" de "lançado aqui".
+  **A base em memória é uma cópia** (`setBase` faz `copia`): o documento
+  que vira a base é o mesmo que `aplicarNuvem` põe no `store`, e dividir os
+  objetos fazia toda mudança no lugar (o treino finalizado entra com `push`
+  na lista do dia; fechar uma pausa grava `ate` no próprio objeto) mudar a
+  base junto. A mescla seguinte concluía que só a nuvem tinha mexido, e o
+  treino sumia da tela e não subia. Os testes recarregavam a página (a base
+  relida do armazenamento já era cópia), e por isso não pegavam: o teste
+  novo faz tudo na mesma página.
 - **A mescla** (`mesclar(B, L, R)`): base, este aparelho, nuvem. Regras:
   - por campo, por dia (`days`, `tdays`, `liqLog`, `passos`, `liquids`) e por
     registro (`id`; pesagem pela data `d`; alimento próprio pelo nome `n`);

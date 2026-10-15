@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v49";
+window.APP_RELEASE = "tresults-v50";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -6776,7 +6776,12 @@ function baseDe(uid){
   return null;
 }
 function setBase(uid,docNuvem){
-  syncBase={uid,doc:docNuvem};
+  /* A base é uma CÓPIA. O documento que vira a base é o mesmo que
+     aplicarNuvem põe no store, e dividir os objetos fazia toda mudança no
+     lugar (o treino finalizado entra com push na lista do dia) mudar a base
+     junto: a mescla seguinte concluía que só a nuvem tinha mexido, e o
+     treino sumia da tela e não subia. */
+  syncBase={uid,doc:copia(docNuvem)};
   /* Sem espaço para a base, a sincronização continua: só que, na próxima
      abertura com algo pendente, a mescla junta tudo em vez de saber o que
      foi apagado. É o lado seguro: nada se perde. */
