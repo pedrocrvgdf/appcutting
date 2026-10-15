@@ -661,6 +661,7 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 | `tests/protocolos.spec.js` | Protocolos com nome: "Meu protocolo" virtual sem regravar nada, criar/renomear/excluir, sugestão que preenche ou cria, mover treino, selo que não mistura dois "Treino A", sessão com `tid`/`prot`, nuvem com versão anterior |
 | `tests/inventario.spec.js` | Inventário: catálogo inteiro reconhecido, "não informado" sem aviso, gravação por toque, aviso no cartão/treino/editor, troca com o que tem primeiro, "Tem, sim" sem matar o descanso, alternativas, nome desconhecido sem aviso |
 | `tests/academias.spec.js` | Academias: sem cadastro o app fica igual; cada academia um bloco que abre os protocolos dela; treino novo nascendo na aberta; "Iniciar" grava a sessão nela; referência, selo e gráfico só da mesma academia ("Academia nova", carga do zero); copiar protocolo independente, levando o já feito ali; excluir sem apagar treino nem histórico; nuvem; 320px |
+| `tests/pausa.spec.js` | Diário de pausas (musculação e cardio): registrar, em aberto, recusas, conferência das datas, excluir, fechar ao treinar (cada tipo o seu), dica, marcador no feed; aviso do recorde: nota, linha, pergunta sem porcentagem, "Mudar a carga", uma vez por exercício, limiar 13/14/28, cardio não zera, outra academia, peso do corpo, vírgula vence, descanso continua, diálogos em fila, trocar e desfazer; nuvem, mescla, privacidade, 320px |
 | `tests/historico.spec.js` | Referência da última sessão, sugestões, indicador de progressão de carga |
 | `tests/interface.spec.js` | Zoom bloqueado, diálogos internos, layout em 390/320px (inclusive no meio da troca de aba), tema claro e escuro |
 | `tests/alarme.spec.js` | Volume e ausência de distorção do alarme de descanso |
@@ -859,6 +860,111 @@ treinos (aqui) e tem um **inventário de aparelhos** (seção própria, abaixo).
   que foi digitado (`salvarRen`), e nome repetido segura o pop-up aberto.
 - Coberto em `tests/academias.spec.js`.
 
+### Tempo sem treinar: o diário de pausas e o aviso do recorde
+
+O pedido (#81): "o usuário deve poder adicionar o tempo que ele ficou off
+(não foi treinar)", e o app deve avisar se, na volta, a pessoa puser a carga
+do recorde, caso isso seja "cientificamente prejudicial ou possivelmente
+prejudicial". A pesquisa (resumos no PubMed; o bloco "TEMPO SEM TREINAR" no
+`index.html` traz cada fonte com PMID) mudou a premissa:
+
+- **Em 2 semanas a força máxima de quem treina não cai de forma
+  significativa** (Hortobágyi 1993; Hwang 2017). Por isso o texto **não**
+  diz "você não vai conseguir".
+- **O que cai cedo é a força excêntrica**, a de frear a descida (−12% e
+  −15% em 2 semanas, joelho, atletas): extrapolação para o supino de quem
+  treina por lazer, e por isso o verbo é "pode".
+- **A queda da força máxima foi medida a partir de 4 semanas** (−6 a −9%,
+  Izquierdo 2007). Nenhum desses números entra em conta: só escolhem o
+  texto (`PAUSA_QUEDA_DIAS`, 28).
+- **Nenhum estudo mede lesão** ao voltar à carga de recorde: o aviso não
+  fala em lesão nem em perigo. **Nenhum estudo dá um "comece com X%"**: o
+  app **não sugere carga**, nem troca o placeholder por uma carga reduzida.
+  A orientação é "comece abaixo dele e suba se as repetições sobrarem".
+
+**Duas pausas, a pedido do dono:** a da **musculação** e a do **cardio**. O
+treino avulso (cardio) é treino, um treino cardiovascular. `store.pausas =
+[{id, tipo:"forca"|"cardio", de, ate?, motivo, nota}]`.
+
+- **Pausa em aberto não tem a chave `ate`** (o Firestore recusa
+  `undefined`); a aberta termina hoje (`pausaFim`).
+- **Treinar fecha as pausas abertas do mesmo tipo**, no dia anterior
+  (`fecharPausaAoTreinar`): musculação finalizada **com alguma série**
+  fecha a da musculação; o treino avulso fecha a do cardio, **menos a
+  "Musculação" avulsa** (`avulsoDeForca`), que é musculação e fecha a
+  dela. Uma não fecha a outra. Fecha **todas** as abertas do tipo (duas
+  podem chegar pela mescla de dois aparelhos, e o Início mostra todas). A
+  pausa que começou hoje fica. **A pausa guarda quem a fechou**
+  (`fechadaPor`): excluir aquele treino em "Treinos de hoje" a reabre
+  (`reabrirPausaDe`); salvar à mão ou "Voltei" apaga a marca, porque a
+  data passou a ser da pessoa.
+- **"Voltei a treinar hoje" não aparece numa pausa que começou hoje**: ele
+  gravaria hoje como dia sem treinar. Sobra "Apagar a pausa".
+- **Apagar procura a pausa pela chave depois da pergunta**: com o diálogo
+  aberto, a nuvem pode ter trocado o `store` por objetos novos.
+- Sobreposição só é recusada **no mesmo tipo**: musculação e cardio podem
+  estar em pausa nos mesmos dias. Treino do mesmo tipo dentro das datas
+  pergunta ("Conferir as datas") e não troca nada.
+- **Sessão de musculação é a que tem exercícios, ou a "Musculação" do
+  treino avulso; cardio é o resto do avulso** (`ehForca`, `ehCardio`,
+  `avulsoDeForca`, pelo nome, o que cobre os registros antigos). Sessão
+  com `ex:[]` (séries perdidas antes da v45, ou finalizada sem nenhuma
+  série) não é nenhum dos dois. O recorde (`prDe`) lê só os exercícios: a
+  "Musculação" avulsa conta como treino, sem carga.
+- **A pausa NUNCA vai para `store.tdays`**: calorias, quilômetros do dia, o
+  feed e a progressão a contariam como sessão. No feed ela é um marcador
+  (`.fd-pausa`), fora de `fdTodas()`.
+- Onde aparece: seção "Pausas" na aba Treino (`renderPausas`, com a dica
+  `#pausaDica` quando o último treino de musculação foi há 14 dias ou mais e
+  nenhuma pausa explica o intervalo — só proposta, nada é gravado sem
+  "Salvar"); linha no Início **só com pausa em aberto** (`#fdPausas`); o
+  marcador no feed; o pop-up `#pausaOverlay`. O "+" do Início continua só do
+  exógeno.
+- Nuvem: `pausas` está em `CAMPOS_NUVEM`, segue "campo ausente não é lista
+  vazia" e "quem não sabe não envia", mescla por `id`, e outra conta no
+  celular não herda. Sobe como o resto do diário, e o motivo "Saúde" é dado
+  de saúde: a política de privacidade diz isso.
+
+**O aviso do recorde** (só musculação):
+
+- **Dias sem treino de força** (`retornoDe`): do último dia com musculação
+  em qualquer academia (o corpo destreina onde for) até o dia em que a
+  sessão começou. Cardio não zera a contagem. A pausa registrada só muda o
+  texto ("De volta da pausa (viagem)"), e **só a que explica a volta**: o
+  que sobra descoberto depois dela fica abaixo do limiar. Uma viagem de 4
+  dias, 40 dias atrás, não é "de volta da pausa", e a dica de registrar
+  aparece para o trecho descoberto, propondo o dia seguinte ao fim do que
+  já está registrado (`coberto`, `descoberto`).
+- **Recorde** (`prDe`): a maior carga já feita no exercício, com qualquer
+  número de reps (pedido literal: "a mesma carga PR"), **só na mesma
+  academia** (`mesmaAcad`; registro sem academia vale em todas). Peso do
+  corpo sem carga não tem recorde; barra fixa com colete tem.
+- Com `PAUSA_AVISO_DIAS` (14) ou mais: nota `.tr-pausa` acima das séries,
+  linha `.tsrec` na série que chega ao recorde, e a pergunta "Carga de
+  recorde depois da pausa" quando a pessoa termina de digitar (`change`),
+  **uma vez por exercício por sessão** (`recordeOk`, lista por nome
+  guardada no exercício da sessão e procurada **em todas as posições**: o
+  mesmo exercício duas vezes no treino pergunta uma vez só; trocar o
+  exercício pergunta pelo outro, "Desfazer" não pergunta de novo, e a
+  marca não vai para o histórico). O texto põe o nome sem artigo ("recorde
+  em Rosca direta"): metade do catálogo é feminina.
+- **"Mudar a carga" não troca o número**: foca o campo e segura o avanço
+  (`trNext`/`trPrev` esperam `recordePend`).
+- **A vírgula vence, até ser confirmada**: se a carga cai na regra de
+  `confereCargas` (`pareceVirgula`, uma função para os dois), quem pergunta
+  primeiro é "Conferir a carga". Depois de "Está certo", o número é da
+  pessoa, e a pergunta do recorde vem (`confereRecorde(true)`): sem isso,
+  quem voltava ao recorde depois de uma última sessão leve (a volta de
+  lesão típica) nunca era avisado.
+- **Nada disso chama `renderTr()`**: o descanso continua correndo.
+- **Os diálogos entram em fila** (`appDialog`, `dlgFila`): a pergunta do
+  recorde abre no `change`, e um toque em "Cancelar treino" logo em seguida
+  pedia outro diálogo por cima, trocando os botões do primeiro e deixando a
+  promessa dele pendurada. **Pedido idêntico ao último ainda sem resposta
+  recebe a mesma resposta** (`dlgUlt`): sem isso, Enter repetido num campo
+  com nome inválido pedia N toques em "Entendi".
+- Coberto em `tests/pausa.spec.js`.
+
 ### Protocolos com nome
 
 O dono pediu que, ao abrir a aba Treino, aparecessem "os protocolos da pessoa,
@@ -983,7 +1089,7 @@ grava por cima às cegas. Três regras saem disso, e cada uma tem teste em
 - **Campo ausente não é lista vazia, e quem não sabe não envia.** Aparelho com
   versão anterior grava sem os campos novos; aceitar a ausência como vazio
   apagaria o dado de todos os aparelhos. Vale para `academias`, `liqLog`,
-  `tprotos` e `getdHist`.
+  `tprotos`, `getdHist` e `pausas`.
 - **O que veio de uma versão mais nova volta como chegou** (`CAMPOS_NUVEM`,
   `store._nuvem`): campo que esta versão não conhece é guardado e reenviado,
   em vez de apagado. Por isso campo novo de primeiro nível precisa ser JSON

@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v50";
+window.APP_RELEASE = "tresults-v51";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -777,6 +777,23 @@ window.APP_RELEASE = "tresults-v50";
   .troca-inv b{color:var(--ink)}
   .troca-inv button{align-self:flex-start;font-size:12.5px;font-weight:700;color:var(--primary);padding:4px 0}
   .tr-ref-outra{font-size:12px;line-height:1.5;color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:9px 12px;margin-bottom:10px;overflow-wrap:anywhere}
+  /* Tempo sem treinar (#81): a nota da volta, acima das séries, e a linha da
+     série com a carga do recorde. Cor de aviso, não de erro: é cautela. */
+  .tr-pausa{font-size:12.5px;line-height:1.5;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-left:3px solid var(--warn);border-radius:14px;padding:9px 12px;margin-bottom:10px;overflow-wrap:anywhere}
+  .tsrec{margin-top:8px;padding-left:40px;font-size:11.5px;line-height:1.45;font-weight:700;color:var(--warn);overflow-wrap:anywhere}
+  @media (max-width:359px){.tsrec{padding-left:0}}
+  .pausa-dica{font-size:12.5px;line-height:1.5;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:10px;overflow-wrap:anywhere}
+  .pausa-dica button{display:block;margin-top:8px;font-size:12.5px;font-weight:700;padding:8px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--primary)}
+  .pausa-row .pausa-txt{flex:1;min-width:0;text-align:left;background:none;border:0;padding:0;color:inherit;font:inherit}
+  .pausa-row .n,.pausa-row .m{overflow-wrap:anywhere}
+  #pausaNova{margin-top:2px}
+  .pausa-campo{margin-top:14px}
+  .pausa-ajuda{font-size:11.5px;color:var(--muted);line-height:1.45;margin:6px 2px 0}
+  .pausa-ajuda a{color:var(--primary);font-weight:700}
+  .pausa-dur{margin:10px 2px 0;font-size:12.5px;font-weight:700;color:var(--primary);min-height:1em}
+  .pausa-aviso{color:var(--warn);background:var(--bg)}
+  .fd-pausa{display:flex;align-items:center;gap:8px;margin:2px 4px 12px;padding:8px 12px;border:1px dashed var(--line);border-radius:14px;font-size:12px;line-height:1.4;color:var(--muted);overflow-wrap:anywhere}
+  .fd-pausa svg{width:15px;height:15px;flex:none;stroke:var(--muted);fill:none;stroke-width:2.6;stroke-linecap:round}
   .tr-ref-outra b{color:var(--ink)}
   .mmwrap{display:flex;gap:26px;justify-content:center;align-items:flex-start;padding:8px 0 4px}
   .mmfig{text-align:center}
@@ -1494,6 +1511,9 @@ window.APP_RELEASE = "tresults-v50";
     <span id="fdPesoTx">Lançar o peso de hoje</span>
     <svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
   </button>
+  <!-- Pausas em aberto (musculação, cardio): só aparecem enquanto a pessoa está
+       parada; tocar abre a pausa, com "Voltei a treinar hoje". -->
+  <div id="fdPausas"></div>
   <div class="ajuste-meta" id="fdAjuste" hidden></div>
 
   <div class="fd-atalhos">
@@ -1836,6 +1856,15 @@ window.APP_RELEASE = "tresults-v50";
     <div id="tTodayList"></div>
   </section>
 
+  <!-- Diário de pausas (#81): o tempo que a pessoa ficou sem treinar, de
+       musculação ou de cardio. A volta à musculação avisa a carga de recorde. -->
+  <section style="margin-bottom:18px">
+    <div class="sec-title"><span>Pausas</span><span class="num" id="pausaCount"></span></div>
+    <div class="pausa-dica" id="pausaDica" hidden></div>
+    <div id="pausaLista"></div>
+    <button class="btn secondary" id="pausaNova" type="button">＋ Registrar pausa</button>
+  </section>
+
   <section style="margin-bottom:18px">
     <div class="sec-title">Volume da semana</div>
     <div class="card" id="tVolCard"></div>
@@ -1938,6 +1967,29 @@ window.APP_RELEASE = "tresults-v50";
     <button class="btn" id="pesoSalvar">Salvar</button>
     <button class="btn secondary" id="pesoApagar" style="display:none">Apagar a pesagem deste dia</button>
     <button class="btn secondary" id="pesoVoltar">Voltar</button>
+  </div>
+</div>
+
+<!-- PAUSA — o diário de tempo sem treinar (#81), aberto pela aba Treino e
+     pela linha do Início -->
+<div class="overlay" id="pausaOverlay" style="z-index:100">
+  <div class="modal" style="max-width:460px">
+    <div class="gw-step">Diário de treino</div>
+    <h3 id="pausaTitulo" style="margin-bottom:4px">Registrar pausa</h3>
+    <p class="gw-sub">Os dias em que você ficou sem treinar. Quando voltar à musculação, o app avisa se você puser a carga do seu recorde.</p>
+    <label class="lbl" style="margin:4px 0 8px">Pausa de quê?</label>
+    <div class="seg" id="pausaTipoSeg" data-v="forca"><button type="button" data-v="forca" class="on">Musculação</button><button type="button" data-v="cardio">Cardio</button></div>
+    <div class="field pausa-campo"><label class="lbl" for="pausaDe">Primeiro dia sem treinar</label><input class="in" id="pausaDe" type="date"></div>
+    <div class="field pausa-campo"><label class="lbl" for="pausaAte">Último dia sem treinar</label><input class="in" id="pausaAte" type="date"><p class="pausa-ajuda">Ainda está parado? Deixe em branco.</p></div>
+    <div class="pausa-dur" id="pausaDur"></div>
+    <div class="field pausa-campo"><label class="lbl" for="pausaMotivo">Motivo (opcional)</label><select class="in" id="pausaMotivo"><option value="">Não dizer</option><option value="viagem">Viagem</option><option value="trabalho">Trabalho ou estudo</option><option value="saude">Saúde (lesão, doença)</option><option value="descanso">Descanso planejado</option><option value="outro">Outro</option></select></div>
+    <div class="field pausa-campo"><label class="lbl" for="pausaNota">Anotação (opcional)</label><input class="in" id="pausaNota" type="text" maxlength="140" placeholder="Ex.: férias na praia"></div>
+    <div class="gw-hint pausa-aviso" id="pausaAviso" hidden></div>
+    <p class="pausa-ajuda">Motivo e anotação ficam na sua conta, como o resto do diário. <a href="privacidade.html">Como o app trata seus dados</a>.</p>
+    <button class="btn" id="pausaSalvar">Salvar</button>
+    <button class="btn secondary" id="pausaVoltei" style="display:none">Voltei a treinar hoje</button>
+    <button class="btn secondary" id="pausaApagar" style="display:none">Apagar a pausa</button>
+    <button class="btn secondary" id="pausaFechar">Voltar</button>
   </div>
 </div>
 
@@ -3222,7 +3274,12 @@ function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.days){
    nascem vazios DE VERDADE: o "Excluir dados" sobe o vazio explícito, e
    campo ausente seria lido pelos outros aparelhos como "versão anterior,
    mantenha o seu" — o histórico de líquidos apagado voltava por eles. */
-function blankStore(){return {getd:0,days:{},custom:[],goals:{},liquids:{},protocol:[],weights:[],tprotocol:[],tdays:{},passos:{},academias:[],tprotos:[],liqLog:{},getdHist:[]};}
+function blankStore(){return {getd:0,days:{},custom:[],goals:{},liquids:{},protocol:[],weights:[],tprotocol:[],tdays:{},passos:{},academias:[],tprotos:[],liqLog:{},getdHist:[],pausas:[]};}
+/* Tempo sem treinar (#81). Limiares de DECISÃO DE PRODUTO; as fontes e o
+   porquê estão no bloco "TEMPO SEM TREINAR". Aqui em cima, antes de
+   qualquer desenho de tela, para não cair na zona morta do const. */
+const PAUSA_AVISO_DIAS=14, PAUSA_QUEDA_DIAS=28, PAUSA_NOTA_MAX=140;
+const PAUSA_MOTIVO_TXT={viagem:"viagem",trabalho:"trabalho ou estudo",saude:"saúde",descanso:"descanso planejado",outro:"outro"};
 const OWNER_KEY="cutting.owner";
 const getOwner=()=>localStorage.getItem(OWNER_KEY);
 const setOwner=uid=>localStorage.setItem(OWNER_KEY,uid||"");
@@ -3404,6 +3461,7 @@ function renderInicio(){
 
   renderFdPassos();
   renderFdPeso();
+  renderFdPausa();
 
   /* --- feed --- */
   const todas=fdTodas();
@@ -3416,9 +3474,17 @@ function renderInicio(){
   }
 
   let html="",diaAtual="";
+  /* As pausas do diário entram como marcador fino entre as sessões, antes
+     do primeiro dia com sessão até o fim delas (a aberta termina hoje).
+     Nunca em fdTodas(): a progressão conta posições daquela lista. */
+  const marcas=pausas().slice().sort((a,b)=>pausaFim(b)>pausaFim(a)?1:pausaFim(b)<pausaFim(a)?-1:0);
+  let mi=0;
   lista.forEach((it,i)=>{
     const w=it.w;
-    if(it.dia!==diaAtual){diaAtual=it.dia;html+=`<div class="fd-dia">${esc(fdRotuloDia(it.dia))}</div>`;}
+    if(it.dia!==diaAtual){
+      while(mi<marcas.length&&pausaFim(marcas[mi])>=it.dia)html+=fdPausaHtml(marcas[mi++]);
+      diaAtual=it.dia;html+=`<div class="fd-dia">${esc(fdRotuloDia(it.dia))}</div>`;
+    }
     const forca=!!(w.ex&&w.ex.length);
     const pr=fdProgressao(todas,i);
     const series=forca?w.ex.reduce((a,e)=>a+(e.sets||[]).length,0):0;
@@ -3428,7 +3494,7 @@ function renderInicio(){
       <button class="fd-top" data-fdtoggle="${esc(w.id)}">
         <span class="fd-ico">${forca?FD_ICO_FORCA:FD_ICO_CARDIO}</span>
         <span class="fd-nome"><span class="n">${esc(w.name)}</span>
-          <span class="h">${forca?`${prot?`${esc(prot)} · `:""}${w.ex.length} exercícios · ${series} séries${onde?` · ${esc(onde)}`:""}`:(w.km?`${kgTxt(w.km)} km${w.inc?` · ${kgTxt(w.inc)}% de inclinação`:""}${w.ganho?` · ${r0(w.ganho)} m de ganho`:""}`:"registro manual")}</span></span>
+          <span class="h">${forca?`${prot?`${esc(prot)} · `:""}${w.ex.length} ${w.ex.length===1?"exercício":"exercícios"} · ${series} ${series===1?"série":"séries"}${onde?` · ${esc(onde)}`:""}`:(w.km?`${kgTxt(w.km)} km${w.inc?` · ${kgTxt(w.inc)}% de inclinação`:""}${w.ganho?` · ${r0(w.ganho)} m de ganho`:""}`:"registro manual")}</span></span>
         <svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
       </button>
       <div class="fd-stats">
@@ -3446,6 +3512,9 @@ function renderInicio(){
       </div>
     </div>`;
   });
+  /* Pausa mais velha que todas as sessões mostradas: no fim, se a lista
+     mostrada é o histórico inteiro. */
+  if(todas.length<=FD_MAX)while(mi<marcas.length)html+=fdPausaHtml(marcas[mi++]);
   $("fdFeed").innerHTML=html;
 
   $("fdFeed").querySelectorAll("[data-fdtoggle]").forEach(b=>{
@@ -3874,6 +3943,9 @@ $("taAdd").onclick=()=>{
     if(c.unid==="m"&&c.ganho>0)entry.ganho=c.ganho;
   }
   tToday().push(entry);
+  /* Cardio é treino: fecha a pausa do cardio. A "Musculação" avulsa fecha
+     a da musculação. */
+  fecharPausaAoTreinar(avulsoDeForca(entry)?"forca":"cardio",todayKey(),entry.id);
   save();renderTreino();render();renderInicio();showCongrats("Treino registrado");
 };
 
@@ -3890,12 +3962,13 @@ function renderTreino(){
   // a academia escolhida e os protocolos, com os cartões do aberto
   renderAcadBar();
   renderProtLista();
+  renderPausas();
   // treinos de hoje
   const td=((store.tdays||{})[todayKey()])||[];
   $("tCount").textContent=td.length+(td.length===1?" treino":" treinos");
   $("tTodayList").innerHTML=td.length?td.map(w=>`<div class="proto-meal-row"><div><div class="n">${esc(w.name)}</div><div class="m">${r0(w.min)} min${w.km?` · ${kgTxt(w.km)} km`:""}${w.inc?` · ${kgTxt(w.inc)}% de inclinação`:""}${w.ganho?` · ${r0(w.ganho)} m de ganho`:""} · ${r0(w.kcal)} kcal${w.intens?` · ${w.intens}`:""}${w.rir!=null?` · RIR médio ${kgTxt(w.rir)}`:""}${w.vol?` · ${r0(w.vol)} kg movimentados`:""}${acadNomeDe(w)?` · ${esc(acadNomeDe(w))}`:""}${fdProtTxt(w)?` · ${esc(fdProtTxt(w))}`:""}</div></div><div class="acts"><button class="del" data-tdel="${w.id}">Excluir</button></div></div>`).join(""):'<div class="proto-empty">Nenhum treino registrado hoje.</div>';
   $("tTodayList").querySelectorAll("[data-tdel]").forEach(b=>b.onclick=()=>{
-    store.tdays[todayKey()]=tToday().filter(x=>x.id!==b.dataset.tdel);save();renderTreino();render();renderInicio();
+    store.tdays[todayKey()]=tToday().filter(x=>x.id!==b.dataset.tdel);reabrirPausaDe(b.dataset.tdel);save();renderTreino();render();renderInicio();
   });
   taPreview();
   renderTVol();
@@ -4482,7 +4555,7 @@ function renderProtLista(){
   /* Os cartões do protocolo aberto, só os da academia aberta. O filtro de
      cima garante que o aberto tem algum aqui, ou nenhum treino. */
   const list=treinosDoProt(aberto).filter(w=>treinoNaAcad(w,sel));
-  $("tprotoCards").innerHTML=list.length?list.map(w=>`<button class="proto-card" data-tw="${w.id}"><div><div class="pccat">Treino ${esc(w.cat||"")}</div><div class="pcname">${esc(w.nome)}</div><div class="pcmac">${(w.ex||[]).length} exercícios · ${tpSeries(w)} séries</div>${pcFalta(w,sel)}</div><span class="pckcal">▶ Iniciar</span></button>`).join("")
+  $("tprotoCards").innerHTML=list.length?list.map(w=>`<button class="proto-card" data-tw="${w.id}"><div><div class="pccat">Treino ${esc(w.cat||"")}</div><div class="pcname">${esc(w.nome)}</div><div class="pcmac">${qtdTxt((w.ex||[]).length,"exercício","exercícios")} · ${qtdTxt(tpSeries(w),"série","séries")}</div>${pcFalta(w,sel)}</div><span class="pckcal">▶ Iniciar</span></button>`).join("")
     :(store.tprotocol||[]).length
       ?'<div class="proto-empty">Você ainda não montou este protocolo. Toque abaixo para cadastrar os treinos (ex.: Treino A, B, C) — depois é um toque para iniciar o do dia.</div>'
       :'<div class="proto-empty">Você ainda não montou seu protocolo de treino. Toque abaixo para cadastrar (ex.: Treino A, B, C) — depois é um toque para iniciar o treino do dia.</div>';
@@ -5019,7 +5092,7 @@ function renderTpList(){
   $("tpSugAqui").style.display=list.length?"none":"";
   $("tpProtDel").style.display=listaProtocolos().length>1?"":"none";
   const onde=w=>academias().length?` · ${acadsDoTreino(w).length?esc(acadsTxt(w)):"todas as academias"}`:"";
-  $("tprotoList").innerHTML=list.length?list.map(w=>`<div class="proto-meal-row"><div><div class="n">${esc(w.nome)}</div><div class="m">Treino ${esc(w.cat||"")} · ${(w.ex||[]).length} exercícios · ${tpSeries(w)} séries${onde(w)}</div></div><div class="acts"><button data-ted="${w.id}">Editar</button><button class="del" data-tdl="${w.id}">Excluir</button></div></div>`).join(""):'<div class="proto-empty" style="margin-bottom:12px">Nenhum treino cadastrado ainda.</div>';
+  $("tprotoList").innerHTML=list.length?list.map(w=>`<div class="proto-meal-row"><div><div class="n">${esc(w.nome)}</div><div class="m">Treino ${esc(w.cat||"")} · ${qtdTxt((w.ex||[]).length,"exercício","exercícios")} · ${qtdTxt(tpSeries(w),"série","séries")}${onde(w)}</div></div><div class="acts"><button data-ted="${w.id}">Editar</button><button class="del" data-tdl="${w.id}">Excluir</button></div></div>`).join(""):'<div class="proto-empty" style="margin-bottom:12px">Nenhum treino cadastrado ainda.</div>';
   $("tprotoList").querySelectorAll("[data-ted]").forEach(b=>b.onclick=()=>{if(salvarNomeProt())openTpEditor(b.dataset.ted);});
   $("tprotoList").querySelectorAll("[data-tdl]").forEach(b=>b.onclick=async()=>{if(await appConfirm("Excluir este treino do protocolo?",{okText:"Excluir"})){store.tprotocol=(store.tprotocol||[]).filter(x=>x.id!==b.dataset.tdl);save();renderTpList();}});
 }
@@ -5889,17 +5962,22 @@ function renderTr(){
   const cargaVis=tipo==="carga"||!!e.comCarga||EX_CARGA_RE.test(exSinal(e.n))||logs.some(l=>(l.kg||0)>0)||!!(trPrevRef&&trPrevRef.sets.some(x=>(x.kg||0)>0));
   /* Academia nova: o exercício já foi feito em outra, e nunca nesta. Dito
      uma vez, acima das séries; a carga de lá não aparece (outro aparelho). */
+  /* Tempo sem treinar (#81): a nota da volta acima das séries. Com
+     "Academia nova" não há recorde aqui, e as duas nunca aparecem juntas. */
+  trRecorde=recordeDe(e);
+  const notaVolta=trRecorde?notaPausa(trRecorde):"";
   const refOutra=!trPrevRef&&exEmOutraAcad(e.n,trS.acad)?`<div class="tr-ref-outra"><b>Academia nova</b> · primeira vez deste exercício na <b>${esc(acadNomeDe(trS))}</b>. A carga daqui começa do zero: a de outra academia não vale para estes aparelhos.</div>`:"";
   /* Errar a classificação custa um toque: "+ carga" mostra a carga, e
      "contar em reps" / "contar em segundos" troca a medida, nos dois
      sentidos. Nenhum dos dois redesenha a tela, que mataria o descanso. */
   const botoes=(cargaVis?"":`<button class="tr-maiscarga" type="button" id="trMaisCarga">+ carga (colete, anilha)</button>`)
     +(tipo==="tempo"?`<button class="tr-maiscarga" type="button" id="trEmReps">${emSeg?"contar em reps":"contar em segundos"}</button>`:"");
-  $("trSets").innerHTML=refOutra+(botoes?`<div class="tr-botoes">${botoes}</div>`:"")+logs.map((l,i)=>{
+  $("trSets").innerHTML=notaVolta+refOutra+(botoes?`<div class="tr-botoes">${botoes}</div>`:"")+logs.map((l,i)=>{
     const p=trPrevRef&&trPrevRef.sets[i];
     return `<div class="tr-set" data-i="${i}">
     <div class="tsr1"><span class="snum">${i+1}</span><span class="sl">Série ${i+1}</span><span class="fld fkg${cargaVis?"":" oculto"}"><input class="ikg" type="text" data-num="dec" inputmode="decimal" value="${l.kg?campoBR(l.kg):""}" placeholder="${p?kgTxt(p.kg):"0"}"><span class="un">kg</span></span><span class="fld frep${emSeg?" oculto":""}"><input class="irep" type="text" data-num="int" inputmode="numeric" value="${l.rep||""}" placeholder="${p?(p.rep||0):"0"}"><span class="un">reps</span></span>${tipo==="tempo"?`<span class="fld fseg${emSeg?"":" oculto"}"><input class="iseg" type="text" data-num="int" inputmode="numeric" value="${l.seg||""}" placeholder="${p&&p.seg?p.seg:"0"}"><span class="un">seg</span></span>`:""}</div>
     ${p?`<div class="tsprev"><span class="tp-t">anterior <span class="tp-v">${serieTxt(p)}</span>${(p.rir!==null&&p.rir!==undefined)?` · RIR ${p.rir}`:""}</span><span class="tp-d"></span></div>`:""}
+    ${trRecorde?'<div class="tsrec" hidden></div>':""}
     <div class="tsr2"><span class="rirl">RIR</span><div class="rirseg">${[0,1,2,3].map(v=>`<button data-rir="${v}" class="${l.rir===v?"on":""}">${v===3?"3+":v}</button>`).join("")}</div></div>
   </div>`;}).join("");
   /* "+ carga" mostra o campo sem redesenhar: renderTr termina em stopRest()
@@ -5908,6 +5986,7 @@ function renderTr(){
     e.comCarga=true;
     $("trSets").querySelectorAll(".fkg.oculto").forEach(f=>f.classList.remove("oculto"));
     $("trMaisCarga").remove();semBotoesVazios();trPersist();
+    $("trSets").querySelectorAll(".tr-set").forEach(pintarRecorde);
     const c=$("trSets").querySelector(".ikg");if(c)c.focus();
   };
   if($("trEmReps"))$("trEmReps").onclick=()=>{
@@ -5919,7 +5998,7 @@ function renderTr(){
     $("trEmReps").textContent=seg?"contar em reps":"contar em segundos";
     $("trPlan").textContent=planoTx();
     trPersist();
-    $("trSets").querySelectorAll(".tr-set").forEach(trDelta);
+    $("trSets").querySelectorAll(".tr-set").forEach(r=>{trDelta(r);pintarRecorde(r);});
   };
   $("trSets").querySelectorAll(".tr-set").forEach(row=>{
     const i=+row.dataset.i;
@@ -5930,8 +6009,12 @@ function renderTr(){
       trPersist();
     });
     // guarda carga e reps enquanto você digita: nada se perde ao trocar de app
-    row.querySelectorAll("input").forEach(inp=>inp.addEventListener("input",()=>{trSaveInputs();trDelta(row);trPersistSoon();}));
-    trDelta(row);
+    row.querySelectorAll("input").forEach(inp=>inp.addEventListener("input",()=>{trSaveInputs();trDelta(row);pintarRecorde(row);trPersistSoon();}));
+    /* A pergunta do recorde quando a pessoa termina de digitar a carga,
+       antes de levantar. Não redesenha nada: o descanso continua. */
+    const ikgR=row.querySelector(".ikg");
+    if(ikgR&&trRecorde)ikgR.addEventListener("change",()=>{trSaveInputs();perguntarRecorde(i);});
+    trDelta(row);pintarRecorde(row);
   });
   pintarFalta();
   stopRest();restLabel();
@@ -6045,7 +6128,7 @@ $("trocaFechar").onclick=()=>$("trocaOverlay").classList.remove("open");
 $("trocaOverlay").onclick=ev=>{if(ev.target===$("trocaOverlay"))$("trocaOverlay").classList.remove("open");};
 $("trocaNome").addEventListener("keydown",ev=>{if(ev.key==="Enter")aplicarTroca();});
 
-$("trPrev").onclick=()=>{trSaveInputs();if(trS.idx>0){trS.idx--;renderTr();trPersist();}};
+$("trPrev").onclick=async()=>{trSaveInputs();if(recordePend&&!await recordePend)return;if(trS&&trS.idx>0){trS.idx--;renderTr();trPersist();}};
 /* Carga muito acima da última vez no mesmo exercício é o sinal da vírgula
    perdida (575 por 57,5). Pergunta antes de seguir. O limite — o dobro da
    maior carga da última vez, e ao menos 10 kg a mais — é decisão de
@@ -6057,16 +6140,331 @@ async function confereCargas(){
   const maior=ref?ref.sets.reduce((a,x)=>Math.max(a,x.kg||0),0):0;
   for(let i=0;i<logs.length;i++){
     const kg=logs[i].kg||0;if(kg<=0)continue;
-    if(!(maior>0?(kg>=2*maior&&kg-maior>=10):kg>CARGA_TETO))continue;
+    if(!pareceVirgula(kg,maior))continue;
     const dez=maior>0&&kg/10<=maior*1.5?` Talvez seja ${kgTxt(kg/10)} kg.`:"";
     const ok=await appConfirm(`Série ${i+1} com ${kgTxt(kg)} kg?${maior>0?` Da última vez a maior carga foi ${kgTxt(maior)} kg.`:""}${dez}`,{title:"Conferir a carga",okText:"Está certo",cancelText:"Corrigir",danger:false});
     if(!ok){const c=document.querySelector(`#trSets .tr-set[data-i="${i}"] .ikg`);if(c)c.focus();return false;}
   }
   return true;
 }
+/* ============================================================
+   TEMPO SEM TREINAR (#81): o diário de pausas e o aviso do recorde
+
+   O pedido: registrar o tempo em que a pessoa ficou sem treinar, e avisar
+   quando ela, na volta, puser a carga do recorde. Duas pausas, a pedido do
+   dono: a da MUSCULAÇÃO e a do CARDIO (o treino avulso, que é treino, um
+   treino cardiovascular). Treinar fecha a pausa do mesmo tipo. O aviso de
+   carga olha só a musculação: o cardio não mantém a carga do supino.
+
+   O que a ciência sustenta (lidos os resumos no PubMed; os textos completos
+   o proxy da sessão bloqueou):
+   - Em 2 semanas, a força MÁXIMA de quem treina não caiu de forma
+     significativa: 12 atletas de potência, 14 dias parados, supino −1,7% e
+     agachamento −0,9%, P>0,05 (Hortobágyi et al., Med Sci Sports Exerc
+     1993;25(8):929-35, PMID 8371654); 20 homens treinados, 2 semanas, leg
+     press sem queda (Hwang et al., J Strength Cond Res 2017;31(4):869-881,
+     PMID 28328712). Por isso o texto NÃO diz "você não vai conseguir".
+   - O que cai cedo é a força EXCÊNTRICA (frear a descida): −12% na
+     extensão do joelho em 14 dias (Hortobágyi 1993) e −15,0% em 2 semanas
+     em 13 velocistas, com o concêntrico lento em −0,7% (Yamashita et al.,
+     PLoS One 2023;18(7):e0288344, PMID 37418449). Laboratório, joelho,
+     atletas: para o supino de quem treina por lazer é EXTRAPOLAÇÃO, e por
+     isso o verbo é "pode".
+   - A queda da força máxima foi medida a partir de 4 semanas: −6 a −9% em
+     14 homens ativos (Izquierdo et al., J Strength Cond Res
+     2007;21(3):768-75, PMID 17685721). Em atletas de elite, força mantida
+     até ~3 semanas e perda maior depois (McMaster et al., Sports Med
+     2013;43(5):367-84, PMID 23529287). A perda cresce com a duração da
+     pausa (Bosquet et al., Scand J Med Sci Sports 2013;23(3):e140-9, PMID
+     23347054). NENHUM desses números entra em conta: só escolhem o texto.
+   - Nenhum estudo encontrado mede LESÃO ao voltar à carga de recorde
+     depois de uma pausa. O aviso não fala em lesão nem em perigo.
+   - Nenhum estudo dá um "comece com X% do recorde" para este caso: o app
+     NÃO sugere carga. A orientação é de autorregulação, sem número ("suba
+     se as repetições sobrarem"): escolher a carga pelas repetições em
+     reserva rendeu o mesmo que por %1RM em homens treinados (Helms et al.,
+     Front Physiol 2018;9:247, PMID 29628895) — estudo sem pausa, então é
+     apoio qualitativo, e não gera número.
+   - O consenso CSCCa/NSCA 2019 (Caterisano, Strength Cond J 41(3)) não foi
+     lido no original, e nenhum número dele entra aqui.
+
+   DECISÃO DE PRODUTO, não fisiologia: PAUSA_AVISO_DIAS (14, o exemplo do
+   dono, "2 semanas"), PAUSA_QUEDA_DIAS (28, só troca o texto), "carga ≥
+   recorde" (pedido literal: "a mesma carga PR"), recorde só da mesma
+   academia (a regra do app), uma pergunta por exercício por sessão (aviso
+   repetido ensina a ignorar) e a contagem pelo treino de força inteiro
+   (os estudos mediram parada completa).
+   ============================================================ */
+/** "1 exercício", "2 exercícios": singular e plural pelo número. */
+function qtdTxt(n,um,varios){return `${n} ${n===1?um:varios}`;}
+function pausas(){return Array.isArray(store.pausas)?store.pausas:[];}
+/** "forca" ou "cardio". Pausa sem tipo é de musculação. */
+function pausaTipo(p){return p&&p.tipo==="cardio"?"cardio":"forca";}
+function pausaDeQue(t){return t==="cardio"?"do cardio":"da musculação";}
+function diasEntre(a,b){return Math.round((dateFromKey(b)-dateFromKey(a))/86400000);}
+/** Sessão de musculação: tem exercícios, ou é a "Musculação" lançada no
+    treino avulso (o próprio avulso a oferece, e ela não é treino
+    cardiovascular). Cardio: o resto do treino avulso, que não tem a lista.
+    Sessão com ex:[] (séries perdidas antes da v45, ou finalizada sem
+    nenhuma série) não é nenhum dos dois. */
+function avulsoDeForca(w){return !!w&&!Array.isArray(w.ex)&&norm(String(w.name||""))==="musculacao";}
+function ehForca(w){return !!(w&&Array.isArray(w.ex)&&w.ex.length)||avulsoDeForca(w);}
+function ehCardio(w){return !!w&&!Array.isArray(w.ex)&&!avulsoDeForca(w);}
+function ehDoTipo(w,tipo){return tipo==="cardio"?ehCardio(w):ehForca(w);}
+/** O último dia, até `ate` inclusive, com treino daquele tipo. */
+function ultimoTreino(tipo,ate){
+  const tds=store.tdays||{};let u=null;
+  Object.keys(tds).forEach(d=>{if(d<=ate&&(!u||d>u)&&(tds[d]||[]).some(w=>ehDoTipo(w,tipo)))u=d;});
+  return u;
+}
+function pausaAberta(tipo){return pausas().find(p=>pausaTipo(p)===tipo&&!p.ate)||null;}
+function pausaFim(p){return p.ate||todayKey();}
+function pausaDias(p){return diasEntre(p.de,pausaFim(p))+1;}
+/** "03/10", e o ano só quando não é o atual. */
+function dataCurta(dk){const[y,m,d]=dk.split("-");return `${d}/${m}${y!==todayKey().slice(0,4)?"/"+y:""}`;}
+function pausaPeriodo(p){return p.ate?`${dataCurta(p.de)} a ${dataCurta(p.ate)} · ${pausaDias(p)} ${pausaDias(p)===1?"dia":"dias"}`:`desde ${dataCurta(p.de)} · ${pausaDias(p)} ${pausaDias(p)===1?"dia":"dias"} até hoje`;}
+function pausaMotivoTxt(p){return p&&p.motivo?(PAUSA_MOTIVO_TXT[p.motivo]||"outro"):"";}
+/** A volta à musculação no dia `dia`: há quantos dias foi o último treino
+    de força (em qualquer academia: o corpo destreina onde for), e a pausa
+    registrada que explica o intervalo. O treino em andamento não está no
+    histórico; um já finalizado hoje dá 0 dias. */
+function retornoDe(dia){
+  const u=ultimoTreino("forca",dia);if(!u)return null;
+  const ps=pausas().filter(p=>pausaTipo(p)==="forca"&&p.de>=u&&p.de<=dia);
+  /* Até onde as pausas registradas cobrem o intervalo. A pausa só "explica"
+     a volta se o que sobra descoberto depois dela fica abaixo do limiar:
+     uma viagem de 4 dias, 40 dias atrás, não é "de volta da pausa". */
+  let coberto=u;ps.forEach(p=>{const f=pausaFim(p)>dia?dia:pausaFim(p);if(f>coberto)coberto=f;});
+  const pausa=ps.filter(p=>diasEntre(pausaFim(p)>dia?dia:pausaFim(p),dia)<PAUSA_AVISO_DIAS).sort((a,b)=>a.de<b.de?1:-1)[0]||null;
+  return {u,dias:diasEntre(u,dia),pausa,coberto,descoberto:diasEntre(coberto,dia)};
+}
+/** O recorde de carga do exercício: a maior carga já feita, com qualquer
+    número de reps, na mesma academia (registro sem academia vale em
+    qualquer uma). null sem carga nenhuma: peso do corpo não tem recorde em
+    kg. dk = o dia mais recente com esse máximo. */
+function prDe(nome,acad){
+  const alvo=norm(nome||""),tds=store.tdays||{};let best=null;
+  Object.keys(tds).sort().forEach(dk=>(tds[dk]||[]).forEach(r=>{
+    if(!mesmaAcad(acad,r.acad))return;
+    (r.ex||[]).forEach(x=>{if(norm(x.n)!==alvo)return;(x.sets||[]).forEach(st=>{const kg=st.kg||0;if(kg>0&&(!best||kg>=best.kg))best={kg,dk};});});
+  }));
+  return best;
+}
+/** Treinar fecha as pausas abertas do mesmo tipo, no dia anterior (pode
+    haver duas, vindas de dois aparelhos pela mescla). A que começou hoje
+    fica: a pessoa a registrou depois de treinar. `fechadaPor` guarda o
+    treino que fechou: excluir esse treino reabre a pausa. */
+function fecharPausaAoTreinar(tipo,dia,id){
+  const ontem=keyOf(addDays(dateFromKey(dia),-1));
+  pausas().forEach(p=>{if(pausaTipo(p)===tipo&&!p.ate&&p.de<dia){p.ate=ontem;if(id)p.fechadaPor=id;}});
+}
+/** O treino que fechou uma pausa foi excluído: ela volta a ficar aberta. */
+function reabrirPausaDe(id){
+  pausas().forEach(p=>{if(id&&p.fechadaPor===id){delete p.ate;delete p.fechadaPor;}});
+}
+
+/* ---- o aviso, no treino em andamento ---- */
+let trRecorde=null;     // {pr, ret} do exercício na tela, ou null
+let recordePend=null;   // a pergunta em aberto: trNext/trPrev esperam por ela
+function diaDaSessao(){return trS?keyOf(new Date(trS.start)):todayKey();}
+function maiorRef(){return trPrevRef?trPrevRef.sets.reduce((a,x)=>Math.max(a,x.kg||0),0):0;}
+/** A regra da vírgula (575 por 57,5), a mesma de confereCargas: quando ela
+    vale, quem pergunta é "Conferir a carga", e não o recorde. */
+function pareceVirgula(kg,maior){return maior>0?(kg>=2*maior&&kg-maior>=10):kg>CARGA_TETO;}
+function recordeDe(e){
+  if(!trS)return null;
+  const ret=retornoDe(diaDaSessao());
+  if(!ret||ret.dias<PAUSA_AVISO_DIAS)return null;
+  const pr=prDe(e.n,trS.acad);
+  return pr?{pr,ret}:null;
+}
+function notaPausa(r){
+  const {pr,ret}=r,p=ret.pausa,mot=pausaMotivoTxt(p);
+  const cab=p?`<b>De volta da pausa${mot?` (${esc(mot)})`:""}: último treino de força há ${ret.dias} dias.</b>`:`<b>Último treino de força registrado: há ${ret.dias} dias.</b>`;
+  return `<div class="tr-pausa">${cab} Seu recorde neste exercício é <b>${kgTxt(pr.kg)} kg</b> (${dataCurta(pr.dk)}). Comece abaixo dele e suba se as repetições sobrarem.</div>`;
+}
+/** A carga da série chega ao recorde? (campo de kg visível, e fora da
+    regra da vírgula) */
+function noRecorde(kg,confirmada){return !!trRecorde&&kg>0&&kg>=trRecorde.pr.kg&&(confirmada||!pareceVirgula(kg,maiorRef()));}
+function pintarRecorde(row){
+  const el=row.querySelector(".tsrec");if(!el)return;
+  const ikg=row.querySelector(".ikg"),kg=campoVisivel(ikg)?numBR(ikg.value):0;
+  if(!noRecorde(kg)){el.hidden=true;el.textContent="";return;}
+  const r=trRecorde;
+  el.textContent=`${kg>r.pr.kg?"Acima do":"É o"} seu recorde (${kgTxt(r.pr.kg)} kg), e o último treino de força foi há ${r.ret.dias} dias.`;
+  el.hidden=false;
+}
+/** Pergunta, uma vez por exercício por sessão, quando a série chega ao
+    recorde. Nada aqui chama renderTr: o descanso continua. */
+/** "Manter" já respondido para este exercício nesta sessão. Lista por nome:
+    trocar o exercício pergunta pelo outro, e "Desfazer" não pergunta de
+    novo pelo de antes. Vive em trS.w.ex (trPersist leva; o histórico não). */
+function recordeOk(e){const n=norm(e.n);return !!trS&&trS.w.ex.some(x=>Array.isArray(x.recordeOk)&&x.recordeOk.includes(n));}
+function perguntarRecorde(i,confirmada){
+  if(recordePend)return recordePend;
+  const e=trS&&trS.w.ex[trS.idx];if(!e||!trRecorde||recordeOk(e))return Promise.resolve(true);
+  const l=(trS.logs[trS.idx]||[])[i],row=document.querySelector(`#trSets .tr-set[data-i="${i}"]`);
+  const ikg=row&&row.querySelector(".ikg");
+  const kg=ikg&&campoVisivel(ikg)?numBR(ikg.value):((l&&l.kg)||0);
+  if(!noRecorde(kg,confirmada))return Promise.resolve(true);
+  const {pr,ret}=trRecorde,p=ret.pausa;
+  const a=kg>pr.kg?`Série ${i+1} com ${kgTxt(kg)} kg: acima do seu recorde em ${e.n} (${kgTxt(pr.kg)} kg, em ${dataCurta(pr.dk)}).`:`Série ${i+1} com ${kgTxt(kg)} kg: é o seu recorde em ${e.n} (${dataCurta(pr.dk)}).`;
+  const b=p?` Seu último treino de força foi há ${ret.dias} dias (pausa registrada${pausaMotivoTxt(p)?": "+pausaMotivoTxt(p):""}).`:` Seu último treino de força registrado foi há ${ret.dias} dias.`;
+  const c=ret.dias>=PAUSA_QUEDA_DIAS
+    ?" Numa pausa longa assim, a força máxima pode ter caído, e a força para frear a descida do peso costuma cair antes dela. Faça a primeira série abaixo do recorde e suba se as repetições sobrarem."
+    :" Numa pausa assim, a força máxima costuma se manter, mas a força para frear a descida do peso pode já ter caído. Faça a primeira série abaixo do recorde e suba se as repetições sobrarem.";
+  const d=p&&p.motivo==="saude"?" Se a pausa foi por lesão ou doença, quem acompanha o seu tratamento é quem diz quando voltar ao recorde.":"";
+  const nome=e.n;
+  recordePend=appConfirm(a+b+c+d,{title:"Carga de recorde depois da pausa",okText:`Manter ${kgTxt(kg)} kg`,cancelText:"Mudar a carga",danger:false}).then(ok=>{
+    recordePend=null;
+    const ex=trS&&trS.w.ex[trS.idx];
+    if(ok){if(ex&&norm(ex.n)===norm(nome)&&!recordeOk(ex)){ex.recordeOk=(Array.isArray(ex.recordeOk)?ex.recordeOk:[]).concat(norm(nome));trPersist();}}
+    else{const c2=document.querySelector(`#trSets .tr-set[data-i="${i}"] .ikg`);if(c2)c2.focus();}
+    return ok;
+  });
+  return recordePend;
+}
+/** Antes de seguir (próximo, voltar, finalizar): espera a pergunta em
+    aberto, e pergunta pela primeira série no recorde que ainda não teve
+    resposta. Falso = a pessoa escolheu mudar a carga. */
+/* `confirmadas`: chamada depois de confereCargas, as cargas já passaram
+   pela conferência da vírgula ("Está certo"), e a regra dela não esconde
+   mais o recorde. */
+async function confereRecorde(confirmadas){
+  if(recordePend&&!await recordePend)return false;
+  const e=trS&&trS.w.ex[trS.idx];if(!e||!trRecorde||recordeOk(e))return true;
+  const logs=trS.logs[trS.idx]||[];
+  for(let i=0;i<logs.length;i++){
+    const row=document.querySelector(`#trSets .tr-set[data-i="${i}"]`),ikg=row&&row.querySelector(".ikg");
+    const kg=ikg&&campoVisivel(ikg)?numBR(ikg.value):0;
+    if(noRecorde(kg,confirmadas))return perguntarRecorde(i,confirmadas);
+  }
+  return true;
+}
+
+/* ---- o diário, na aba Treino ---- */
+let pausaEdit=null,pausaTipoEsc="forca";
+/** A dica de registrar: último treino de força há PAUSA_AVISO_DIAS ou
+    mais, e nenhuma pausa de musculação explicando o intervalo. É uma
+    proposta: nada é gravado sem "Salvar". */
+function pausaDicaDe(){
+  const h=todayKey(),ret=retornoDe(h);
+  if(!ret||ret.descoberto<PAUSA_AVISO_DIAS||pausaAberta("forca"))return null;
+  return ret;
+}
+function renderPausas(){
+  const el=$("pausaLista");if(!el)return;
+  const ps=pausas().slice().sort((a,b)=>(pausaFim(b)>pausaFim(a)?1:pausaFim(b)<pausaFim(a)?-1:(b.de>a.de?1:-1)));
+  $("pausaCount").textContent=ps.length?String(ps.length):"";
+  el.innerHTML=ps.length?ps.map(p=>{
+    const t=pausaTipo(p)==="cardio"?"Cardio":"Musculação",mot=pausaMotivoTxt(p);
+    const m=[mot?mot.charAt(0).toUpperCase()+mot.slice(1):"",String(p.nota||"")].filter(Boolean).join(" · ");
+    return `<div class="proto-meal-row pausa-row"><button type="button" class="pausa-txt" data-pausa="${esc(String(p.id))}"><div class="n">${t} · ${esc(pausaPeriodo(p))}</div>${m?`<div class="m">${esc(m)}</div>`:""}</button><div class="acts"><button class="del" data-pdel="${esc(String(p.id))}">Excluir</button></div></div>`;
+  }).join(""):'<div class="proto-empty">Nenhuma pausa registrada. Ficou sem treinar? Registre aqui: quando você voltar à musculação, o app avisa se puser a carga do seu recorde.</div>';
+  el.querySelectorAll("[data-pausa]").forEach(b=>b.onclick=()=>abrirPausa(b.dataset.pausa));
+  el.querySelectorAll("[data-pdel]").forEach(b=>b.onclick=()=>apagarPausa(b.dataset.pdel));
+  const dica=$("pausaDica"),ret=pausaDicaDe();
+  dica.hidden=!ret;
+  if(ret){
+    dica.innerHTML=`Seu último treino de musculação registrado foi há <b>${ret.dias} dias</b>. Ficou sem treinar? Registre a pausa.<button type="button" id="pausaDicaBt">Registrar a pausa</button>`;
+    $("pausaDicaBt").onclick=()=>abrirPausa(null,{tipo:"forca",de:keyOf(addDays(dateFromKey(ret.coberto),1))});   // depois do que já está registrado
+  }
+}
+function pintarPausaTipo(){$("pausaTipoSeg").querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.v===pausaTipoEsc));$("pausaTipoSeg").dataset.v=pausaTipoEsc;}
+function pintarPausaDur(){
+  const de=$("pausaDe").value,ate=$("pausaAte").value,h=todayKey();
+  if(!de||de>h||(ate&&(ate<de||ate>h))){$("pausaDur").textContent="";return;}
+  const n=diasEntre(de,ate||h)+1;
+  $("pausaDur").textContent=ate?`${n} ${n===1?"dia":"dias"} sem treinar`:`${n} ${n===1?"dia":"dias"} até hoje`;
+}
+function avisoPausa(t){const a=$("pausaAviso");a.textContent=t||"";a.hidden=!t;}
+/** Abre a pausa `id` para editar, ou uma nova (com `novo` = {tipo, de}
+    proposto pela dica). */
+function abrirPausa(id,novo){
+  const p=id?pausas().find(x=>String(x.id)===String(id)):null;
+  if(id&&!p)return;
+  pausaEdit=p?p.id:null;
+  pausaTipoEsc=p?pausaTipo(p):((novo&&novo.tipo)||"forca");
+  pintarPausaTipo();
+  $("pausaTitulo").textContent=p?"Editar pausa":"Registrar pausa";
+  $("pausaDe").value=p?p.de:((novo&&novo.de)||todayKey());
+  $("pausaAte").value=p&&p.ate?p.ate:"";
+  $("pausaDe").max=$("pausaAte").max=todayKey();
+  $("pausaMotivo").value=p&&PAUSA_MOTIVO_TXT[p.motivo]?p.motivo:(p&&p.motivo?"outro":"");
+  $("pausaNota").value=p?String(p.nota||""):"";
+  /* Pausa que começou hoje: "Voltei" gravaria hoje como dia sem treinar.
+     Sobra "Apagar a pausa". */
+  $("pausaVoltei").style.display=p&&!p.ate&&p.de<todayKey()?"":"none";
+  $("pausaApagar").style.display=p?"":"none";
+  avisoPausa("");pintarPausaDur();
+  $("pausaOverlay").classList.add("open");
+}
+function fecharPausa(){$("pausaOverlay").classList.remove("open");pausaEdit=null;}
+function depoisDePausa(){save();renderTreino();renderInicio();}
+async function salvarPausa(){
+  const de=$("pausaDe").value,ate=$("pausaAte").value,h=todayKey(),tipo=pausaTipoEsc;
+  if(!de)return avisoPausa("Diga o primeiro dia sem treinar.");
+  if(de>h)return avisoPausa("A pausa não pode começar depois de hoje.");
+  if(ate&&ate>h)return avisoPausa("O último dia sem treinar não pode ser depois de hoje.");
+  if(ate&&ate<de)return avisoPausa("O último dia sem treinar vem depois do primeiro.");
+  const fim=ate||h;
+  const choca=pausas().find(q=>String(q.id)!==String(pausaEdit)&&pausaTipo(q)===tipo&&q.de<=fim&&pausaFim(q)>=de);
+  if(choca)return avisoPausa(`Já existe uma pausa ${pausaDeQue(tipo)} ${choca.ate?`de ${dataCurta(choca.de)} a ${dataCurta(choca.ate)}`:`desde ${dataCurta(choca.de)}`} nesse período. Edite aquela.`);
+  avisoPausa("");
+  /* Conferência, que pergunta e não troca nada: treino do mesmo tipo
+     registrado dentro das datas. */
+  const tds=store.tdays||{};
+  const dentro=Object.keys(tds).filter(d=>d>=de&&d<=fim&&(tds[d]||[]).some(w=>ehDoTipo(w,tipo))).sort();
+  if(dentro.length&&!await appConfirm(`Há treino ${tipo==="cardio"?"de cardio":"de musculação"} registrado em ${dataCurta(dentro[0])}, dentro desta pausa. Salvar assim mesmo?`,{title:"Conferir as datas",okText:"Salvar assim",cancelText:"Corrigir as datas",danger:false}))return;
+  const antigo=pausaEdit!=null?pausas().find(x=>String(x.id)===String(pausaEdit)):null;
+  /* Parte da que existia: campo de versão mais nova continua nela. */
+  const p=Object.assign({},antigo||{},{id:antigo?antigo.id:uid(),tipo,de,motivo:$("pausaMotivo").value||"",nota:$("pausaNota").value.trim().slice(0,PAUSA_NOTA_MAX)});
+  if(ate)p.ate=ate;else delete p.ate;   // em aberto: sem a chave (o Firestore recusa undefined)
+  delete p.fechadaPor;   // a data agora é da pessoa, não do treino
+  if(antigo&&antigo.motivo&&!PAUSA_MOTIVO_TXT[antigo.motivo]&&p.motivo==="outro")p.motivo=antigo.motivo;   // motivo de versão mais nova fica
+  store.pausas=pausas().filter(x=>!antigo||x!==antigo).concat(p);
+  fecharPausa();depoisDePausa();
+}
+async function apagarPausa(id){
+  const p=pausas().find(x=>String(x.id)===String(id));if(!p)return;
+  if(!await appConfirm(`Apagar a pausa ${pausaDeQue(pausaTipo(p))} ${p.ate?`de ${dataCurta(p.de)} a ${dataCurta(p.ate)}`:`desde ${dataCurta(p.de)}`}? Os treinos registrados não mudam.`,{title:"Apagar pausa",okText:"Apagar",cancelText:"Voltar"}))return;
+  store.pausas=pausas().filter(x=>String(x.id)!==String(id));   // pela chave: a nuvem pode ter trocado o store com a pergunta aberta
+  if(String(pausaEdit)===String(id))fecharPausa();
+  depoisDePausa();
+}
+$("pausaNova").onclick=()=>abrirPausa(null);
+$("pausaTipoSeg").querySelectorAll("button").forEach(b=>b.onclick=()=>{pausaTipoEsc=b.dataset.v;pintarPausaTipo();avisoPausa("");});
+["pausaDe","pausaAte"].forEach(id=>{$(id).addEventListener("input",()=>{avisoPausa("");pintarPausaDur();});$(id).addEventListener("change",pintarPausaDur);});
+$("pausaSalvar").onclick=salvarPausa;
+$("pausaVoltei").onclick=()=>{
+  const p=pausas().find(x=>String(x.id)===String(pausaEdit));if(!p)return fecharPausa();
+  const ontem=keyOf(addDays(dateFromKey(todayKey()),-1));
+  if(p.de>ontem)return apagarPausa(p.id);   // zero dias de pausa (a meia-noite passou com o pop-up aberto)
+  p.ate=ontem;delete p.fechadaPor;
+  fecharPausa();depoisDePausa();
+};
+$("pausaApagar").onclick=()=>apagarPausa(pausaEdit);
+$("pausaFechar").onclick=fecharPausa;
+$("pausaOverlay").onclick=e=>{if(e.target===$("pausaOverlay"))fecharPausa();};
+
+/* ---- no Início: a pausa em aberto, e o marcador no feed ---- */
+function pausaIco(){return '<svg viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></svg>';}
+function renderFdPausa(){
+  const el=$("fdPausas");if(!el)return;
+  const abertas=pausas().filter(p=>!p.ate).sort((a,b)=>pausaTipo(a)===pausaTipo(b)?(a.de<b.de?-1:1):(pausaTipo(a)==="forca"?-1:1));
+  el.innerHTML=abertas.map(p=>`<button class="fd-passos fd-pausa-bt" type="button" data-fdpausa="${esc(String(p.id))}">${pausaIco()}<span>Pausa ${pausaDeQue(pausaTipo(p))} · ${pausaDias(p)} ${pausaDias(p)===1?"dia":"dias"}</span><svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>`).join("");
+  el.querySelectorAll("[data-fdpausa]").forEach(b=>b.onclick=()=>abrirPausa(b.dataset.fdpausa));
+}
+function fdPausaHtml(p){
+  const mot=pausaMotivoTxt(p);
+  const t=p.ate?`Pausa ${pausaDeQue(pausaTipo(p))} · ${dataCurta(p.de)} a ${dataCurta(p.ate)} · ${pausaDias(p)} ${pausaDias(p)===1?"dia":"dias"}${mot?" · "+mot.charAt(0).toUpperCase()+mot.slice(1):""}`:`Em pausa ${pausaDeQue(pausaTipo(p))} desde ${dataCurta(p.de)}`;
+  return `<div class="fd-pausa">${pausaIco()}<span>${esc(t)}</span></div>`;
+}
 $("trNext").onclick=async()=>{
   trSaveInputs();
+  if(recordePend&&!await recordePend)return;   // "Mudar a carga" segura o avanço
   if(!await confereCargas())return;
+  if(!await confereRecorde(true))return;
   if(!trS)return;
   if(trS.idx<trS.w.ex.length-1){trS.idx++;renderTr();trPersist();return;}
   // finalizar: duração pelo cronômetro (sem o tempo fora do app); esforço = total − descansos; intensidade pelo RIR
@@ -6103,6 +6501,7 @@ $("trNext").onclick=async()=>{
      exercícios diferentes, e o selo de progressão não pode compará-los. */
   reg.tid=trS.w.id;reg.prot=trS.prot||PROT_PADRAO;reg.protNome=protNomeDe(trS)||trS.protNome||"";
   tToday().push(reg);
+  if(ehForca(reg))fecharPausaAoTreinar("forca",todayKey(),reg.id);   // finalizada sem nenhuma série não é treino
   clearInterval(trInt);stopRest();trS=null;trPersist();tRunOverlay.classList.remove("open");
   audioSession("auto");
   save();renderTreino();render();renderInicio();
@@ -6545,7 +6944,24 @@ $("pfTheme").onclick=()=>{localStorage.setItem("tresults.theme",themeIsDark()?"l
 $("pfReset").onclick=()=>resetData();
 $("pfLogout").onclick=()=>doLogout();
 /* Diálogos internos com a cara do app — nunca usar alert()/confirm() do navegador */
+/* Um diálogo por vez: o segundo pedido espera a vez, em vez de trocar os
+   botões do primeiro e deixar a promessa dele pendurada (a pergunta do
+   recorde abre no "change" do campo, e um toque em "Cancelar treino" logo
+   em seguida pedia outro diálogo por cima). */
+let dlgFila=Promise.resolve(),dlgUlt=null;
 function appDialog(opt){
+  /* Pedido idêntico ao último ainda sem resposta (Enter repetido num campo
+     com nome inválido, o mesmo aviso da nuvem duas vezes) recebe a mesma
+     resposta, em vez de pedir N toques em "Entendi". Antes da fila, o
+     segundo substituía o primeiro na tela. */
+  const k=JSON.stringify([opt.msg,opt.title,opt.okText,opt.cancel,opt.cancelText,opt.danger]);
+  if(dlgUlt&&dlgUlt.k===k&&!dlgUlt.fim)return dlgUlt.vez;
+  const vez=dlgFila.then(()=>abrirDialogo(opt)),ult={k,vez,fim:false};
+  dlgUlt=ult;vez.then(()=>{ult.fim=true;},()=>{ult.fim=true;});
+  dlgFila=vez.catch(()=>{});
+  return vez;
+}
+function abrirDialogo(opt){
   return new Promise(res=>{
     const ov=$("appDlgOverlay"),ok=$("appDlgOk"),cancel=$("appDlgCancel");
     $("appDlgTitle").textContent=opt.title||"";
@@ -6741,7 +7157,7 @@ function goalsParaNuvem(g){
    disso foi gravado por uma versão mais nova do app: fica guardado em
    store._nuvem e volta na próxima gravação, em vez de ser apagado — o
    documento é gravado inteiro, sem merge. Precisa ser JSON simples. */
-const CAMPOS_NUVEM=["getd","days","custom","goals","liquids","protocol","weights","tprotocol","tdays","passos","academias","liqLog","tprotos","getdHist","writer","updatedAt"];
+const CAMPOS_NUVEM=["getd","days","custom","goals","liquids","protocol","weights","tprotocol","tdays","passos","academias","liqLog","tprotos","getdHist","pausas","writer","updatedAt"];
 /* ---- Nada do que foi lançado sem sinal se perde ----
    O documento da nuvem é gravado inteiro. Antes, a abertura trocava o
    aparelho inteiro pela nuvem, e o que tinha sido lançado sem sinal (um
@@ -6804,6 +7220,7 @@ function paraNuvem(s){
   if(s.liqLog&&typeof s.liqLog==="object")d.liqLog=s.liqLog;
   if(Array.isArray(s.tprotos))d.tprotos=s.tprotos;
   if(Array.isArray(s.getdHist))d.getdHist=s.getdHist;
+  if(Array.isArray(s.pausas))d.pausas=s.pausas;
   return d;
 }
 
@@ -6936,6 +7353,7 @@ function mesclar(B,L,R){
   campo("academias",lista(porId));
   campo("tprotos",lista(porId));
   campo("getdHist",lista(x=>"d:"+(x&&x.desde)));
+  campo("pausas",lista(porId));
   /* O objetivo junta chave por chave, menos o peso, que anda em pares:
      o peso de partida (pesoAtual + pesoDesde) e o peso da conta (pesoConta
      + "Manter"). Cada par vem inteiro do lado que o mudou (os dois mudaram:
@@ -7045,6 +7463,10 @@ function aplicarNuvem(data,manterDia){
   /* O GETD de cada dia: ausente é aparelho com versão anterior, não lista vazia. */
   const getdHist=Array.isArray(data.getdHist)?data.getdHist:(local?local.getdHist:undefined);
   if(getdHist)store.getdHist=getdHist;
+  /* O diário de pausas: ausente é versão anterior, e só o dono do aparelho
+     fica com o daqui. */
+  const pausasNuvem=Array.isArray(data.pausas)?data.pausas:(local?local.pausas:undefined);
+  if(pausasNuvem)store.pausas=pausasNuvem;
   if(Object.keys(extra).length)store._nuvem=extra;
   if(meu)Object.assign(store.goals,meu);
   if(!manterDia){viewKey=todayKey();realToday=todayKey();}
@@ -7052,6 +7474,7 @@ function aplicarNuvem(data,manterDia){
   pintarGetdInput();
   render();
   renderTreino();   // academias e protocolos vindos de outro aparelho
+  renderInicio();   // pausa aberta ou fechada em outro aparelho
   equipRevisar();   // pop-up de aparelhos aberto: redesenha, ou fecha se a academia sumiu
   if(tprotoOverlay.classList.contains("open")){
     const p=protPorId(tpProtAtual);
