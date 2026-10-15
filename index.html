@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v47";
+window.APP_RELEASE = "tresults-v48";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -3917,7 +3917,7 @@ function maybeTIntro(){
   $("tIntroOverlay").classList.add("open");
 }
 $("tIntroSug").onclick=()=>{$("tIntroOverlay").classList.remove("open");openTSug(sugDestinoPadrao());};
-$("tIntroProto").onclick=()=>{$("tIntroOverlay").classList.remove("open");openTProtocol(protAberto());};
+$("tIntroProto").onclick=()=>{$("tIntroOverlay").classList.remove("open");openTProtocol(protAbertoAqui());};
 $("tIntroOverlay").onclick=e=>{if(e.target===$("tIntroOverlay"))$("tIntroOverlay").classList.remove("open");};
 /* ---- Substitutos por grupo muscular ----
    Servem à troca de exercício DURANTE o treino: aparelho ocupado, fila grande,
@@ -3967,7 +3967,7 @@ const T_SUG=[
    um protocolo novo, com o nome dela. Antes, as sugestões se empilhavam todas
    num protocolo só. */
 let tSugDestino=null;
-function sugDestinoPadrao(){const a=protAberto();return treinosDoProt(a).length?null:a;}
+function sugDestinoPadrao(){const a=protAbertoAqui();return treinosDoProt(a).length?null:a;}
 function openTSug(destino){
   tSugDestino=(destino&&protPorId(destino))?destino:null;
   const obj=(store.goals||{}).objetivo||"cutting",cutting=obj!=="bulking";
@@ -4070,6 +4070,8 @@ function mesmaAcad(a,b){return !a||!b||a===b;}
 function mesmoTreino(a,b){
   if(a.tid&&b.tid){
     if(a.tid===b.tid)return true;
+    /* A cópia feita para outra academia é o mesmo treino do original. */
+    if(raizTreino(a.tid)===raizTreino(b.tid))return true;
     /* Dois treinos que existem são dois treinos, mesmo com o mesmo nome no
        mesmo protocolo. O nome só decide quando um deles foi excluído (e
        recriado), ou quando a sessão é de antes do `tid`. */
@@ -4078,11 +4080,18 @@ function mesmoTreino(a,b){
   }
   return a.name===b.name&&(a.prot||PROT_PADRAO)===(b.prot||PROT_PADRAO);
 }
+/** De que treino este veio: a cópia para outra academia guarda a raiz em
+    `origem`. Treino que não existe mais, ou que não é cópia, é a própria
+    raiz. function, e não const: é usada antes desta linha no módulo. */
+function raizTreino(id){const w=(store.tprotocol||[]).find(x=>x.id===id);return (w&&w.origem)||id;}
 /** As sessões antigas de um treino (sem `tid`) passam a apontar para ele.
     Elas só o reconhecem pelo nome e pelo protocolo: renomear ou mover o
     treino quebraria a ligação, e o histórico dele pareceria de outro. */
 function carimbarTid(w){
-  const tds=store.tdays||{},pr=protDoTreino(w);
+  const tds=store.tdays||{},pr=protDoTreino(w),rz=raizTreino(w.id);
+  /* Outro treino de mesmo nome no mesmo protocolo, sem parentesco com este:
+     não dá para saber de quem é a sessão antiga, e ela fica como está. */
+  if((store.tprotocol||[]).some(x=>x.id!==w.id&&x.nome===w.nome&&protDoTreino(x)===pr&&raizTreino(x.id)!==rz))return;
   Object.keys(tds).forEach(dk=>(tds[dk]||[]).forEach(r=>{
     if(!r.tid&&r.ex&&r.ex.length&&r.name===w.nome&&(r.prot||PROT_PADRAO)===pr)r.tid=w.id;
   }));
@@ -4122,12 +4131,15 @@ function renderAcadBar(){
   $("acadMais").onclick=()=>abrirAcademias(true);
   const corpo=$("acadCorpo");
   if(corpo&&area){
+    /* O botão do estado vazio, que renderProtLista ainda não trocou, sai
+       antes: com dois #acadCopiar na página, o clique ia para o que some. */
+    area.querySelectorAll(".acad-copiar").forEach(b=>b.remove());
     corpo.appendChild(area);
     /* Academia sem protocolo nenhum: o botão sai em renderProtLista, logo
        embaixo da explicação. */
     if(protsDaAcad(sel).length&&copiaFontes(sel).length){
       corpo.insertAdjacentHTML("beforeend",btCopiar());
-      $("acadCopiar").onclick=()=>abrirCopia(sel);
+      corpo.lastElementChild.onclick=()=>abrirCopia(sel);
     }
   }
 }
@@ -4179,20 +4191,26 @@ async function copiarProtocolo(f){
   const rep=[...new Set(f.ws.map(w=>w.nome).filter(nm=>ja.includes(nm)))];
   const aviso=rep.length?` A ${d.nome} já tem ${rep.map(nm=>"“"+nm+"”").join(", ")} neste protocolo; a cópia fica ao lado.`:"";
   if(!await appConfirm(`Copiar ${n===1?"o treino":"os "+n+" treinos"} de “${f.prot.nome}” da ${f.acad.nome} para a ${d.nome}? A cópia é independente: mudar um não muda o outro. A carga de referência na ${d.nome} vem só do que você levantou lá.${aviso}`,{title:"Copiar protocolo",okText:"Copiar",cancelText:"Voltar",danger:false}))return;
-  const todas=academias().map(a=>a.id),tds=store.tdays||{};
+  const todas=academias().map(a=>a.id);
   /* Pelo id: com a pergunta aberta, a nuvem pode ter trocado o store. */
   f.ws.map(w=>(store.tprotocol||[]).find(x=>x.id===w.id)).filter(Boolean).forEach(w=>{
+    /* As sessões antigas, sem `tid`, passam a ser do original ANTES de
+       nascer a cópia, que tem o mesmo nome no mesmo protocolo: depois,
+       renomear um dos dois levaria para ele as do outro (carimbarTid). */
+    carimbarTid(w);
     const c=JSON.parse(JSON.stringify(w));
     c.id=uid();c.acads=[d.id];
+    /* A cópia sabe de onde veio (a raiz, não o pai: cópia de cópia aponta
+       para o mesmo). É o MESMO treino para o histórico (mesmoTreino), e as
+       academias continuam separadas por mesmaAcad: o já feito aqui segue
+       comparável, o de antes das academias também, e o da outra academia
+       dá "academia nova". O histórico não é reescrito. */
+    c.origem=w.origem||w.id;
     /* O original sai desta academia (ela passa a ter o seu) e fica nas
-       outras: o que valia em todas vira "todas menos esta". O que já foi
-       feito dele AQUI passa a ser da cópia, que é o treino desta academia
-       agora: sem isso, o selo da primeira sessão da cópia diria "primeira
-       vez deste treino" para um treino já feito aqui. */
+       outras: o que valia em todas vira "todas menos esta". */
     if(treinoNaAcad(w,d.id)){
       const resto=(acadsDoTreino(w).length?acadsDoTreino(w):todas).filter(id=>id!==d.id);
       if(resto.length)w.acads=resto;
-      Object.keys(tds).forEach(dk=>(tds[dk]||[]).forEach(r=>{if(r.tid===w.id&&r.acad===d.id)r.tid=c.id;}));
     }
     store.tprotocol.push(c);
   });
@@ -4402,6 +4420,14 @@ function protAberto(){
   }
   return lista[0].id;
 }
+/** O protocolo que aparece aberto na academia aberta: o lembrado, se ele
+    desce aqui; senão, o primeiro que desce. Sugestões, "Montar" e a tela
+    usam este, para não discordarem do que a pessoa vê. Sem nenhum aqui, o
+    lembrado. */
+function protAbertoAqui(){
+  const pa=protAberto(),lista=protsDaAcad(acadSel());
+  return (!lista.length||lista.some(p=>p.id===pa))?pa:lista[0].id;
+}
 function setProtAberto(id){try{if(id)localStorage.setItem(PROT_KEY,id);else localStorage.removeItem(PROT_KEY);}catch(e){}}
 /** Nome livre a partir de outro: "Divisão A/B/C", "Divisão A/B/C 2"… */
 function protNomeLivre(base){
@@ -4421,11 +4447,11 @@ function renderProtLista(){
        e não no fim do bloco (renderAcadBar não o repete). */
     const a=acadPorId(sel),cp=copiaFontes(sel).length>0;
     el.innerHTML=`<div class="proto-empty">Nenhum treino na <b>${esc(a?a.nome:"")}</b> ainda. ${cp?"Copie o protocolo de outra academia ou monte um para os aparelhos daqui.":"Monte um para os aparelhos daqui."}</div>${cp?btCopiar():""}<button class="btn secondary prot-editar" id="tOpenProtocol">＋ Montar treino</button>`;
-    if(cp)$("acadCopiar").onclick=()=>abrirCopia(sel);
-    $("tOpenProtocol").onclick=()=>openTProtocol(protAberto());
+    if(cp)el.querySelector(".acad-copiar").onclick=()=>abrirCopia(sel);
+    $("tOpenProtocol").onclick=()=>openTProtocol(protAbertoAqui());
     return;
   }
-  const pa=protAberto(),aberto=lista.some(p=>p.id===pa)?pa:lista[0].id,varios=lista.length>1;
+  const aberto=protAbertoAqui(),varios=lista.length>1;
   el.innerHTML=`<div class="acad-topo"><span class="lbl">${comAcad?"Protocolos desta academia":"Seus protocolos"}</span></div>`+lista.map(p=>{
     const ws=treinosDoProt(p.id),vis=ws.filter(w=>treinoNaAcad(w,sel)),ab=p.id===aberto;
     const n=vis.length?vis.length+(vis.length===1?" treino":" treinos"):"nenhum treino";
@@ -4930,7 +4956,7 @@ const tprotoOverlay=$("tprotoOverlay"),tpEditOverlay=$("tpEditOverlay");
 let tpEditing=null,tpEditId=null;
 let tpProtAtual=PROT_PADRAO,tpProtNomeIni="";   // o protocolo aberto no pop-up, e o nome que o título mostrava ao abrir
 function openTProtocol(id){
-  tpProtAtual=(id&&protPorId(id))?id:protAberto();
+  tpProtAtual=(id&&protPorId(id))?id:protAbertoAqui();
   $("tpProtNome").value=tpProtNomeIni=protPorId(tpProtAtual).nome;
   renderTpList();tprotoOverlay.classList.add("open");
 }
@@ -6274,19 +6300,33 @@ function evoData(acad){
   });
   return map;
 }
+/** Academias que só existem no histórico (excluídas), com carga gravada:
+    o histórico delas continua no gráfico. Excluir a academia promete que
+    nada se perde, e sem isto os meses dela sumiam de todas as opções. */
+function acadsExcluidas(){
+  const m=new Map(),tds=store.tdays||{};
+  Object.keys(tds).sort().forEach(dk=>(tds[dk]||[]).forEach(r=>{
+    if(!r.acad||acadPorId(r.acad))return;
+    if((r.ex||[]).some(x=>(x.sets||[]).some(st=>(st.kg||0)>0&&(st.rep||0)>0)))m.set(r.acad,r.acadNome||"Academia excluída");
+  }));
+  return [...m].map(([id,nome])=>({id,nome}));
+}
 function renderEvo(){
   const sel=$("evoSel"),el=$("evoChart");if(!sel||!el)return;
-  const lista=academias(),selA=$("evoAcad");
-  const ac=lista.length?(evoAcadEsc&&acadPorId(evoAcadEsc)?evoAcadEsc:acadSel()):"";
+  const lista=academias(),selA=$("evoAcad"),velhas=lista.length?acadsExcluidas():[];
+  const existe=id=>!!id&&(!!acadPorId(id)||velhas.some(a=>a.id===id));
+  const ac=lista.length?(existe(evoAcadEsc)?evoAcadEsc:acadSel()):"";
+  const nomeAc=(acadPorId(ac)||velhas.find(a=>a.id===ac)||{}).nome||"";
   if(selA){
     selA.hidden=!lista.length;
-    selA.innerHTML=lista.map(a=>`<option value="${esc(a.id)}"${a.id===ac?" selected":""}>${esc(a.nome)}</option>`).join("");
+    selA.innerHTML=lista.map(a=>`<option value="${esc(a.id)}"${a.id===ac?" selected":""}>${esc(a.nome)}</option>`).join("")
+      +velhas.map(a=>`<option value="${esc(a.id)}"${a.id===ac?" selected":""}>${esc(a.nome)} (excluída)</option>`).join("");
   }
   const map=evoData(ac),keys=Object.keys(map).sort((a,b)=>map[a].name.localeCompare(map[b].name));
   if(!keys.length){
     sel.innerHTML='<option>—</option>';sel.disabled=true;
     el.innerHTML=ac&&Object.keys(evoData()).length
-      ?`<div class="ins-empty">Nenhum treino com carga na <b>${esc(acadPorId(ac).nome)}</b> ainda. A evolução de cada academia é só dela: a carga de um aparelho não se compara com a de outro.</div>`
+      ?`<div class="ins-empty">Nenhum treino com carga na <b>${esc(nomeAc)}</b> ainda. A evolução de cada academia é só dela: a carga de um aparelho não se compara com a de outro.</div>`
       :'<div class="ins-empty">Finalize treinos registrando <b>carga e reps</b> nas séries para acompanhar sua progressão aqui. A cada treino concluído, o app calcula seu 1RM estimado por exercício.</div>';
     return;
   }

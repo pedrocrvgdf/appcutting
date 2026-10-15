@@ -705,7 +705,7 @@ Chaves usadas no armazenamento local, úteis para montar cenários:
 | `cutting.base` | `{uid, doc}`: a nuvem como este aparelho a viu por último, para a mescla |
 | `tresults.run` | Treino em andamento (some ao finalizar) |
 | `tresults.theme` | `light` / `dark` |
-| `tresults.acad` | Academia escolhida neste aparelho (vazio = Todas) |
+| `tresults.acad` | Academia aberta neste aparelho (vazia ou excluída = a do último treino, senão a primeira) |
 | `tresults.prot` | Protocolo aberto na aba Treino neste aparelho |
 
 ---
@@ -800,18 +800,44 @@ treinos (aqui) e tem um **inventário de aparelhos** (seção própria, abaixo).
 - **O gráfico "Evolução de carga" (fim da aba Treino) é da academia aberta** (`evoData(acad)`),
   com seletor (`#evoAcad`) para ver outra; a escolha dele volta para a
   aberta quando a pessoa troca de academia (`evoAcadEsc`). Sem academia
-  cadastrada, o gráfico é o de sempre, sem seletor.
+  cadastrada, o gráfico é o de sempre, sem seletor. **Academia excluída com
+  carga no histórico continua no seletor**, como "X (excluída)"
+  (`acadsExcluidas`): excluir promete que nada se perde, e sem isso os meses
+  dela sumiam de todas as opções.
 - **Copiar protocolo de outra academia** (`#acadCopiar` → `#copiaOverlay`,
   `copiaFontes`, `copiarProtocolo`): a cópia é **independente** (decisão do
   dono): treinos novos, só desta academia, com os mesmos exercícios, séries
   e descanso, no mesmo protocolo. Mudar um não muda o outro. O original que
   valia aqui **sai daqui** (o que valia em todas vira "todas menos esta"),
-  senão a academia mostraria os dois; e **o que já foi feito dele aqui
-  passa para a cópia** (`tid`), senão o selo da primeira sessão dela diria
-  "primeira vez deste treino". Por isso a pergunta **não** promete "carga do
-  zero" (seria falso para quem já treinou aqui): diz que a referência vem só
-  do que foi levantado nesta academia. Treino de mesmo nome que só esta
-  academia tem é avisado ("a cópia fica ao lado"), sem bloquear.
+  senão a academia mostraria os dois.
+  - **Para o histórico, cópia e original são o mesmo treino**: a cópia
+    guarda a raiz em `origem` (cópia de cópia aponta para a mesma), e
+    `mesmoTreino` compara as raízes (`raizTreino`). Quem separa as
+    academias continua sendo `mesmaAcad`. Assim a primeira sessão da cópia
+    diz "academia nova" (o original só foi feito na outra), compara com o
+    histórico de antes das academias (que vale em todas, como a referência
+    da tela do treino), e compara com o que já foi feito do original aqui.
+    **O histórico não é reescrito**: a primeira versão trocava o `tid` das
+    sessões, e o selo do passado mudava sem a pessoa ter treinado nada.
+  - **As sessões antigas, sem `tid`, são carimbadas no original antes de a
+    cópia nascer** (`carimbarTid(w)`): depois, com dois treinos de mesmo
+    nome no mesmo protocolo, renomear um deles levava para ele as sessões
+    do outro, de qualquer academia. E `carimbarTid` não carimba quando há
+    outro treino de mesmo nome no mesmo protocolo **sem parentesco** (outra
+    raiz): não dá para saber de quem é a sessão.
+  - A pergunta **não** promete "carga do zero" (seria falso para quem já
+    treinou aqui): diz que a referência vem só do que foi levantado nesta
+    academia. Treino de mesmo nome que só esta academia tem é avisado ("a
+    cópia fica ao lado"), sem bloquear.
+  - O botão "Copiar" do estado vazio mora dentro de `#protLista`, e
+    `renderAcadBar` o tira antes de pôr o do fim do bloco: com dois
+    `#acadCopiar` na página, o clique ia para o que some, e o botão que
+    ficava na tela não fazia nada.
+- **O protocolo aberto é o que aparece aberto na academia**
+  (`protAbertoAqui`): o lembrado, se ele desce aqui; senão, o primeiro que
+  desce. Sugestões, "Montar" e a tela usam este. Com o lembrado de outra
+  academia, a sugestão criava um protocolo novo ao lado do vazio que estava
+  aberto na tela.
 - **Recadastrar uma academia excluída devolve a mesma** (`idOrfao`): o id é
   reaproveitado do histórico pelo nome. Com id novo, o histórico dela
   viraria "outra academia" para sempre.
@@ -865,7 +891,8 @@ dá lugar ao primeiro que tem.
   diferentes seria comparado como se fosse um. **Dois `tid` diferentes de
   treinos que ainda existem nunca são o mesmo treino**, mesmo com o mesmo
   nome; o nome só decide quando um lado não tem `tid` ou o treino foi
-  excluído. Sessão de antes conta como do principal.
+  excluído. A exceção é a cópia para outra academia: mesma raiz (`origem`),
+  mesmo treino (veja "Academias"). Sessão de antes conta como do principal.
 - **Renomear ou mover um treino carimba o `tid` nas sessões antigas dele**
   (`carimbarTid`): elas só o reconheciam pelo nome e pelo protocolo, e o
   selo passava a dizer "primeira vez deste treino" — contra a frase do
