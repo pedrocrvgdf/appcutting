@@ -812,7 +812,11 @@ treinos (aqui) e tem um **inventário de aparelhos** (seção própria, abaixo).
   senão a academia mostraria os dois.
   - **Para o histórico, cópia e original são o mesmo treino**: a cópia
     guarda a raiz em `origem` (cópia de cópia aponta para a mesma), e
-    `mesmoTreino` compara as raízes (`raizTreino`). Quem separa as
+    `mesmoTreino` compara as raízes (`raizTreino`), **desde que os dois
+    não convivam** (`convivem`): duas cópias na mesma academia, ou o
+    original marcado de novo nela, são dois treinos, como quaisquer dois
+    que existem — senão a cópia editada para outros exercícios comparava
+    o histórico com o da irmã ("-60% de carga" inventado). Quem separa as
     academias continua sendo `mesmaAcad`. Assim a primeira sessão da cópia
     diz "academia nova" (o original só foi feito na outra), compara com o
     histórico de antes das academias (que vale em todas, como a referência

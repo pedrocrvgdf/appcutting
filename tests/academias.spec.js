@@ -910,6 +910,29 @@ test.describe('Academias', () => {
     expect(await seloHoje(page)).toBe('+10% de carga');
   });
 
+  test('duas cópias do mesmo treino na mesma academia são dois treinos: a editada não compara com a irmã', async ({ page }) => {
+    /* As duas nasceram do mesmo original (mesma raiz), mas convivem no
+       prédio. A segunda foi editada para outros exercícios: comparar com a
+       primeira daria "-60% de carga", um número inventado. Com o original,
+       que só vive na Smart Fit, a ligação continua: "academia nova". */
+    await abrirApp(page, estado({
+      sel: 'a2',
+      tprotocol: [
+        treino('w1', 'Treino A', ['a1']),
+        { ...treino('c1', 'Treino A', ['a2']), origem: 'w1' },
+        { ...treino('c2', 'Treino A leve', ['a2']), origem: 'w1' },
+      ],
+      tdays: {
+        [diaISO(5)]: [sessao('s0', 'Treino A', 80, { tid: 'w1', acad: 'a1', acadNome: A1.nome })],
+        [diaISO(3)]: [sessao('s1', 'Treino A', 50, { tid: 'c1', acad: 'a2', acadNome: A2.nome })],
+        [diaISO(1)]: [sessao('s2', 'Treino A leve', 20, { tid: 'c2', acad: 'a2', acadNome: A2.nome })],
+      },
+    }));
+    const selos = await page.evaluate(() => [...document.querySelectorAll('#fdFeed .fd-card')].map(c => c.querySelector('.fd-prog')?.textContent.trim()));
+    expect(selos).toEqual(['academia nova', 'academia nova', 'primeira vez deste treino']);
+    expect(await page.evaluate(() => [__t.mesmoTreino({ tid: 'c1' }, { tid: 'c2' }), __t.mesmoTreino({ tid: 'c1' }, { tid: 'w1' })])).toEqual([false, true]);
+  });
+
   test('renomear um treino não carimba sessões antigas quando outro, sem parentesco, tem o mesmo nome', async ({ page }) => {
     await abrirApp(page, estado({
       sel: 'a1', tprotocol: [treino('w1', 'Treino A', ['a1']), treino('w2', 'Treino A', ['a2'])],

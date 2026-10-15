@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v48";
+window.APP_RELEASE = "tresults-v49";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -4070,8 +4070,10 @@ function mesmaAcad(a,b){return !a||!b||a===b;}
 function mesmoTreino(a,b){
   if(a.tid&&b.tid){
     if(a.tid===b.tid)return true;
-    /* A cópia feita para outra academia é o mesmo treino do original. */
-    if(raizTreino(a.tid)===raizTreino(b.tid))return true;
+    /* A cópia feita para outra academia é o mesmo treino do original —
+       enquanto os dois não convivem: lado a lado na mesma lista, são dois
+       treinos, como quaisquer outros dois que existem. */
+    if(raizTreino(a.tid)===raizTreino(b.tid)&&!convivem(a.tid,b.tid))return true;
     /* Dois treinos que existem são dois treinos, mesmo com o mesmo nome no
        mesmo protocolo. O nome só decide quando um deles foi excluído (e
        recriado), ou quando a sessão é de antes do `tid`. */
@@ -4084,6 +4086,17 @@ function mesmoTreino(a,b){
     `origem`. Treino que não existe mais, ou que não é cópia, é a própria
     raiz. function, e não const: é usada antes desta linha no módulo. */
 function raizTreino(id){const w=(store.tprotocol||[]).find(x=>x.id===id);return (w&&w.origem)||id;}
+/** Os dois treinos existem e aparecem juntos em alguma academia (ou, sem
+    academia cadastrada, na mesma lista)? Duas cópias na mesma academia, ou
+    o original marcado de novo nela, são dois treinos: a cópia editada para
+    outros exercícios não pode ter o histórico misturado com o da irmã. */
+function convivem(ida,idb){
+  const ws=store.tprotocol||[],wa=ws.find(x=>x.id===ida),wb=ws.find(x=>x.id===idb);
+  if(!wa||!wb)return false;   // um deles foi excluído: a raiz ainda liga
+  const ac=academias();
+  if(!ac.length)return true;
+  return ac.some(a=>treinoNaAcad(wa,a.id)&&treinoNaAcad(wb,a.id));
+}
 /** As sessões antigas de um treino (sem `tid`) passam a apontar para ele.
     Elas só o reconhecem pelo nome e pelo protocolo: renomear ou mover o
     treino quebraria a ligação, e o histórico dele pareceria de outro. */
