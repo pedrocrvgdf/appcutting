@@ -144,11 +144,11 @@ test.describe('Inventário', () => {
     expect(await page.textContent('#equipConta')).toMatch(/Tem todos os/);
   });
 
-  test('o cartão avisa os exercícios sem aparelho na academia escolhida; com "Todas", não', async ({ page }) => {
+  test('o cartão avisa os exercícios sem aparelho na academia aberta; na que tem tudo, não', async ({ page }) => {
     await abrirApp(page, estado({ faltam: ['leg_press', 'extensora'] }));
     await irTreino(page);
     expect(await page.textContent('#tprotoCards .pcfalta')).toBe('Sem aparelho aqui para: Leg press, Cadeira extensora');
-    await page.evaluate(() => document.querySelector('#acadBar [data-acad=""]').click());
+    await page.evaluate(() => document.querySelector('#acadBar [data-acad="a2"]').click());
     await page.waitForTimeout(150);
     expect(await page.evaluate(() => document.querySelectorAll('#tprotoCards .pcfalta').length)).toBe(0);
   });
@@ -265,17 +265,11 @@ test.describe('Inventário', () => {
   });
 
   test('sessão sem academia não usa inventário; o aviso segue a academia da sessão restaurada', async ({ page, context }) => {
-    await abrirApp(page, estado({ faltam: ['leg_press'], sel: '' }));
+    /* Com academia cadastrada, todo treino começa dentro de uma (não há mais
+       "Todas"). Sessão sem academia é a restaurada de antes disso. */
+    await abrirApp(page, estado({ faltam: ['leg_press'] }));
+    expect(await page.evaluate(() => __t.equipFalta('Leg press', '')), 'sem academia, não se sabe onde é').toBeNull();
     await irTreino(page);
-    await iniciar(page);
-    expect(await aviso(page), 'com "Todas" e treino de todas as academias, não se sabe onde é').toBe('');
-    await page.evaluate(() => document.getElementById('trQuit').click());
-    await page.waitForSelector('#appDlgOverlay.open');
-    await page.evaluate(() => document.getElementById('appDlgOk').click());
-    await page.waitForTimeout(150);
-
-    await page.evaluate(() => localStorage.setItem('tresults.acad', 'a1'));
-    await page.evaluate(() => document.querySelector('#acadBar [data-acad="a1"]').click());
     await iniciar(page);
     await page.waitForTimeout(500);
     const storage = await page.evaluate(() => {

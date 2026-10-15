@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v46";
+window.APP_RELEASE = "tresults-v47";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -720,6 +720,24 @@ window.APP_RELEASE = "tresults-v46";
   .acad-editar{font-size:12.5px;font-weight:700;color:var(--primary);padding:4px 2px}
   .acad-chips button{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .acad-chips .acad-mais{min-width:40px;color:var(--primary);font-size:15px;line-height:1}
+  /* Cada academia é um bloco que abre os protocolos dela (um aberto por vez). */
+  .acad-blocos{display:flex;flex-direction:column;gap:10px}
+  .acad-bloco{border-radius:20px;box-shadow:inset 0 0 0 1px var(--line);background:var(--surface)}
+  .acad-bloco.aberto{box-shadow:inset 0 0 0 1.5px var(--primary)}
+  .acad-cab{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:14px 15px;min-height:54px}
+  button.acad-cab:active{transform:scale(.985)}
+  .acad-cab .acad-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .acad-cab .acad-nome{font-size:16px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .acad-cab .acad-n{font-size:11.5px;font-weight:700;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .acad-cab .chev{width:16px;height:16px;flex:none;stroke:var(--ink);fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;opacity:.45;transition:transform .2s}
+  .acad-bloco.aberto .acad-cab .chev{transform:rotate(90deg);opacity:.7}
+  .acad-corpo{padding:0 10px 12px}
+  .acad-corpo .prot-bloco.aberto{background:var(--bg)}
+  .acad-copiar{display:block;width:100%;margin-top:10px;font-size:12.5px;font-weight:700;color:var(--primary);padding:11px 13px;border:1px dashed var(--line);border-radius:16px;text-align:left;line-height:1.4}
+  .acad-copiar:active{transform:scale(.97)}
+  .acad-nova-bt{width:100%;font-size:12.5px;font-weight:700;color:var(--primary);padding:11px 13px;border:1px dashed var(--line);border-radius:16px;text-align:center}
+  .acad-nova-bt:active{transform:scale(.97)}
+  .copia-row .m{overflow-wrap:anywhere}
   .acad-primeira{width:100%;text-align:left;font-size:12.5px;font-weight:700;color:var(--primary);padding:11px 13px;border:1px dashed var(--line);border-radius:16px;line-height:1.4}
   .acad-primeira:active{transform:scale(.97)}
   .acad-row .in{flex:1;min-width:0}
@@ -1782,10 +1800,13 @@ window.APP_RELEASE = "tresults-v46";
       </div>
       <div id="tTabProto">
         <div class="acad-bar" id="acadBar"></div>
-        <!-- os protocolos, um aberto por vez; #tprotoCards e #tOpenProtocol nascem dentro do aberto -->
-        <div class="prot-lista" id="protLista"></div>
-        <button class="btn secondary" id="protNovo" style="margin-top:10px">＋ Novo protocolo</button>
-        <button class="btn secondary" id="tSugBtn" style="margin-top:8px">✨ Ver sugestões de treino</button>
+        <!-- os protocolos, um aberto por vez; #tprotoCards e #tOpenProtocol nascem dentro do aberto.
+             Com academia cadastrada, #protArea inteira mora DENTRO da academia aberta (renderAcadBar a move). -->
+        <div id="protArea">
+          <div class="prot-lista" id="protLista"></div>
+          <button class="btn secondary" id="protNovo" style="margin-top:10px">＋ Novo protocolo</button>
+          <button class="btn secondary" id="tSugBtn" style="margin-top:8px">✨ Ver sugestões de treino</button>
+        </div>
       </div>
       <div id="tTabAvulso" style="display:none">
         <div class="field"><label class="lbl" for="taAct">Atividade</label>
@@ -1826,6 +1847,8 @@ window.APP_RELEASE = "tresults-v46";
       <div class="chart-head" style="display:flex;align-items:center;justify-content:space-between">Exercício
         <span class="wt-tabs" id="evoTabs"><button data-v="30" class="on">30d</button><button data-v="90">90d</button><button data-v="all">Tudo</button></span>
       </div>
+      <!-- com academia cadastrada, o gráfico é de uma academia: a carga de um aparelho não se compara com a de outro -->
+      <select class="in" id="evoAcad" aria-label="Academia" hidden style="margin-bottom:8px"></select>
       <select class="in" id="evoSel"></select>
       <div id="evoChart" style="margin-top:14px"></div>
     </div>
@@ -2049,6 +2072,16 @@ window.APP_RELEASE = "tresults-v46";
     <div class="field"><label class="lbl" for="protNovoNome">Nome do protocolo</label><input class="in" id="protNovoNome" type="text" maxlength="40" placeholder="Ex.: Hipertrofia, Viagem, Em casa" autocomplete="off" enterkeyhint="done"></div>
     <button class="btn" id="protNovoOk" style="margin-top:12px">Criar protocolo</button>
     <button class="btn secondary" id="protNovoVoltar">Voltar</button>
+  </div>
+</div>
+
+<!-- COPIAR PROTOCOLO DE OUTRA ACADEMIA: a cópia é independente. -->
+<div class="overlay" id="copiaOverlay" style="z-index:100">
+  <div class="modal" style="max-width:440px">
+    <h3 style="margin-bottom:4px">Copiar de outra academia</h3>
+    <p class="gw-sub" id="copiaSub"></p>
+    <div id="copiaLista"></div>
+    <button class="btn secondary" id="copiaVoltar" style="margin-top:12px">Voltar</button>
   </div>
 </div>
 
@@ -3331,7 +3364,7 @@ function fdRotuloDia(k){
 }
 
 function fdSelo(pr,soEmOutra){
-  if(!pr)return `<span class="fd-prog primeira"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>${soEmOutra?"primeira vez nesta academia":"primeira vez deste treino"}</span>`;
+  if(!pr)return `<span class="fd-prog primeira"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>${soEmOutra?"academia nova":"primeira vez deste treino"}</span>`;
   if(pr.pct===null)return '<span class="fd-prog igual"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg>medido de outro jeito da última vez</span>';
   const pct=Math.round(pr.pct);
   const de=pr.tipo==="reps"?"de reps":pr.tipo==="tempo"?"de tempo":"de carga";
@@ -4002,26 +4035,33 @@ const ACAD_KEY="tresults.acad";
 const ACAD_NOME_MAX=40;
 function academias(){return store.academias||[];}
 function acadPorId(id){return id?academias().find(a=>a.id===id)||null:null;}
-/** A academia escolhida, ou "" para todas. Uma que sumiu (excluída aqui ou
-    em outro aparelho) volta para todas, em vez de esconder o protocolo. */
-function acadSel(){let id="";try{id=localStorage.getItem(ACAD_KEY)||"";}catch(e){}return acadPorId(id)?id:"";}
+/** A academia aberta na aba Treino, que é onde o treino é registrado. Com
+    academia cadastrada sempre há uma aberta: não existe mais "Todas", porque
+    a carga de um aparelho só vale naquele aparelho. Sem escolha guardada, ou
+    com a escolhida excluída (aqui ou em outro aparelho), vale a do último
+    treino feito; senão, a primeira. Sem academia cadastrada: "". */
+function acadSel(){
+  let id="";try{id=localStorage.getItem(ACAD_KEY)||"";}catch(e){}
+  return acadPorId(id)?id:acadPadrao();
+}
+function acadPadrao(){
+  const lista=academias();if(!lista.length)return "";
+  for(const it of fdTodas()){const a=it.w&&it.w.acad;if(a&&acadPorId(a))return a;}
+  return lista[0].id;
+}
 function setAcadSel(id){try{if(id)localStorage.setItem(ACAD_KEY,id);else localStorage.removeItem(ACAD_KEY);}catch(e){}}
 /** As academias do treino que ainda existem. */
 function acadsDoTreino(w){return ((w&&w.acads)||[]).filter(id=>acadPorId(id));}
 /** O treino aparece nesta academia? Sem academia marcada, aparece em todas. */
 function treinoNaAcad(w,id){const a=acadsDoTreino(w);return !id||!a.length||a.includes(id);}
-/** Onde a sessão está sendo feita: a academia escolhida; com "Todas", a única
-    academia do treino, se ele tiver uma só. Sem isso, não se sabe — e não se
-    inventa. */
-function acadDaSessao(w){
-  const sel=acadSel();if(sel)return sel;
-  const a=acadsDoTreino(w);return a.length===1?a[0]:"";
-}
+/** Onde a sessão está sendo feita: a academia aberta, onde a pessoa tocou em
+    "Iniciar". Sem academia cadastrada, nenhuma. */
+function acadDaSessao(){return acadSel();}
 /** Nome da academia de um registro: o atual, se ela ainda existe (pode ter
     sido renomeada); senão, o guardado na hora. */
 function acadNomeDe(reg){const a=acadPorId(reg&&reg.acad);return a?a.nome:((reg&&reg.acadNome)||"");}
 /** Duas sessões são comparáveis? Registro sem academia (de antes de ela
-    existir, ou feito em "Todas") casa com qualquer uma: senão, ao cadastrar a
+    existir, ou feito em "Todas", que já existiu) casa com qualquer uma: senão, ao cadastrar a
     primeira academia, o histórico inteiro deixaria de servir de referência. */
 function mesmaAcad(a,b){return !a||!b||a===b;}
 /** É o mesmo treino? Mesmo `tid` (sobrevive a renomear o treino), ou mesmo nome
@@ -4048,20 +4088,121 @@ function carimbarTid(w){
   }));
 }
 
+/** Treinos e protocolos de uma academia, para a linha de baixo do nome. */
+function acadResumo(id){
+  const ws=(store.tprotocol||[]).filter(w=>treinoNaAcad(w,id));
+  if(!ws.length)return "nenhum treino ainda";
+  const np=new Set(ws.map(protDoTreino)).size;
+  return (np>1?np+" protocolos · ":"")+ws.length+(ws.length===1?" treino":" treinos");
+}
+/* Cada academia é um bloco; tocar abre embaixo os protocolos DELA, e o
+   "Iniciar" de um treino ali registra a sessão naquela academia. Os
+   protocolos, o "Novo protocolo" e as sugestões (#protArea) moram dentro da
+   academia aberta. Sem academia cadastrada, a tela é a de sempre. */
 function renderAcadBar(){
   const el=$("acadBar");if(!el)return;
-  const lista=academias(),sel=acadSel();
+  const lista=academias(),area=$("protArea");
+  if(area)el.after(area);   // fora do bloco antes de redesenhá-lo: o innerHTML a apagaria
   if(!lista.length){
     el.innerHTML='<button type="button" class="acad-primeira" id="acadPrimeira">＋ Treina em mais de uma academia? Cadastre cada uma</button>';
     $("acadPrimeira").onclick=()=>abrirAcademias(true);
     return;
   }
-  el.innerHTML=`<div class="acad-topo"><span class="lbl">Onde você treina hoje</span><button type="button" class="acad-editar" id="acadEditar">Editar</button></div>
-    <div class="synchips acad-chips">${[{id:"",nome:"Todas"}].concat(lista).map(a=>`<button type="button" data-acad="${esc(a.id)}" class="${a.id===sel?"on":""}">${esc(a.nome)}</button>`).join("")}<button type="button" class="acad-mais" id="acadMais" aria-label="Adicionar academia">＋</button></div>`;
-  el.querySelectorAll("[data-acad]").forEach(b=>b.onclick=()=>{setAcadSel(b.dataset.acad);renderTreino();});
+  const sel=acadSel();
+  el.innerHTML=`<div class="acad-topo"><span class="lbl">Suas academias</span><button type="button" class="acad-editar" id="acadEditar">Editar</button></div>
+    <div class="acad-blocos">${lista.map(a=>{
+      const ab=a.id===sel;
+      return `<div class="acad-bloco${ab?" aberto":""}" data-acadbloco="${esc(a.id)}"><button type="button" class="acad-cab" data-acad="${esc(a.id)}" aria-expanded="${ab}"><span class="acad-tx"><span class="acad-nome">${esc(a.nome)}</span><span class="acad-n">${esc(acadResumo(a.id))}</span></span>${CHEV}</button>${ab?'<div class="acad-corpo" id="acadCorpo"></div>':""}</div>`;
+    }).join("")}<button type="button" class="acad-nova-bt" id="acadMais">＋ Outra academia</button></div>`;
+  el.querySelectorAll("[data-acad]").forEach(b=>b.onclick=()=>{
+    if(b.dataset.acad===sel)return;   // sempre há uma aberta: o treino continua a um toque
+    setAcadSel(b.dataset.acad);evoAcadEsc=null;renderTreino();
+  });
   $("acadEditar").onclick=()=>abrirAcademias(false);
   $("acadMais").onclick=()=>abrirAcademias(true);
+  const corpo=$("acadCorpo");
+  if(corpo&&area){
+    corpo.appendChild(area);
+    /* Academia sem protocolo nenhum: o botão sai em renderProtLista, logo
+       embaixo da explicação. */
+    if(protsDaAcad(sel).length&&copiaFontes(sel).length){
+      corpo.insertAdjacentHTML("beforeend",btCopiar());
+      $("acadCopiar").onclick=()=>abrirCopia(sel);
+    }
+  }
 }
+/* function, e não const: renderTreino pode rodar antes desta linha. */
+function btCopiar(){return '<button type="button" class="acad-copiar" id="acadCopiar">⧉ Copiar protocolo de outra academia</button>';}
+/** Os protocolos que descem dentro de uma academia: os que têm treino nela,
+    e os ainda vazios (é onde se monta o primeiro). Se for um só, desce um
+    só. Sem academia cadastrada, todos. */
+function protsDaAcad(sel){
+  const lista=listaProtocolos();
+  if(!academias().length)return lista;
+  return lista.filter(p=>{const ws=treinosDoProt(p.id);return !ws.length||ws.some(w=>treinoNaAcad(w,sel));});
+}
+
+/* ---- Copiar protocolo de outra academia ----
+   A cópia é INDEPENDENTE (pedido do dono): treinos novos, só desta academia,
+   com os mesmos exercícios, séries e descanso. Editar um não mexe no outro,
+   e a carga aqui começa do zero, porque o aparelho é outro. O treino que
+   valia em todas as academias deixa de aparecer nesta — ela passa a ter o
+   seu —, e continua nas outras. */
+function copiaFontes(destino){
+  const out=[];
+  academias().forEach(a=>{
+    if(a.id===destino)return;
+    listaProtocolos().forEach(p=>{
+      const ws=treinosDoProt(p.id).filter(w=>treinoNaAcad(w,a.id)&&(w.ex||[]).length);
+      if(ws.length)out.push({acad:a,prot:p,ws});
+    });
+  });
+  return out;
+}
+let copiaDestino="";
+function abrirCopia(destino){
+  copiaDestino=destino;
+  const d=acadPorId(destino),fontes=copiaFontes(destino);
+  $("copiaSub").innerHTML=`Os treinos copiados vão para a <b>${esc(d?d.nome:"")}</b> e ficam independentes: mudar um não muda o outro. A carga de referência aqui vem só do que você levantou nesta academia.`;
+  $("copiaLista").innerHTML=fontes.map((f,i)=>`<div class="proto-meal-row copia-row"><div><div class="n">${esc(f.prot.nome)}</div><div class="m">${f.ws.length} ${f.ws.length===1?"treino":"treinos"} · da ${esc(f.acad.nome)} · ${esc(f.ws.map(w=>w.nome).join(", "))}</div></div><div class="acts"><button data-copia="${i}">Copiar</button></div></div>`).join("");
+  $("copiaLista").querySelectorAll("[data-copia]").forEach(b=>b.onclick=()=>copiarProtocolo(fontes[+b.dataset.copia]));
+  $("copiaOverlay").classList.add("open");
+}
+async function copiarProtocolo(f){
+  const d=acadPorId(copiaDestino);if(!d||!f)return;
+  const n=f.ws.length;
+  /* "Começa do zero" seria falso para quem já fez esses exercícios aqui (o
+     treino valia nas duas): a referência é sempre a desta academia, e é
+     isso que se diz. Treino de mesmo nome que só esta academia tem fica ao
+     lado da cópia, e a pessoa fica sabendo antes. */
+  const ja=treinosDoProt(f.prot.id).filter(w=>treinoNaAcad(w,d.id)&&!f.ws.some(x=>x.id===w.id)).map(w=>w.nome);
+  const rep=[...new Set(f.ws.map(w=>w.nome).filter(nm=>ja.includes(nm)))];
+  const aviso=rep.length?` A ${d.nome} já tem ${rep.map(nm=>"“"+nm+"”").join(", ")} neste protocolo; a cópia fica ao lado.`:"";
+  if(!await appConfirm(`Copiar ${n===1?"o treino":"os "+n+" treinos"} de “${f.prot.nome}” da ${f.acad.nome} para a ${d.nome}? A cópia é independente: mudar um não muda o outro. A carga de referência na ${d.nome} vem só do que você levantou lá.${aviso}`,{title:"Copiar protocolo",okText:"Copiar",cancelText:"Voltar",danger:false}))return;
+  const todas=academias().map(a=>a.id),tds=store.tdays||{};
+  /* Pelo id: com a pergunta aberta, a nuvem pode ter trocado o store. */
+  f.ws.map(w=>(store.tprotocol||[]).find(x=>x.id===w.id)).filter(Boolean).forEach(w=>{
+    const c=JSON.parse(JSON.stringify(w));
+    c.id=uid();c.acads=[d.id];
+    /* O original sai desta academia (ela passa a ter o seu) e fica nas
+       outras: o que valia em todas vira "todas menos esta". O que já foi
+       feito dele AQUI passa a ser da cópia, que é o treino desta academia
+       agora: sem isso, o selo da primeira sessão da cópia diria "primeira
+       vez deste treino" para um treino já feito aqui. */
+    if(treinoNaAcad(w,d.id)){
+      const resto=(acadsDoTreino(w).length?acadsDoTreino(w):todas).filter(id=>id!==d.id);
+      if(resto.length)w.acads=resto;
+      Object.keys(tds).forEach(dk=>(tds[dk]||[]).forEach(r=>{if(r.tid===w.id&&r.acad===d.id)r.tid=c.id;}));
+    }
+    store.tprotocol.push(c);
+  });
+  setProtAberto(f.prot.id);
+  save();
+  $("copiaOverlay").classList.remove("open");
+  renderTreino();   // os copiados aparecem na hora, dentro da academia aberta
+}
+$("copiaVoltar").onclick=()=>$("copiaOverlay").classList.remove("open");
+$("copiaOverlay").onclick=e=>{if(e.target===$("copiaOverlay"))$("copiaOverlay").classList.remove("open");};
 
 let acadRen=null,acadRenTxt=null;   // academia sendo renomeada, e o que já foi digitado
 function abrirAcademias(focarNova){
@@ -4273,10 +4414,21 @@ const CHEV='<svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
     e os cartões dos treinos do aberto — filtrados pela academia escolhida. */
 function renderProtLista(){
   const el=$("protLista");if(!el)return;
-  const lista=listaProtocolos(),aberto=protAberto(),sel=acadSel(),varios=lista.length>1;
-  el.innerHTML=`<div class="acad-topo"><span class="lbl">Seus protocolos</span></div>`+lista.map(p=>{
+  const sel=acadSel(),comAcad=academias().length>0;
+  const lista=protsDaAcad(sel);
+  if(!lista.length){
+    /* Academia sem treino: copiar de outra vem logo embaixo da explicação,
+       e não no fim do bloco (renderAcadBar não o repete). */
+    const a=acadPorId(sel),cp=copiaFontes(sel).length>0;
+    el.innerHTML=`<div class="proto-empty">Nenhum treino na <b>${esc(a?a.nome:"")}</b> ainda. ${cp?"Copie o protocolo de outra academia ou monte um para os aparelhos daqui.":"Monte um para os aparelhos daqui."}</div>${cp?btCopiar():""}<button class="btn secondary prot-editar" id="tOpenProtocol">＋ Montar treino</button>`;
+    if(cp)$("acadCopiar").onclick=()=>abrirCopia(sel);
+    $("tOpenProtocol").onclick=()=>openTProtocol(protAberto());
+    return;
+  }
+  const pa=protAberto(),aberto=lista.some(p=>p.id===pa)?pa:lista[0].id,varios=lista.length>1;
+  el.innerHTML=`<div class="acad-topo"><span class="lbl">${comAcad?"Protocolos desta academia":"Seus protocolos"}</span></div>`+lista.map(p=>{
     const ws=treinosDoProt(p.id),vis=ws.filter(w=>treinoNaAcad(w,sel)),ab=p.id===aberto;
-    const n=vis.length?vis.length+(vis.length===1?" treino":" treinos"):(ws.length?"nenhum para esta academia":"nenhum treino");
+    const n=vis.length?vis.length+(vis.length===1?" treino":" treinos"):"nenhum treino";
     const miolo=`<span class="prot-nome">${esc(p.nome)}</span><span class="prot-n">${n}</span>`;
     const cab=varios?`<button type="button" class="prot-cab" data-protabrir="${esc(p.id)}" aria-expanded="${ab}">${miolo}${CHEV}</button>`:`<div class="prot-cab">${miolo}</div>`;
     const corpo=ab?`<div class="prot-corpo"><div class="proto-cards" id="tprotoCards"></div><button class="btn secondary prot-editar" id="tOpenProtocol">${ws.length?"Editar":"＋ Montar"} <span class="prot-q">“${esc(p.nome)}”</span></button></div>`:"";
@@ -4288,17 +4440,10 @@ function renderProtLista(){
   });
   $("tOpenProtocol").onclick=()=>openTProtocol(aberto);
 
-  // os cartões do protocolo aberto, só os que cabem na academia escolhida
-  const todos=treinosDoProt(aberto);
-  const list=todos.filter(w=>treinoNaAcad(w,sel));
-  /* Com "Todas" escolhida, o cartão diz a academia do treino que tem uma:
-     é o único lugar em que a pessoa vê tudo junto. */
-  const onde=w=>(!sel&&acadsDoTreino(w).length)?` · ${esc(acadsTxt(w))}`:"";
-  const nomeAcad=esc((acadPorId(sel)||{}).nome||"");
-  $("tprotoCards").innerHTML=list.length?list.map(w=>`<button class="proto-card" data-tw="${w.id}"><div><div class="pccat">Treino ${esc(w.cat||"")}</div><div class="pcname">${esc(w.nome)}</div><div class="pcmac">${(w.ex||[]).length} exercícios · ${tpSeries(w)} séries${onde(w)}</div>${pcFalta(w,sel)}</div><span class="pckcal">▶ Iniciar</span></button>`).join("")
-    :todos.length?(varios
-      ?`<div class="proto-empty">Nenhum treino de <b>${esc(protPorId(aberto).nome)}</b> marcado para <b>${nomeAcad}</b> ainda. Monte um para ela, ou marque esta academia num treino que você já tem, no botão logo abaixo.</div>`
-      :`<div class="proto-empty">Nenhum treino marcado para <b>${nomeAcad}</b> ainda. Monte um para ela, ou marque esta academia num treino que você já tem, no botão logo abaixo.</div>`)
+  /* Os cartões do protocolo aberto, só os da academia aberta. O filtro de
+     cima garante que o aberto tem algum aqui, ou nenhum treino. */
+  const list=treinosDoProt(aberto).filter(w=>treinoNaAcad(w,sel));
+  $("tprotoCards").innerHTML=list.length?list.map(w=>`<button class="proto-card" data-tw="${w.id}"><div><div class="pccat">Treino ${esc(w.cat||"")}</div><div class="pcname">${esc(w.nome)}</div><div class="pcmac">${(w.ex||[]).length} exercícios · ${tpSeries(w)} séries</div>${pcFalta(w,sel)}</div><span class="pckcal">▶ Iniciar</span></button>`).join("")
     :(store.tprotocol||[]).length
       ?'<div class="proto-empty">Você ainda não montou este protocolo. Toque abaixo para cadastrar os treinos (ex.: Treino A, B, C) — depois é um toque para iniciar o do dia.</div>'
       :'<div class="proto-empty">Você ainda não montou seu protocolo de treino. Toque abaixo para cadastrar (ex.: Treino A, B, C) — depois é um toque para iniciar o treino do dia.</div>';
@@ -5615,11 +5760,12 @@ function melhorDe(sets){
   return {v:st.reduce((a,x)=>Math.max(a,x.rep||0),0),un:"reps"};
 }
 const melhorTxt=m=>m.un==="kg"?`${kgTxt(m.v)} kg`:`${r0(m.v)} ${m.un}`;
-/* Com academia, a referência é a da MESMA academia: o leg press de uma não
-   é o da outra, e a carga de lá enganaria. Não havendo, vale a de outra
-   academia, com o nome dela na tela (`outra`) — melhor um ponto de partida
-   dito de onde veio do que nenhum. Sem academia, é a última de qualquer
-   lugar, como sempre foi. */
+/* A referência é a da MESMA academia: o leg press de uma não é o da
+   outra, e a carga de lá enganaria (pedido do dono: "preservar a realidade
+   do peso daquele aparelho"). Registro sem academia — de antes de ela
+   existir — continua valendo em qualquer uma. Sem nada aqui, não há
+   referência: a tela diz "Academia nova" (`exEmOutraAcad`). Sem academia
+   cadastrada, é a última de qualquer lugar, como sempre foi. */
 function lastExSession(nome,acad){
   const alvo=norm(nome||""),tds=store.tdays||{},deCarga=exTipo(nome)==="carga";
   const dias=Object.keys(tds).sort().reverse(); // datas ISO: ordem alfabética = cronológica
@@ -5627,22 +5773,29 @@ function lastExSession(nome,acad){
      referência se houver, mais para trás, uma vez com carga: ela apagaria
      da tela a última carga de verdade, e a conferência de carga perderia a
      régua. Sem nenhuma com carga — "Tríceps banco" sempre sem anilha —, a
-     sem carga é a referência, em reps. Na mesma academia, mesmo sem carga,
-     ela vem antes da de outra: o exercício já foi feito ali. */
-  let deOutra=null,semKg=null,semKgOutra=null;
+     sem carga é a referência, em reps. */
+  let semKg=null;
   for(const dk of dias){
     const regs=tds[dk]||[];
     for(let i=regs.length-1;i>=0;i--){ // dentro do dia, o último registrado é o mais recente
+      if(!mesmaAcad(acad,regs[i].acad))continue;
       const ex=(regs[i].ex||[]).find(x=>norm(x.n)===alvo);
       if(!ex||!(ex.sets||[]).length)continue;
       const comKg=!deCarga||ex.sets.some(x=>(x.kg||0)>0);
       const r={dk,sets:ex.sets,treino:regs[i].name};
-      if(mesmaAcad(acad,regs[i].acad)){if(comKg)return r;if(!semKg)semKg=r;continue;}
-      r.outra=acadNomeDe(regs[i]);
-      if(comKg){if(!deOutra)deOutra=r;}else if(!semKgOutra)semKgOutra=r;
+      if(comKg)return r;
+      if(!semKg)semKg=r;
     }
   }
-  return semKg||deOutra||semKgOutra;
+  return semKg;
+}
+/** O exercício já foi feito em outra academia (e nunca nesta)? É o "Academia
+    nova": o app diz por que não há referência, em vez de parecer que perdeu
+    o histórico. */
+function exEmOutraAcad(nome,acad){
+  if(!acad)return false;
+  const alvo=norm(nome||""),tds=store.tdays||{};
+  return Object.keys(tds).some(dk=>(tds[dk]||[]).some(r=>r.acad&&r.acad!==acad&&(r.ex||[]).some(x=>norm(x.n)===alvo&&(x.sets||[]).length)));
 }
 const kgTxt=v=>(Math.round((v||0)*10)/10).toString().replace(".",",");
 /* diferença de carga em relação à mesma série da última vez */
@@ -5653,9 +5806,7 @@ function trDelta(row){
   const iseg=campoVisivel(row.querySelector(".iseg"))?row.querySelector(".iseg"):null;
   const kg=campoVisivel(ikg)?numBR(ikg.value):0;
   const limpar=()=>{chip.textContent="";chip.className="tp-d";};
-  /* Carga de outra academia é ponto de partida, não régua: medir "−40 kg"
-     contra outro aparelho seria a progressão que o feed se recusa a medir. */
-  if(!p||trPrevRef.outra)return limpar();
+  if(!p)return limpar();   // a referência já é só da mesma academia
   /* Peso do corpo, dos dois lados: compara reps (ou segundos). Carga de um
      lado só não se compara com reps do outro. */
   if(kg<=0&&!((p.kg||0)>0)){
@@ -5693,13 +5844,13 @@ function renderTr(){
   const emSeg=medidaEx(e)==="seg";
   const planoTx=()=>`${e.s} séries · descanso ${fmtSec(e.rest||90)} · `+(medidaEx(e)==="seg"?"segure com a forma certa até perto do limite":"busque a falha entre 6–12 reps");
   $("trPlan").textContent=planoTx();
-  /* Referência de outra academia: dita UMA vez, acima das séries. Dentro de
-     cada linha o nome partia a referência em duas em telas comuns. */
   /* A carga aparece no peso do corpo quando ela já foi usada (hoje ou da
      última vez), quando o nome fala dela ("Prancha com anilha") ou quando a
      pessoa pediu "+ carga". */
   const cargaVis=tipo==="carga"||!!e.comCarga||EX_CARGA_RE.test(exSinal(e.n))||logs.some(l=>(l.kg||0)>0)||!!(trPrevRef&&trPrevRef.sets.some(x=>(x.kg||0)>0));
-  const refOutra=trPrevRef&&trPrevRef.outra?`<div class="tr-ref-outra">Primeira vez deste exercício na <b>${esc(acadNomeDe(trS))}</b>. As cargas de referência são da <b>${esc(trPrevRef.outra)}</b>, só como ponto de partida.</div>`:"";
+  /* Academia nova: o exercício já foi feito em outra, e nunca nesta. Dito
+     uma vez, acima das séries; a carga de lá não aparece (outro aparelho). */
+  const refOutra=!trPrevRef&&exEmOutraAcad(e.n,trS.acad)?`<div class="tr-ref-outra"><b>Academia nova</b> · primeira vez deste exercício na <b>${esc(acadNomeDe(trS))}</b>. A carga daqui começa do zero: a de outra academia não vale para estes aparelhos.</div>`:"";
   /* Errar a classificação custa um toque: "+ carga" mostra a carga, e
      "contar em reps" / "contar em segundos" troca a medida, nos dois
      sentidos. Nenhum dos dois redesenha a tela, que mataria o descanso. */
@@ -5859,11 +6010,11 @@ $("trPrev").onclick=()=>{trSaveInputs();if(trS.idx>0){trS.idx--;renderTr();trPer
 /* Carga muito acima da última vez no mesmo exercício é o sinal da vírgula
    perdida (575 por 57,5). Pergunta antes de seguir. O limite — o dobro da
    maior carga da última vez, e ao menos 10 kg a mais — é decisão de
-   produto. Referência de outra academia não serve de régua (outro
-   aparelho); sem régua, só acima de CARGA_TETO. */
+   produto. A referência é só da mesma academia (outro aparelho não é
+   régua); sem régua, só acima de CARGA_TETO. */
 const CARGA_TETO=400;
 async function confereCargas(){
-  const logs=(trS&&trS.logs[trS.idx])||[],ref=trPrevRef&&!trPrevRef.outra?trPrevRef:null;
+  const logs=(trS&&trS.logs[trS.idx])||[],ref=trPrevRef;
   const maior=ref?ref.sets.reduce((a,x)=>Math.max(a,x.kg||0),0):0;
   for(let i=0;i<logs.length;i++){
     const kg=logs[i].kg||0;if(kg<=0)continue;
@@ -6098,12 +6249,16 @@ function renderTVol(){
 }
 /* ---- evolução de carga (1RM estimado — Epley) ---- */
 const e1rm=(kg,rep)=>kg*(1+rep/30);
-let evoSelName=null,evoView="30";
-function evoData(){
+let evoSelName=null,evoView="30",evoAcadEsc=null;   // evoAcadEsc: a academia escolhida no gráfico; null = a aberta no Treino
+/** O melhor 1RM estimado de cada exercício por dia. Com `acad`, só as
+    sessões daquela academia — e as de antes das academias, que valem em
+    todas. */
+function evoData(acad){
   const map={};
   const days=Object.keys(store.tdays||{}).sort();
   days.forEach(dk=>{
     ((store.tdays||{})[dk]||[]).forEach(w=>{
+      if(acad&&!mesmaAcad(acad,w.acad))return;
       (w.ex||[]).forEach(e=>{
         let best=null;
         /* Epley com 0 kg dá 0: série sem carga não entra no 1RM */
@@ -6121,10 +6276,18 @@ function evoData(){
 }
 function renderEvo(){
   const sel=$("evoSel"),el=$("evoChart");if(!sel||!el)return;
-  const map=evoData(),keys=Object.keys(map).sort((a,b)=>map[a].name.localeCompare(map[b].name));
+  const lista=academias(),selA=$("evoAcad");
+  const ac=lista.length?(evoAcadEsc&&acadPorId(evoAcadEsc)?evoAcadEsc:acadSel()):"";
+  if(selA){
+    selA.hidden=!lista.length;
+    selA.innerHTML=lista.map(a=>`<option value="${esc(a.id)}"${a.id===ac?" selected":""}>${esc(a.nome)}</option>`).join("");
+  }
+  const map=evoData(ac),keys=Object.keys(map).sort((a,b)=>map[a].name.localeCompare(map[b].name));
   if(!keys.length){
     sel.innerHTML='<option>—</option>';sel.disabled=true;
-    el.innerHTML='<div class="ins-empty">Finalize treinos registrando <b>carga e reps</b> nas séries para acompanhar sua progressão aqui. A cada treino concluído, o app calcula seu 1RM estimado por exercício.</div>';
+    el.innerHTML=ac&&Object.keys(evoData()).length
+      ?`<div class="ins-empty">Nenhum treino com carga na <b>${esc(acadPorId(ac).nome)}</b> ainda. A evolução de cada academia é só dela: a carga de um aparelho não se compara com a de outro.</div>`
+      :'<div class="ins-empty">Finalize treinos registrando <b>carga e reps</b> nas séries para acompanhar sua progressão aqui. A cada treino concluído, o app calcula seu 1RM estimado por exercício.</div>';
     return;
   }
   sel.disabled=false;
@@ -6177,6 +6340,7 @@ function renderEvo(){
   const sc=el.querySelector(".wt-scroll");if(sc)sc.scrollLeft=sc.scrollWidth;
 }
 $("evoSel").onchange=()=>{evoSelName=$("evoSel").value;renderEvo();};
+$("evoAcad").onchange=()=>{evoAcadEsc=$("evoAcad").value;renderEvo();};
 document.querySelectorAll("#evoTabs button").forEach(b=>b.onclick=()=>{evoView=b.dataset.v;document.querySelectorAll("#evoTabs button").forEach(x=>x.classList.toggle("on",x===b));renderEvo();});
 $("choiceLogout").onclick=()=>doLogout();
 

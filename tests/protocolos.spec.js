@@ -318,7 +318,11 @@ test.describe('Protocolos', () => {
     expect(await page.evaluate(() => __t.listaProtocolos().length)).toBe(4);
   });
 
-  test('o filtro de academia vale dentro do protocolo aberto, e o bloco não some', async ({ page }) => {
+  test('dentro de uma academia, só descem os protocolos com treino nela', async ({ page }) => {
+    /* Pedido do dono: "ao clicar desce a lista de protocolo (se for somente um
+       protocolo descerá somente um)". O Hipertrofia só tem treino na Smart
+       Fit: no Prédio ele não aparece, e o Viagem, sozinho, vem aberto e sem
+       seta. Protocolo vazio continua aparecendo: é onde se monta o primeiro. */
     await abrirApp(page, {
       ...doisProtocolos({
         academias: [{ id: 'a1', nome: 'Smart Fit' }, { id: 'a2', nome: 'Prédio' }],
@@ -327,11 +331,11 @@ test.describe('Protocolos', () => {
       'tresults.acad': 'a2',
     });
     await irTreino(page);
-    expect(await blocos(page)).toEqual([
-      { nome: 'Hipertrofia', n: 'nenhum para esta academia', aberto: true, seta: true },
-      { nome: 'Viagem', n: '1 treino', aberto: false, seta: true },
-    ]);
-    expect(await page.textContent('#tprotoCards .proto-empty')).toMatch(/Nenhum treino de Hipertrofia marcado para Prédio.*marque esta academia/);
+    expect(await blocos(page)).toEqual([{ nome: 'Viagem', n: '1 treino', aberto: true, seta: false }]);
+    expect(await cartoes(page)).toEqual(['Hotel']);
+    await page.evaluate(() => document.querySelector('#acadBar [data-acad="a1"]').click());
+    await page.waitForTimeout(200);
+    expect((await blocos(page)).map(b => b.nome), 'na Smart Fit, os dois').toEqual(['Hipertrofia', 'Viagem']);
   });
 
   test('dois protocolos com "Treino A": o selo compara cada um só com o seu', async ({ page }) => {

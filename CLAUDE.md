@@ -660,7 +660,7 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 | `tests/sem-sinal.spec.js` | Treino feito sem sinal sobrevive ao app descartado; dois aparelhos sem sinal juntam; apagado não volta; água soma; transação não apaga o de outro aparelho; envio ao sair do app; aviso atrasado; excluir dados substitui; a mescla direto na função (água sem base, GETD pelo histórico, peso da conta com o peso de partida) |
 | `tests/protocolos.spec.js` | Protocolos com nome: "Meu protocolo" virtual sem regravar nada, criar/renomear/excluir, sugestão que preenche ou cria, mover treino, selo que não mistura dois "Treino A", sessão com `tid`/`prot`, nuvem com versão anterior |
 | `tests/inventario.spec.js` | Inventário: catálogo inteiro reconhecido, "não informado" sem aviso, gravação por toque, aviso no cartão/treino/editor, troca com o que tem primeiro, "Tem, sim" sem matar o descanso, alternativas, nome desconhecido sem aviso |
-| `tests/academias.spec.js` | Academias: sem cadastro o app fica igual, filtro por academia, treino novo nascendo na escolhida, sessão gravando onde foi, referência e selo na mesma academia, excluir sem apagar treino nem histórico, nuvem, 320px |
+| `tests/academias.spec.js` | Academias: sem cadastro o app fica igual; cada academia um bloco que abre os protocolos dela; treino novo nascendo na aberta; "Iniciar" grava a sessão nela; referência, selo e gráfico só da mesma academia ("Academia nova", carga do zero); copiar protocolo independente, levando o já feito ali; excluir sem apagar treino nem histórico; nuvem; 320px |
 | `tests/historico.spec.js` | Referência da última sessão, sugestões, indicador de progressão de carga |
 | `tests/interface.spec.js` | Zoom bloqueado, diálogos internos, layout em 390/320px (inclusive no meio da troca de aba), tema claro e escuro |
 | `tests/alarme.spec.js` | Volume e ausência de distorção do alarme de descanso |
@@ -749,10 +749,25 @@ cada uma tem o seu treino, ou o mesmo se repete onde der. A academia agrupa
 treinos (aqui) e tem um **inventário de aparelhos** (seção própria, abaixo).
 
 - **`store.academias = [{id, nome}]`** sincroniza como o resto (load,
-  blankStore, applyRemote, pushRemote). **A escolhida é do aparelho**
-  (`tresults.acad`): é o celular que vai à academia. Escolha que não existe
-  mais (excluída aqui ou em outro aparelho) vale "Todas" (`acadSel`), em vez
-  de esconder o protocolo.
+  blankStore, applyRemote, pushRemote). **A aberta é do aparelho**
+  (`tresults.acad`): é o celular que vai à academia.
+- **Cada academia é um bloco** (`renderAcadBar`, `.acad-bloco`), e tocar
+  nele **abre embaixo os protocolos dela** (pedido do dono, #82: "ao clicar
+  desce a lista de protocolo; se for somente um protocolo descerá somente
+  um"). O `#protArea` (protocolos, "Novo protocolo", sugestões) é **movido**
+  para dentro da academia aberta; `renderAcadBar` o tira de lá antes de
+  redesenhar, senão o `innerHTML` o apagaria. Embaixo do nome, quantos
+  treinos ela tem (`acadResumo`). **Sempre há uma aberta**: tocar na aberta
+  não fecha.
+- **Não existe mais "Todas".** A carga de um aparelho só vale naquele
+  aparelho, e "Todas" gravava sessão sem academia. Sem escolha guardada, ou
+  com a escolhida excluída (aqui ou em outro aparelho), abre a do último
+  treino feito; senão, a primeira (`acadSel`, `acadPadrao`). **"Iniciar"
+  dentro de uma academia grava a sessão nela** (`acadDaSessao` = a aberta),
+  mesmo para o treino que vale em todas — foi o combinado com o dono.
+- **Dentro da academia, só descem os protocolos com treino nela**, e os
+  vazios (é onde se monta o primeiro). Academia sem treino nenhum explica o
+  que fazer: copiar de outra ou montar.
 - **Cada treino guarda em `acads` onde vale; ausente ou vazio = todas.** É
   como todo treino nasceu antes disto, e é por isso que **sem academia
   cadastrada o app fica exatamente igual** — existe teste. `tpSave` remonta o
@@ -760,24 +775,43 @@ treinos (aqui) e tem um **inventário de aparelhos** (seção própria, abaixo).
 - Treino novo e sugestão de protocolo **nascem na academia escolhida**: é para
   ela que estão sendo montados.
 - **A sessão grava `acad` e `acadNome`** (`trNext`), e `trPersist`/`trRestore`
-  carregam a academia do treino em andamento (lista explícita de campos).
-  Com "Todas" escolhida, a sessão é da única academia do treino, se ele tiver
-  uma só; senão fica sem academia — não se inventa (`acadDaSessao`). O nome
-  na tela vem de `acadNomeDe`: o atual, se a academia existe (renomear muda o
-  histórico também), senão o guardado.
-- **Referência e progressão comparam na mesma academia** (`mesmaAcad`): o leg
-  press de uma não é o da outra. **Registro sem academia casa com qualquer
+  carregam a academia do treino em andamento (lista explícita de campos). O
+  nome na tela vem de `acadNomeDe`: o atual, se a academia existe (renomear
+  muda o histórico também), senão o guardado. Sessão sem academia, hoje, é
+  só a de antes de ela existir (ou a feita em "Todas", que já existiu).
+- **O histórico de carga é por academia** (#82, "preservar a realidade do
+  peso daquele aparelho"). Referência, progressão e gráfico comparam só na
+  mesma academia (`mesmaAcad`). **Registro sem academia casa com qualquer
   uma** — sem isso, ao cadastrar a primeira academia, o histórico inteiro
-  deixaria de servir de referência. Sem nada na mesma academia,
-  `lastExSession` devolve a de outra **com o nome dela** (`outra`): o aviso
-  `.tr-ref-outra` diz de onde vêm as cargas, **uma vez, acima das séries** —
-  dentro de cada linha o nome partia a referência em duas — e o selo de
-  diferença por série (`trDelta`) **some**, porque carga de outro aparelho é
-  ponto de partida, não régua. O selo do feed diz **"primeira vez nesta
-  academia"** (`fdSoEmOutra`), nunca "primeira vez deste treino" para um
-  treino que já foi feito. `abrirSessao` compara com **a mesma sessão que o
-  selo usou** (`pr.j`): com dois critérios, uma sessão vazia no meio fazia o
-  selo dizer "+10%" e a comparação sumir.
+  deixaria de servir de referência; o dono confirmou que ele continua
+  valendo.
+- **Nada na mesma academia = "Academia nova", carga do zero.**
+  `lastExSession` **não** devolve mais a carga de outra academia (antes ela
+  vinha como ponto de partida, com o nome da outra). Quando o exercício já
+  foi feito em outra (`exEmOutraAcad`), o aviso `.tr-ref-outra` diz
+  "**Academia nova** · primeira vez deste exercício na X", **uma vez, acima
+  das séries**; o campo fica com "0", sem referência e sem selo de diferença
+  (`trDelta`). A conferência de carga (`confereCargas`) usa a mesma
+  referência: sem ela, não pergunta. O selo do feed diz **"academia nova"**
+  (`fdSoEmOutra`), nunca "primeira vez deste treino" para um treino que já
+  foi feito. `abrirSessao` compara com **a mesma sessão que o selo usou**
+  (`pr.j`): com dois critérios, uma sessão vazia no meio fazia o selo dizer
+  "+10%" e a comparação sumir.
+- **O gráfico "Evolução de carga" (fim da aba Treino) é da academia aberta** (`evoData(acad)`),
+  com seletor (`#evoAcad`) para ver outra; a escolha dele volta para a
+  aberta quando a pessoa troca de academia (`evoAcadEsc`). Sem academia
+  cadastrada, o gráfico é o de sempre, sem seletor.
+- **Copiar protocolo de outra academia** (`#acadCopiar` → `#copiaOverlay`,
+  `copiaFontes`, `copiarProtocolo`): a cópia é **independente** (decisão do
+  dono): treinos novos, só desta academia, com os mesmos exercícios, séries
+  e descanso, no mesmo protocolo. Mudar um não muda o outro. O original que
+  valia aqui **sai daqui** (o que valia em todas vira "todas menos esta"),
+  senão a academia mostraria os dois; e **o que já foi feito dele aqui
+  passa para a cópia** (`tid`), senão o selo da primeira sessão dela diria
+  "primeira vez deste treino". Por isso a pergunta **não** promete "carga do
+  zero" (seria falso para quem já treinou aqui): diz que a referência vem só
+  do que foi levantado nesta academia. Treino de mesmo nome que só esta
+  academia tem é avisado ("a cópia fica ao lado"), sem bloquear.
 - **Recadastrar uma academia excluída devolve a mesma** (`idOrfao`): o id é
   reaproveitado do histórico pelo nome. Com id novo, o histórico dela
   viraria "outra academia" para sempre.
@@ -793,9 +827,6 @@ treinos (aqui) e tem um **inventário de aparelhos** (seção própria, abaixo).
   `appConfirm`, não senha: nada se perde.
 - **Renomear não se perde:** tocar em Concluir ou fora do pop-up grava o
   que foi digitado (`salvarRen`), e nome repetido segura o pop-up aberto.
-- O gráfico de evolução (Progresso) **ainda mistura academias**: é a melhor
-  série estimada por dia, de qualquer lugar. Separar seria o próximo passo,
-  se o dono pedir.
 - Coberto em `tests/academias.spec.js`.
 
 ### Protocolos com nome
@@ -804,7 +835,10 @@ O dono pediu que, ao abrir a aba Treino, aparecessem "os protocolos da pessoa,
 que ela possa batizar com o nome que bem entender". A aba mostra um bloco por
 protocolo (`renderProtLista`), **um aberto por vez**, com os cartões dos
 treinos dele; o aberto é lembrado no aparelho (`tresults.prot`) e, sem
-escolha, é o do último treino feito (`protAberto`).
+escolha, é o do último treino feito (`protAberto`). Com academia cadastrada,
+os blocos ficam **dentro da academia aberta** e só aparecem os protocolos
+com treino nela (veja "Academias"); protocolo lembrado que não tem treino ali
+dá lugar ao primeiro que tem.
 
 - **O protocolo de um treino fica no próprio treino** (`prot`, `protNome`); a
   lista `store.tprotos=[{id,nome}]` guarda só nome e ordem. Motivo: aparelho
