@@ -156,7 +156,11 @@ tokens do `:root`.
   Progresso, talheres na Comida, halter no Treino, silhueta no Perfil. É
   máscara SVG sobre `var(--ink)` a 3,5%, em `z-index:-1`, sem criar contexto
   de empilhamento (senão prenderia pop-ups). Some atrás de qualquer cartão,
-  de propósito.
+  de propósito. Ela passa da borda direita (`right:-48px`), e durante a
+  entrada da tela (`viewIn`, com `transform`) a `.view` vira o bloco que a
+  contém: por 0,4 s a página ficava ~70 px mais larga, rolável de lado. Por
+  isso `.view` tem `overflow-x:clip` (corta só na horizontal, sem criar
+  rolagem própria). Existe teste que mede no meio da animação.
 - **Verde como TEXTO é o verde da marca, não o menta.** Menta sobre branco
   não passa de 2:1 de contraste.
 - **Macros:** ilhas neutras com fio; o verde só na barra que enche, do mais
@@ -167,6 +171,10 @@ tokens do `:root`.
 - Fundo tingido pede tinta escura por cima: `--selo-bg`/`--selo-ink` e
   `--macro-ink`/`--macro-num` existem porque reaproveitar `--mg` como fundo de
   texto escuro deixou o selo "+25% de carga" ilegível no tema claro.
+- **Em 320 px o anel do saldo da Alimentação encolhe** (112 px abaixo de 360
+  px): com 148 px, "Consumido" ficava sem o valor e "+320" do treino saía do
+  cartão. O teste antigo usava estado vazio ("0", "+0") e não pegava; o novo
+  usa números de verdade (`tests/interface.spec.js`).
 - **O tema escuro segue a mesma estrutura**: grafite esverdeado, fio fino, o
   mesmo saldo fosco um tom acima. Ainda não houve rodada de revisão dele com
   o dono.
@@ -268,7 +276,14 @@ em distância e em calorias que entram no gasto daquele dia. Lança-se na
 **Alimentação** (`#passosRow`, embaixo do saldo, no dia visto pela seta) e no
 **Início** (`#fdPassos`, sempre hoje); os dois abrem o mesmo pop-up
 (`#passosOverlay`, `abrirPassos(dk)`). Fica em `store.passos[dia] = {n,
-inclui}`, sincronizado como o resto.
+inclui, peso}`, sincronizado como o resto.
+
+- **O peso da conta é o daquele dia, e fica gravado com os passos**
+  (`pesoNoDia`, `pesoPassos`): a última pesagem até o dia, o mesmo peso que
+  o cardio usa — antes os passos usavam o peso do objetivo e o cardio a
+  última pesagem, e a mesma caminhada valia dois números. Gravado, uma
+  pesagem nova não muda os passos de ontem. Registro de antes da v45, sem
+  `peso`, segue com o peso do objetivo, como sempre foi.
 
 - **Passo = 0,415 × altura (homem) ou 0,413 × altura (mulher)**, a regra
   padrão de calibração de pedômetro (`passadaM`). Sem altura ou peso o app
@@ -301,6 +316,99 @@ inclui}`, sincronizado como o resto.
 - O campo é `type="text"` com `inputmode="numeric"`, aceita "10.000" e
   recusa letra; teto `PASSOS_MAX`.
 - Coberto em `tests/passos.spec.js`.
+
+### O peso do dia, e a meta que acompanha o peso
+
+O pedido: "adicione também na tela aonde está os passos para a pessoa
+adicionar o peso atual (ela pode colocar por dia ou semanalmente ou quando
+ela quiser)". A linha fica **logo depois da dos passos**: no Início
+(`#fdPeso`, sempre hoje) e na Alimentação (`#pesoRow`, o dia visto pela
+seta). As duas abrem `#pesoOverlay` (`abrirPeso(dk)`), que grava na mesma
+lista da curva de peso (`store.weights`, por `gravarPeso`) e passa pela mesma
+conferência do Progresso (`conferePeso`).
+
+O defeito por trás: a taxa basal, o GETD e a proteína usavam o peso digitado
+no dia em que o objetivo foi salvo. Quem perdia 8 kg continuava com o GETD de
+quando pesava mais (Mifflin-St Jeor: 10 kcal por kg, vezes o fator da
+rotina), e corrigir o peso no objetivo **reiniciava o plano** (`inicio`
+voltava para hoje). Por isso o objetivo passou a guardar dois pesos:
+
+- **`pesoAtual` é o peso no início do plano.** Dele saem o ritmo, o "faltam X
+  kg" e o `inicio`. Mudá-lo continua sendo começar outro plano.
+- **`pesoConta` é o peso da conta** (`pesoConta(g)`, usado por `computeTMB`
+  e `macroTargets`). Ausente, vale o `pesoAtual`. Só muda quando a pessoa
+  toca **"Atualizar"**.
+
+**A meta nunca muda sozinha.** Quando a pesagem mais recente muda o gasto
+estimado em `GETD_AVISO` (25) kcal ou mais, um cartão no Início (`#fdAjuste`)
+e na Alimentação (`#alAjuste`) diz quanto e mostra a meta de hoje antes e
+depois (`metaComAjuste`, a conta inteira, com passos e treino):
+
+- "Atualizar" troca `pesoConta` e o GETD (`aplicarAjuste`); o plano, o
+  `inicio` e o `pesoAtual` não mudam.
+- "Manter" grava a pesagem (`goals.mantido = {d, w}`): a próxima pesagem, ou
+  o peso do mesmo dia corrigido, pergunta de novo.
+- **Só pesagem desde o peso de partida propõe** (`pesagemDoPlano`, data a
+  partir de `pesoDesde(g)`): a de antes é mais velha que ele. Pelo mesmo
+  motivo, nos passos e no cardio (`pesoNoDia`, que `userWeight` usa) vale o
+  peso de partida até a primeira pesagem depois dele.
+- **A data é a do peso, não a do plano** (`goals.pesoDesde`). Mudar só o
+  prazo, o ritmo, o alvo ou o objetivo reinicia o plano (`inicio` vira hoje),
+  mas o campo "Peso" vem preenchido com o peso de partida antigo: ele não
+  ficou mais novo que a pesagem de ontem. Quando a regra usava `inicio`, mudar
+  só o prazo jogava fora todas as pesagens. `saveGoals` grava hoje quando o
+  peso de partida muda e mantém a data quando não muda. Objetivo salvo antes
+  de existir a data usa `inicio`.
+- **Sem pesagem no plano** (a aceita foi apagada), a proposta volta ao peso de
+  partida, em vez de o GETD ficar preso num peso que não existe mais.
+- A prévia do formulário do objetivo, os cartões de ritmo e a dica do passo
+  1 usam o mesmo peso da conta que o salvamento vai usar (`readGoalForm`); a
+  dica diz qual peso entra quando não é o do campo.
+- O limiar é decisão de produto: abaixo dele a diferença some no erro da
+  própria estimativa.
+- `saveGoals` remonta `store.goals` do zero: **`pesoConta`, `pesoDesde`,
+  `getdManual`, `mantido` e `tIntro` são carregados junto**, como `nasc` e
+  o exógeno (sem o `tIntro`, a apresentação do Treino voltava depois de
+  cada salvamento).
+  Com o mesmo peso de partida, `pesoConta` e `mantido` ficam, mesmo com
+  outro prazo, alvo ou objetivo; com outro peso de partida, a conta parte
+  dele. Depois de salvar, o Perfil e o Início são redesenhados: o prazo
+  antigo ficava na tela até trocar de aba.
+
+**O GETD de cada dia** (`store.getdHist`, `{desde, getd, base}`): mudar o
+GETD não pode reescrever o saldo dos dias que passaram — a semana, o mês e a
+sequência mudariam sem a pessoa ter comido nada diferente. **Todo caminho
+que muda `store.getd` passa por `mudarGetd(novo, foto)`**, com a `foto`
+(`fotoGetd`) tirada **antes** de mexer no objetivo: na primeira mudança ela
+vira a entrada `"0000-01-01"`, que vale para todo o passado. Grava quando o
+GETD **ou a base** mudam: com GETD à mão, mudar o perfil muda a base da
+rotina sem mudar o número. `gastoBase(dk)` devolve, para dia passado, a
+entrada mais recente até ele; hoje usa o atual. Dia anterior a todo o
+histórico (a primeira configuração não deixa semente) usa a **primeira**
+entrada, e não o atual, que mudaria esses dias a cada ajuste. **Os textos de um dia passado
+usam a do dia** (`rotinaKcal(dk)`, `efeitoPassos(p, dk)`, a linha "Gasto do
+dia"), como a meta.
+Sem histórico, vale o atual, como sempre foi. É campo de primeiro nível na
+nuvem, em `CAMPOS_NUVEM`, e segue "campo ausente não é lista vazia".
+
+**GETD digitado à mão** (`goals.getdManual`): não é mais trocado sozinho —
+nem pelo objetivo, nem pelo "+" do exógeno, nem pela pesagem (o cartão nem
+aparece). A nota `#getdNota` diz isso embaixo do campo, com "Usar o
+calculado" (`#getdAuto`), que tira a marca.
+
+- **Campo vazio ou abaixo de `GETD_MIN` (500) não grava nada**: o número de
+  antes volta e a tela diz por quê, **embaixo do campo** (`#getdAviso`) — o
+  `#flash` mora no cartão de lançar comida, longe de onde a pessoa olha. O
+  aviso some quando um número válido é gravado e num dia passado
+  (`esconderAvisoGetd`): não pode desmentir o campo. Antes virava 500 calado, **marcado como
+  digitado à mão** — um número que ninguém digitou travando a meta em 77
+  kcal. "3,050" é 3,05 (vírgula é decimal), e cai nessa regra.
+- **Num dia passado, o campo mostra o GETD daquele dia e é só leitura**
+  (`pintarGetdInput`, `#getdPassado`). Ele mostrava e editava o de hoje, ao
+  lado da linha do dia com outro número. Todo caminho que escreve no campo
+  passa por `pintarGetdInput`.
+
+- Coberto em `tests/peso.spec.js`.
 
 ### A busca de alimentos
 
@@ -393,7 +501,52 @@ para uma casa e troca o ponto pela vírgula, **sem forçar decimal** — 5 km sa
 "5", 7,5 km sai "7,5". `r1()` devolve um número cru e escreve `42.5` com ponto:
 use-o para contas, nunca direto no HTML. Já apareceram com ponto o peso das
 séries, a diferença de carga e a distância do cardio; hoje há teste para os três
-(`tests/feed.spec.js`).
+(`tests/feed.spec.js`). Os macros do dia na Alimentação ("3.8") foram o
+quarto, achado por captura de tela (`tests/virgula.spec.js`). Depois vieram o
+ritmo do objetivo ("0.31 kg/semana", hoje `dec2` para duas casas fixas), o
+"RIR médio 1.5" da aba Treino e o prazo, que aceita meio mês e saía
+arredondado ("2 meses" para 1,5): `mesesTxt` escreve "1,5 mês", e decide
+singular ou plural pelo número **escrito** (1,96 sai "2 meses", não "2
+mês"). `toFixed` também escreve ponto.
+
+### Números digitados: a vírgula não multiplica por dez
+
+**Nenhum campo do app é `type="number"`**, e existe teste que confere isso no
+`index.html` inteiro. No teclado numérico brasileiro a tecla decimal é a
+vírgula, e o `type="number"` a descartava antes de o JavaScript enxergar:
+"57,5" virava 575 na carga da série, e contaminava o selo, o 1RM, o volume e
+a referência da próxima vez.
+
+- Todo campo numérico é `type="text"` com `data-num="dec"` ou
+  `data-num="int"` e o `inputmode` certo. Um filtro único, em captura, tira
+  o que não é dígito, vírgula ou ponto antes de qualquer outro ouvinte ler o
+  campo. **A vírgula fica até nos campos inteiros**: apagada, "45,5" virava
+  455; com ela, `inteiroBR` arredonda para 46.
+- **Altura digitada em metros vira centímetros** (`alturaCm`: "1,78" → 178, e
+  o campo mostra 178). O campo antigo descartava a vírgula e acertava por
+  acaso; respeitada a vírgula, seriam 1,78 cm e um GETD de ~830 kcal.
+- **Leitura:** `numBR` para kg e cm (o ponto é decimal: "82.4" é 82,4, porque
+  há teclado que só tem ponto); `qtdBR` para gramas, ml e kcal ("1.500" é mil
+  e quinhentos, não um e meio); `inteiroBR` para o que é inteiro (reps,
+  minutos, idade, GETD). Nunca `parseFloat(x.value)` num campo destes.
+- **Escrita:** número que volta para dentro de um campo passa por `campoBR`
+  (vírgula, sem casas à toa).
+- **Conferências, que perguntam e nunca trocam o número sozinhas.** Os
+  limites são decisão de produto, não fisiologia, e estão no código:
+  - pesagem a mais de 10% da pesagem mais perto, ou fora de 30–250 kg sem
+    nenhuma para comparar, pergunta (`conferePeso`, "Talvez seja 82,4 kg");
+    acima de 400 kg não é peso de gente e não grava;
+  - carga de série no dobro da maior da última vez (e 10 kg a mais) pergunta
+    antes de seguir para o próximo exercício (`confereCargas`); referência de
+    outra academia não serve de régua;
+  - mais de 2 kg (ou 2 L) num lançamento de comida pergunta (`confereQtd`);
+    o alimento próprio só é guardado **depois** da resposta, senão "Corrigir"
+    deixava no banco os macros por 100 g da quantidade errada.
+- **Corrigir série** (`#serieOverlay`, `abrirSerie`): na sessão inteira,
+  tocar numa série abre a correção. Antes, um número errado só saía apagando
+  a sessão inteira. Corrigir recalcula o `vol` da sessão (e com ele o selo);
+  as calorias não mudam, porque vêm da duração e do esforço, não da carga.
+- Coberto em `tests/virgula.spec.js`.
 
 ### O histórico de líquidos
 
@@ -438,7 +591,9 @@ horário, embaixo do anel de água (`renderLiqHist`).
 
 O Início é a tela de entrada (`showView("inicio")`). Ele reúne três coisas:
 
-- **o saldo do dia**, que leva para a Alimentação ao toque (`#fdDia`)
+- **o saldo de hoje**, que leva para a Alimentação **em hoje** ao toque
+  (`#fdDia`). É sempre hoje, mesmo com outro dia aberto na Alimentação: a
+  comida de ontem contra a meta de hoje desmentia o resto do cartão.
 - **os atalhos** para Progresso (`#fdIrProgresso`) e para treinar
 - **o feed**, o histórico das sessões já feitas, da mais recente para a mais
   antiga (`renderInicio()`)
@@ -499,11 +654,16 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 |---|---|
 | `tests/treino.spec.js` | Persistência da sessão, retomada após o app ser descartado, desconto do tempo fora do app |
 | `tests/nuvem.spec.js` | Sincronização: outra conta no celular não herda exógeno, academias, líquidos nem treino em andamento; campo ausente não apaga; quem não sabe não envia; campo de versão mais nova volta como chegou; histórico de líquidos sobe |
+| `tests/virgula.spec.js` | Nenhum `type="number"`; carga, peso, ml, rótulo e objetivo com vírgula; macros na tela; conferências de peso, carga e quantidade; corrigir série salva; prazo "1,5 mês", ritmo e RIR com vírgula |
+| `tests/peso-corpo.spec.js` | Flexão com reps, prancha com segundos, feed sem "registro manual", referência e diferença em reps, "+ carga" sem matar o descanso, selo em reps, 1RM sem série sem carga, classificação por nome; "contar em reps/segundos" nos dois sentidos, desfazer a troca devolve o digitado, medida que não fica presa à posição, referência sem carga quando nunca houve carga |
+| `tests/peso.spec.js` | Peso do dia no Início e na Alimentação, conferência, apagar; cartão "Atualizar/Manter", plano que não reinicia, dia passado que não muda, proteína; GETD manual, vazio ou abaixo de 500 recusado, só leitura num dia passado; prazo novo que não descarta pesagens nem o peso aceito; dia anterior ao histórico de GETD; passos com o peso do dia; nuvem |
+| `tests/sem-sinal.spec.js` | Treino feito sem sinal sobrevive ao app descartado; dois aparelhos sem sinal juntam; apagado não volta; água soma; transação não apaga o de outro aparelho; envio ao sair do app; aviso atrasado; excluir dados substitui; a mescla direto na função (água sem base, GETD pelo histórico, peso da conta com o peso de partida) |
 | `tests/protocolos.spec.js` | Protocolos com nome: "Meu protocolo" virtual sem regravar nada, criar/renomear/excluir, sugestão que preenche ou cria, mover treino, selo que não mistura dois "Treino A", sessão com `tid`/`prot`, nuvem com versão anterior |
 | `tests/inventario.spec.js` | Inventário: catálogo inteiro reconhecido, "não informado" sem aviso, gravação por toque, aviso no cartão/treino/editor, troca com o que tem primeiro, "Tem, sim" sem matar o descanso, alternativas, nome desconhecido sem aviso |
-| `tests/academias.spec.js` | Academias: sem cadastro o app fica igual, filtro por academia, treino novo nascendo na escolhida, sessão gravando onde foi, referência e selo na mesma academia, excluir sem apagar treino nem histórico, nuvem, 320px |
+| `tests/academias.spec.js` | Academias: sem cadastro o app fica igual; cada academia um bloco que abre os protocolos dela; treino novo nascendo na aberta; "Iniciar" grava a sessão nela; referência, selo e gráfico só da mesma academia ("Academia nova", carga do zero); copiar protocolo independente, levando o já feito ali; excluir sem apagar treino nem histórico; nuvem; 320px |
+| `tests/pausa.spec.js` | Diário de pausas (musculação e cardio): registrar, em aberto, recusas, conferência das datas, excluir, fechar ao treinar (cada tipo o seu), dica, marcador no feed; aviso do recorde: nota, linha, pergunta sem porcentagem, "Mudar a carga", uma vez por exercício, limiar 13/14/28, cardio não zera, outra academia, peso do corpo, vírgula vence, descanso continua, diálogos em fila, trocar e desfazer; nuvem, mescla, privacidade, 320px |
 | `tests/historico.spec.js` | Referência da última sessão, sugestões, indicador de progressão de carga |
-| `tests/interface.spec.js` | Zoom bloqueado, diálogos internos, layout em 390/320px, tema claro e escuro |
+| `tests/interface.spec.js` | Zoom bloqueado, diálogos internos, layout em 390/320px (inclusive no meio da troca de aba), tema claro e escuro |
 | `tests/alarme.spec.js` | Volume e ausência de distorção do alarme de descanso |
 | `tests/sentry.spec.js` | Configuração do monitoramento, limpeza de dados pessoais, app abrindo sem a Sentry |
 | `tests/alarme-descanso.spec.js` | Tela do alarme, interrupção da música, insistência, permissão |
@@ -542,9 +702,11 @@ Chaves usadas no armazenamento local, úteis para montar cenários:
 |---|---|
 | `cutting.v1` | Todos os dados do usuário |
 | `cutting.owner` | UID do dono dos dados no aparelho |
+| `cutting.pendente` | `{uid}`: há alteração que a nuvem ainda não confirmou (some quando ela confirma) |
+| `cutting.base` | `{uid, doc}`: a nuvem como este aparelho a viu por último, para a mescla |
 | `tresults.run` | Treino em andamento (some ao finalizar) |
 | `tresults.theme` | `light` / `dark` |
-| `tresults.acad` | Academia escolhida neste aparelho (vazio = Todas) |
+| `tresults.acad` | Academia aberta neste aparelho (vazia ou excluída = a do último treino, senão a primeira) |
 | `tresults.prot` | Protocolo aberto na aba Treino neste aparelho |
 
 ---
@@ -588,10 +750,25 @@ cada uma tem o seu treino, ou o mesmo se repete onde der. A academia agrupa
 treinos (aqui) e tem um **inventário de aparelhos** (seção própria, abaixo).
 
 - **`store.academias = [{id, nome}]`** sincroniza como o resto (load,
-  blankStore, applyRemote, pushRemote). **A escolhida é do aparelho**
-  (`tresults.acad`): é o celular que vai à academia. Escolha que não existe
-  mais (excluída aqui ou em outro aparelho) vale "Todas" (`acadSel`), em vez
-  de esconder o protocolo.
+  blankStore, applyRemote, pushRemote). **A aberta é do aparelho**
+  (`tresults.acad`): é o celular que vai à academia.
+- **Cada academia é um bloco** (`renderAcadBar`, `.acad-bloco`), e tocar
+  nele **abre embaixo os protocolos dela** (pedido do dono, #82: "ao clicar
+  desce a lista de protocolo; se for somente um protocolo descerá somente
+  um"). O `#protArea` (protocolos, "Novo protocolo", sugestões) é **movido**
+  para dentro da academia aberta; `renderAcadBar` o tira de lá antes de
+  redesenhar, senão o `innerHTML` o apagaria. Embaixo do nome, quantos
+  treinos ela tem (`acadResumo`). **Sempre há uma aberta**: tocar na aberta
+  não fecha.
+- **Não existe mais "Todas".** A carga de um aparelho só vale naquele
+  aparelho, e "Todas" gravava sessão sem academia. Sem escolha guardada, ou
+  com a escolhida excluída (aqui ou em outro aparelho), abre a do último
+  treino feito; senão, a primeira (`acadSel`, `acadPadrao`). **"Iniciar"
+  dentro de uma academia grava a sessão nela** (`acadDaSessao` = a aberta),
+  mesmo para o treino que vale em todas — foi o combinado com o dono.
+- **Dentro da academia, só descem os protocolos com treino nela**, e os
+  vazios (é onde se monta o primeiro). Academia sem treino nenhum explica o
+  que fazer: copiar de outra ou montar.
 - **Cada treino guarda em `acads` onde vale; ausente ou vazio = todas.** É
   como todo treino nasceu antes disto, e é por isso que **sem academia
   cadastrada o app fica exatamente igual** — existe teste. `tpSave` remonta o
@@ -599,24 +776,73 @@ treinos (aqui) e tem um **inventário de aparelhos** (seção própria, abaixo).
 - Treino novo e sugestão de protocolo **nascem na academia escolhida**: é para
   ela que estão sendo montados.
 - **A sessão grava `acad` e `acadNome`** (`trNext`), e `trPersist`/`trRestore`
-  carregam a academia do treino em andamento (lista explícita de campos).
-  Com "Todas" escolhida, a sessão é da única academia do treino, se ele tiver
-  uma só; senão fica sem academia — não se inventa (`acadDaSessao`). O nome
-  na tela vem de `acadNomeDe`: o atual, se a academia existe (renomear muda o
-  histórico também), senão o guardado.
-- **Referência e progressão comparam na mesma academia** (`mesmaAcad`): o leg
-  press de uma não é o da outra. **Registro sem academia casa com qualquer
+  carregam a academia do treino em andamento (lista explícita de campos). O
+  nome na tela vem de `acadNomeDe`: o atual, se a academia existe (renomear
+  muda o histórico também), senão o guardado. Sessão sem academia, hoje, é
+  só a de antes de ela existir (ou a feita em "Todas", que já existiu).
+- **O histórico de carga é por academia** (#82, "preservar a realidade do
+  peso daquele aparelho"). Referência, progressão e gráfico comparam só na
+  mesma academia (`mesmaAcad`). **Registro sem academia casa com qualquer
   uma** — sem isso, ao cadastrar a primeira academia, o histórico inteiro
-  deixaria de servir de referência. Sem nada na mesma academia,
-  `lastExSession` devolve a de outra **com o nome dela** (`outra`): o aviso
-  `.tr-ref-outra` diz de onde vêm as cargas, **uma vez, acima das séries** —
-  dentro de cada linha o nome partia a referência em duas — e o selo de
-  diferença por série (`trDelta`) **some**, porque carga de outro aparelho é
-  ponto de partida, não régua. O selo do feed diz **"primeira vez nesta
-  academia"** (`fdSoEmOutra`), nunca "primeira vez deste treino" para um
-  treino que já foi feito. `abrirSessao` compara com **a mesma sessão que o
-  selo usou** (`pr.j`): com dois critérios, uma sessão vazia no meio fazia o
-  selo dizer "+10%" e a comparação sumir.
+  deixaria de servir de referência; o dono confirmou que ele continua
+  valendo.
+- **Nada na mesma academia = "Academia nova", carga do zero.**
+  `lastExSession` **não** devolve mais a carga de outra academia (antes ela
+  vinha como ponto de partida, com o nome da outra). Quando o exercício já
+  foi feito em outra (`exEmOutraAcad`), o aviso `.tr-ref-outra` diz
+  "**Academia nova** · primeira vez deste exercício na X", **uma vez, acima
+  das séries**; o campo fica com "0", sem referência e sem selo de diferença
+  (`trDelta`). A conferência de carga (`confereCargas`) usa a mesma
+  referência: sem ela, não pergunta. O selo do feed diz **"academia nova"**
+  (`fdSoEmOutra`), nunca "primeira vez deste treino" para um treino que já
+  foi feito. `abrirSessao` compara com **a mesma sessão que o selo usou**
+  (`pr.j`): com dois critérios, uma sessão vazia no meio fazia o selo dizer
+  "+10%" e a comparação sumir.
+- **O gráfico "Evolução de carga" (fim da aba Treino) é da academia aberta** (`evoData(acad)`),
+  com seletor (`#evoAcad`) para ver outra; a escolha dele volta para a
+  aberta quando a pessoa troca de academia (`evoAcadEsc`). Sem academia
+  cadastrada, o gráfico é o de sempre, sem seletor. **Academia excluída com
+  carga no histórico continua no seletor**, como "X (excluída)"
+  (`acadsExcluidas`): excluir promete que nada se perde, e sem isso os meses
+  dela sumiam de todas as opções.
+- **Copiar protocolo de outra academia** (`#acadCopiar` → `#copiaOverlay`,
+  `copiaFontes`, `copiarProtocolo`): a cópia é **independente** (decisão do
+  dono): treinos novos, só desta academia, com os mesmos exercícios, séries
+  e descanso, no mesmo protocolo. Mudar um não muda o outro. O original que
+  valia aqui **sai daqui** (o que valia em todas vira "todas menos esta"),
+  senão a academia mostraria os dois.
+  - **Para o histórico, cópia e original são o mesmo treino**: a cópia
+    guarda a raiz em `origem` (cópia de cópia aponta para a mesma), e
+    `mesmoTreino` compara as raízes (`raizTreino`), **desde que os dois
+    não convivam** (`convivem`): duas cópias na mesma academia, ou o
+    original marcado de novo nela, são dois treinos, como quaisquer dois
+    que existem — senão a cópia editada para outros exercícios comparava
+    o histórico com o da irmã ("-60% de carga" inventado). Quem separa as
+    academias continua sendo `mesmaAcad`. Assim a primeira sessão da cópia
+    diz "academia nova" (o original só foi feito na outra), compara com o
+    histórico de antes das academias (que vale em todas, como a referência
+    da tela do treino), e compara com o que já foi feito do original aqui.
+    **O histórico não é reescrito**: a primeira versão trocava o `tid` das
+    sessões, e o selo do passado mudava sem a pessoa ter treinado nada.
+  - **As sessões antigas, sem `tid`, são carimbadas no original antes de a
+    cópia nascer** (`carimbarTid(w)`): depois, com dois treinos de mesmo
+    nome no mesmo protocolo, renomear um deles levava para ele as sessões
+    do outro, de qualquer academia. E `carimbarTid` não carimba quando há
+    outro treino de mesmo nome no mesmo protocolo **sem parentesco** (outra
+    raiz): não dá para saber de quem é a sessão.
+  - A pergunta **não** promete "carga do zero" (seria falso para quem já
+    treinou aqui): diz que a referência vem só do que foi levantado nesta
+    academia. Treino de mesmo nome que só esta academia tem é avisado ("a
+    cópia fica ao lado"), sem bloquear.
+  - O botão "Copiar" do estado vazio mora dentro de `#protLista`, e
+    `renderAcadBar` o tira antes de pôr o do fim do bloco: com dois
+    `#acadCopiar` na página, o clique ia para o que some, e o botão que
+    ficava na tela não fazia nada.
+- **O protocolo aberto é o que aparece aberto na academia**
+  (`protAbertoAqui`): o lembrado, se ele desce aqui; senão, o primeiro que
+  desce. Sugestões, "Montar" e a tela usam este. Com o lembrado de outra
+  academia, a sugestão criava um protocolo novo ao lado do vazio que estava
+  aberto na tela.
 - **Recadastrar uma academia excluída devolve a mesma** (`idOrfao`): o id é
   reaproveitado do histórico pelo nome. Com id novo, o histórico dela
   viraria "outra academia" para sempre.
@@ -632,10 +858,112 @@ treinos (aqui) e tem um **inventário de aparelhos** (seção própria, abaixo).
   `appConfirm`, não senha: nada se perde.
 - **Renomear não se perde:** tocar em Concluir ou fora do pop-up grava o
   que foi digitado (`salvarRen`), e nome repetido segura o pop-up aberto.
-- O gráfico de evolução (Progresso) **ainda mistura academias**: é a melhor
-  série estimada por dia, de qualquer lugar. Separar seria o próximo passo,
-  se o dono pedir.
 - Coberto em `tests/academias.spec.js`.
+
+### Tempo sem treinar: o diário de pausas e o aviso do recorde
+
+O pedido (#81): "o usuário deve poder adicionar o tempo que ele ficou off
+(não foi treinar)", e o app deve avisar se, na volta, a pessoa puser a carga
+do recorde, caso isso seja "cientificamente prejudicial ou possivelmente
+prejudicial". A pesquisa (resumos no PubMed; o bloco "TEMPO SEM TREINAR" no
+`index.html` traz cada fonte com PMID) mudou a premissa:
+
+- **Em 2 semanas a força máxima de quem treina não cai de forma
+  significativa** (Hortobágyi 1993; Hwang 2017). Por isso o texto **não**
+  diz "você não vai conseguir".
+- **O que cai cedo é a força excêntrica**, a de frear a descida (−12% e
+  −15% em 2 semanas, joelho, atletas): extrapolação para o supino de quem
+  treina por lazer, e por isso o verbo é "pode".
+- **A queda da força máxima foi medida a partir de 4 semanas** (−6 a −9%,
+  Izquierdo 2007). Nenhum desses números entra em conta: só escolhem o
+  texto (`PAUSA_QUEDA_DIAS`, 28).
+- **Nenhum estudo mede lesão** ao voltar à carga de recorde: o aviso não
+  fala em lesão nem em perigo. **Nenhum estudo dá um "comece com X%"**: o
+  app **não sugere carga**, nem troca o placeholder por uma carga reduzida.
+  A orientação é "comece abaixo dele e suba se as repetições sobrarem".
+
+**Duas pausas, a pedido do dono:** a da **musculação** e a do **cardio**. O
+treino avulso (cardio) é treino, um treino cardiovascular. `store.pausas =
+[{id, tipo:"forca"|"cardio", de, ate?, motivo, nota}]`.
+
+- **Pausa em aberto não tem a chave `ate`** (o Firestore recusa
+  `undefined`); a aberta termina hoje (`pausaFim`).
+- **Treinar fecha as pausas abertas do mesmo tipo**, no dia anterior
+  (`fecharPausaAoTreinar`): musculação finalizada **com alguma série**
+  fecha a da musculação; o treino avulso fecha a do cardio, **menos a
+  "Musculação" avulsa** (`avulsoDeForca`), que é musculação e fecha a
+  dela. Uma não fecha a outra. Fecha **todas** as abertas do tipo (duas
+  podem chegar pela mescla de dois aparelhos, e o Início mostra todas). A
+  pausa que começou hoje fica. **A pausa guarda quem a fechou**
+  (`fechadaPor`): excluir aquele treino em "Treinos de hoje" a reabre
+  (`reabrirPausaDe`); salvar à mão ou "Voltei" apaga a marca, porque a
+  data passou a ser da pessoa.
+- **"Voltei a treinar hoje" não aparece numa pausa que começou hoje**: ele
+  gravaria hoje como dia sem treinar. Sobra "Apagar a pausa".
+- **Apagar procura a pausa pela chave depois da pergunta**: com o diálogo
+  aberto, a nuvem pode ter trocado o `store` por objetos novos.
+- Sobreposição só é recusada **no mesmo tipo**: musculação e cardio podem
+  estar em pausa nos mesmos dias. Treino do mesmo tipo dentro das datas
+  pergunta ("Conferir as datas") e não troca nada.
+- **Sessão de musculação é a que tem exercícios, ou a "Musculação" do
+  treino avulso; cardio é o resto do avulso** (`ehForca`, `ehCardio`,
+  `avulsoDeForca`, pelo nome, o que cobre os registros antigos). Sessão
+  com `ex:[]` (séries perdidas antes da v45, ou finalizada sem nenhuma
+  série) não é nenhum dos dois. O recorde (`prDe`) lê só os exercícios: a
+  "Musculação" avulsa conta como treino, sem carga.
+- **A pausa NUNCA vai para `store.tdays`**: calorias, quilômetros do dia, o
+  feed e a progressão a contariam como sessão. No feed ela é um marcador
+  (`.fd-pausa`), fora de `fdTodas()`.
+- Onde aparece: seção "Pausas" na aba Treino (`renderPausas`, com a dica
+  `#pausaDica` quando o último treino de musculação foi há 14 dias ou mais e
+  nenhuma pausa explica o intervalo — só proposta, nada é gravado sem
+  "Salvar"); linha no Início **só com pausa em aberto** (`#fdPausas`); o
+  marcador no feed; o pop-up `#pausaOverlay`. O "+" do Início continua só do
+  exógeno.
+- Nuvem: `pausas` está em `CAMPOS_NUVEM`, segue "campo ausente não é lista
+  vazia" e "quem não sabe não envia", mescla por `id`, e outra conta no
+  celular não herda. Sobe como o resto do diário, e o motivo "Saúde" é dado
+  de saúde: a política de privacidade diz isso.
+
+**O aviso do recorde** (só musculação):
+
+- **Dias sem treino de força** (`retornoDe`): do último dia com musculação
+  em qualquer academia (o corpo destreina onde for) até o dia em que a
+  sessão começou. Cardio não zera a contagem. A pausa registrada só muda o
+  texto ("De volta da pausa (viagem)"), e **só a que explica a volta**: o
+  que sobra descoberto depois dela fica abaixo do limiar. Uma viagem de 4
+  dias, 40 dias atrás, não é "de volta da pausa", e a dica de registrar
+  aparece para o trecho descoberto, propondo o dia seguinte ao fim do que
+  já está registrado (`coberto`, `descoberto`).
+- **Recorde** (`prDe`): a maior carga já feita no exercício, com qualquer
+  número de reps (pedido literal: "a mesma carga PR"), **só na mesma
+  academia** (`mesmaAcad`; registro sem academia vale em todas). Peso do
+  corpo sem carga não tem recorde; barra fixa com colete tem.
+- Com `PAUSA_AVISO_DIAS` (14) ou mais: nota `.tr-pausa` acima das séries,
+  linha `.tsrec` na série que chega ao recorde, e a pergunta "Carga de
+  recorde depois da pausa" quando a pessoa termina de digitar (`change`),
+  **uma vez por exercício por sessão** (`recordeOk`, lista por nome
+  guardada no exercício da sessão e procurada **em todas as posições**: o
+  mesmo exercício duas vezes no treino pergunta uma vez só; trocar o
+  exercício pergunta pelo outro, "Desfazer" não pergunta de novo, e a
+  marca não vai para o histórico). O texto põe o nome sem artigo ("recorde
+  em Rosca direta"): metade do catálogo é feminina.
+- **"Mudar a carga" não troca o número**: foca o campo e segura o avanço
+  (`trNext`/`trPrev` esperam `recordePend`).
+- **A vírgula vence, até ser confirmada**: se a carga cai na regra de
+  `confereCargas` (`pareceVirgula`, uma função para os dois), quem pergunta
+  primeiro é "Conferir a carga". Depois de "Está certo", o número é da
+  pessoa, e a pergunta do recorde vem (`confereRecorde(true)`): sem isso,
+  quem voltava ao recorde depois de uma última sessão leve (a volta de
+  lesão típica) nunca era avisado.
+- **Nada disso chama `renderTr()`**: o descanso continua correndo.
+- **Os diálogos entram em fila** (`appDialog`, `dlgFila`): a pergunta do
+  recorde abre no `change`, e um toque em "Cancelar treino" logo em seguida
+  pedia outro diálogo por cima, trocando os botões do primeiro e deixando a
+  promessa dele pendurada. **Pedido idêntico ao último ainda sem resposta
+  recebe a mesma resposta** (`dlgUlt`): sem isso, Enter repetido num campo
+  com nome inválido pedia N toques em "Entendi".
+- Coberto em `tests/pausa.spec.js`.
 
 ### Protocolos com nome
 
@@ -643,7 +971,10 @@ O dono pediu que, ao abrir a aba Treino, aparecessem "os protocolos da pessoa,
 que ela possa batizar com o nome que bem entender". A aba mostra um bloco por
 protocolo (`renderProtLista`), **um aberto por vez**, com os cartões dos
 treinos dele; o aberto é lembrado no aparelho (`tresults.prot`) e, sem
-escolha, é o do último treino feito (`protAberto`).
+escolha, é o do último treino feito (`protAberto`). Com academia cadastrada,
+os blocos ficam **dentro da academia aberta** e só aparecem os protocolos
+com treino nela (veja "Academias"); protocolo lembrado que não tem treino ali
+dá lugar ao primeiro que tem.
 
 - **O protocolo de um treino fica no próprio treino** (`prot`, `protNome`); a
   lista `store.tprotos=[{id,nome}]` guarda só nome e ordem. Motivo: aparelho
@@ -670,7 +1001,8 @@ escolha, é o do último treino feito (`protAberto`).
   diferentes seria comparado como se fosse um. **Dois `tid` diferentes de
   treinos que ainda existem nunca são o mesmo treino**, mesmo com o mesmo
   nome; o nome só decide quando um lado não tem `tid` ou o treino foi
-  excluído. Sessão de antes conta como do principal.
+  excluído. A exceção é a cópia para outra academia: mesma raiz (`origem`),
+  mesmo treino (veja "Academias"). Sessão de antes conta como do principal.
 - **Renomear ou mover um treino carimba o `tid` nas sessões antigas dele**
   (`carimbarTid`): elas só o reconheciam pelo nome e pelo protocolo, e o
   selo passava a dizer "primeira vez deste treino" — contra a frase do
@@ -740,9 +1072,12 @@ nascer "tem" — sem aviso falso para quem já tinha marcado.
 
 ### A nuvem: o documento é gravado inteiro
 
-`pushRemote` grava o documento do usuário **inteiro, sem merge**: quem grava por
-último ganha, e o que ele não mandou deixa de existir. Três regras saem disso, e
-cada uma tem teste em `tests/nuvem.spec.js`:
+`pushRemote` grava o documento do usuário **inteiro**: o que ele não mandou deixa
+de existir. Desde a v44 a gravação é uma transação que lê a nuvem e mescla
+antes de gravar (veja "Nada do que foi lançado sem sinal se perde", abaixo),
+mas o documento continua indo inteiro, e aparelho com versão anterior ainda
+grava por cima às cegas. Três regras saem disso, e cada uma tem teste em
+`tests/nuvem.spec.js`:
 
 - **Só herda do aparelho quem é dono dele** (`applyRemote`, `local`). O que é
   guardado no aparelho e sobrevive à nuvem — exógeno (dado de saúde),
@@ -753,8 +1088,8 @@ cada uma tem teste em `tests/nuvem.spec.js`:
   é da conta.
 - **Campo ausente não é lista vazia, e quem não sabe não envia.** Aparelho com
   versão anterior grava sem os campos novos; aceitar a ausência como vazio
-  apagaria o dado de todos os aparelhos. Vale para `academias`, `liqLog` e
-  `tprotos`.
+  apagaria o dado de todos os aparelhos. Vale para `academias`, `liqLog`,
+  `tprotos`, `getdHist` e `pausas`.
 - **O que veio de uma versão mais nova volta como chegou** (`CAMPOS_NUVEM`,
   `store._nuvem`): campo que esta versão não conhece é guardado e reenviado,
   em vez de apagado. Por isso campo novo de primeiro nível precisa ser JSON
@@ -763,6 +1098,188 @@ cada uma tem teste em `tests/nuvem.spec.js`:
   existia: campo de treino que esta versão não conhece continua nele.
 - **O histórico de líquidos (`liqLog`) sobe.** Antes ele ficava só no
   aparelho, e o `store` remontado pela nuvem o apagava a cada abertura do app.
+
+### Nada do que foi lançado sem sinal se perde
+
+O caso que motivou: treino finalizado no subsolo da academia, sem sinal. O app
+gravava no aparelho, mas o envio ficava numa fila **na memória** (o Firestore
+usa cache em memória). Se o Android descartasse a página antes de o sinal
+voltar, a abertura seguinte baixava a nuvem e **trocava o aparelho inteiro por
+ela**: o treino sumia sem aviso. Reproduzido com a nuvem falsa dos testes antes
+do conserto. São três peças, todas no bloco da nuvem do `index.html`:
+
+- **A marca** (`cutting.pendente`, `{uid}`): `save()` a grava
+  (`marcarPendente`), e ela só sai quando a transação confirma. Sobrevive ao
+  app fechado. `pendN` (só na memória) conta os toques, para saber se algo foi
+  lançado **durante** o envio — aí a marca fica e sai mais uma rodada.
+- **A base** (`cutting.base`, `{uid, doc}`): a nuvem como este aparelho a viu
+  por último (o que leu, ou o que gravou). É ela que diz quem mexeu no quê.
+  Sem a base, não dá para distinguir "apagado lá" de "lançado aqui".
+  **A base em memória é uma cópia** (`setBase` faz `copia`): o documento
+  que vira a base é o mesmo que `aplicarNuvem` põe no `store`, e dividir os
+  objetos fazia toda mudança no lugar (o treino finalizado entra com `push`
+  na lista do dia; fechar uma pausa grava `ate` no próprio objeto) mudar a
+  base junto. A mescla seguinte concluía que só a nuvem tinha mexido, e o
+  treino sumia da tela e não subia. Os testes recarregavam a página (a base
+  relida do armazenamento já era cópia), e por isso não pegavam: o teste
+  novo faz tudo na mesma página.
+- **A mescla** (`mesclar(B, L, R)`): base, este aparelho, nuvem. Regras:
+  - por campo, por dia (`days`, `tdays`, `liqLog`, `passos`, `liquids`) e por
+    registro (`id`; pesagem pela data `d`; alimento próprio pelo nome `n`);
+  - lançado de um lado entra; apagado de um lado sai, **desde que o outro não
+    tenha mexido no mesmo registro** — mexido vence apagado, porque ver um
+    registro voltar é melhor que perdê-lo;
+  - os dois mexeram **na mesma coisa**: com base, vale a deste aparelho; sem
+    base (aparelho vindo da v43, ou sem espaço para gravá-la), vale a da
+    nuvem, porque este pode ser um celular parado há semanas — mas o que só
+    ele tem entra assim mesmo;
+  - o objetivo junta chave por chave, **menos o peso, que anda em pares**:
+    o peso de partida (`pesoAtual` + `pesoDesde`) e o peso da conta
+    (`pesoConta` + `mantido`), cada par inteiro do lado que o mudou (os
+    dois: vale o de sempre). O peso da conta de um lado só fica com o peso
+    de partida do outro se foi aceito **depois** dele (a última entrada do
+    `getdHist` daquele lado é a do "Atualizar"); mais velho, sai, e a conta
+    volta ao peso de partida. `pesoDesde` ausente vale o `inicio` (objetivo
+    de antes da v46): escrevê-lo pela primeira vez não é mudança, e não
+    vence o peso de partida novo do outro aparelho;
+  - **líquido**: o total do dia é a lista de horários (mesclada por id, que
+    não conta nada duas vezes) mais o "resto" sem horário, e **só o resto é
+    contador** (o que cada lado somou desde a base soma; lados iguais não
+    mudam nada). Somar o total inteiro contava em dobro a gravação que
+    chegou à nuvem sem a base acompanhar — o app descartado logo depois de
+    gravar, ou o SDK repetindo a transação depois de um commit que deu
+    certo. Lado sem lista (versão antiga) conta como se fosse a da base;
+    **sem base, como se fosse a mesclada** — senão a água que o outro lado
+    anotou com horário contava de novo como resto (300 virava 600);
+  - **o GETD anda com o histórico dele** (`getdHist`): a mudança mais
+    recente do histórico, se só um lado a tem (com base: se não estava na
+    base), é desse lado, e traz o GETD dele **se aquele lado mudou o
+    número**. Se ele só mudou a base (GETD à mão e perfil novo), o número
+    digitado no outro aparelho fica, e a entrada passa a dizê-lo. Assim o
+    GETD de hoje nunca desmente o histórico, e um número digitado não some
+    por causa de uma mudança de perfil;
+  - campo ausente na nuvem não é vazio (a regra de sempre); campo de versão
+    mais nova vale o da nuvem.
+
+Como as peças se encaixam:
+
+- **Toda gravação é `runTransaction`** (`sincronizar` → `sincronizarAgora`):
+  lê a nuvem, mescla com o daqui e grava, e só grava se o resultado difere do
+  que está lá. Se outro aparelho gravar no meio, o Firestore recomeça a
+  transação, em vez de um apagar o outro. Custa uma leitura a mais por
+  gravação. Uma transação por vez (`enviando`); o que chega no meio pega
+  carona (`maisUma`).
+- **Sem sinal, a transação falha** (não fica numa fila em memória), o texto de
+  sincronização diz "Sem sinal, salvo no aparelho" e o app tenta de novo com
+  espera crescente (5 s até 60 s), ao voltar o sinal (`online`) e ao voltar
+  ao app. **Ao sair do app** (`visibilitychange`, `pagehide`) envia na hora,
+  sem esperar os 800 ms.
+- **Na abertura, com marca pendente da mesma conta**, `applyRemote` mescla em
+  vez de trocar, e o resultado sobe. Sem marca, segue a nuvem, como sempre: o
+  aparelho em dia não tem o que defender, e o que foi apagado em outro
+  aparelho não pode voltar por ele.
+- **A leitura da abertura que chega depois de uma transação é descartada**
+  (`geracao`): o sinal voltou com ela viajando, a transação subiu o que foi
+  lançado sem sinal, e a leitura, pedida antes, trazia a versão de antes.
+- **O aviso da nuvem (`onSnapshot`) não é aplicado direto.** Ele pode chegar
+  atrasado, com o documento de antes da última gravação daqui, e aplicado
+  direto tiraria da tela o que acabou de subir. Ele só dispara uma transação,
+  que lê a versão de verdade.
+- **Excluir dados substitui, não mescla** (`marcarPendente(true)` →
+  `substituir`): sem isso, o que outro aparelho gravou depois da última
+  leitura daqui sobreviveria à exclusão. E o `blankStore` traz os campos
+  "quem não sabe não envia" **vazios de verdade** (`liqLog:{}`, `academias`,
+  `tprotos`, `getdHist`): ausente, o outro aparelho entendia "versão
+  anterior, mantenha o seu" e devolvia o histórico de líquidos apagado.
+- **Outra conta entrando descarta a marca e a base da anterior**
+  (`limparSync`), junto com o treino em andamento.
+- Recusa que não é falta de sinal (documento grande demais, permissão) manda
+  ao Sentry **só o código do erro**, uma vez por abertura.
+- **O que ainda não resolve:** abrir o app **sem sinal** continua parado na
+  abertura (a tela espera o `getDoc`); é a ideia "Abrir na hora", que muda
+  uma regra desta página e precisa ser combinada. E aparelho com versão
+  anterior à v44 ainda grava às cegas.
+- O semeador dos testes marca que já semeou em `sessionStorage` **e** em
+  `window.name`: numa rodada com a máquina cheia, a reabertura chegou a
+  semear de novo, e o aparelho voltava ao estado inicial — parecia perda de
+  dado do app, e era o teste.
+- Nos testes, **espere pelo estado, não por tempo** (`assentar`: sem marca
+  pendente e sem envio no meio). O envio da abertura sai depois da leitura
+  da nuvem e dos 800 ms de espera; num CI lento, uma espera fixa de 1 s
+  lia a nuvem antes dele.
+- Coberto em `tests/sem-sinal.spec.js`, que usa a **nuvem falsa com estado**
+  (`__nuvem`, `__semRede`, `__lento`, `__lentoPrimeiro` no armazenamento
+  local, em `tests/app.js`): recarregar a página é o app descartado e aberto
+  de novo, e "outro aparelho" é o teste mexendo direto no documento. A
+  leitura devolve o documento **do momento do pedido**, como um servidor. Para
+  simular o Android descartando a página sem sinal, o sinal volta só na
+  página nova (`reabrirComSinal`): senão o envio do `pagehide` da página
+  velha mascara a abertura.
+
+### Peso do corpo e tempo: flexão, barra fixa e prancha
+
+Série sem carga era **descartada ao finalizar** (o filtro exigia kg > 0):
+quem fazia flexão anotava as reps e o registro saía com `ex:[]` e `vol:0`,
+aparecendo no feed como "registro manual". A prancha nem tinha onde pôr os
+segundos.
+
+- **A série vale com reps — ou segundos — acima de zero**, com ou sem carga.
+  Gravada como `{kg, rep, rir}` e, nas de tempo, `seg`. Exercício de carga
+  feito sem carga também fica ("10 reps"); "Corrigir série" acerta depois.
+- **O nome decide só a cara da linha** (`exTipo`): no peso do corpo a carga
+  fica atrás de "+ carga (colete, anilha)"; nas isometrias o campo é de
+  segundos e o plano diz "segure com a forma certa". **Sinal de carga vence o
+  movimento** (`EX_CARGA_RE`: máquina, polia, cabo, corda, halter, anilha,
+  punho…): "Mergulho máquina", "Abdominal na corda", "Abdominal com halter"
+  e "Flexão de joelho" (mesa flexora, regra própria — com os joelhos
+  apoiados ou no chão é flexão de braço) têm carga. **O nome é
+  lido sem o que não fala de carga** (`exSinal`): "sem carga" não é sinal de
+  carga, e a pegada ("Flexão com pegada fechada", "Puxada pegada paralela")
+  é a mão, não o aparelho — "paralela" ali não é a barra de mergulho, nem
+  em "Puxada paralela", "Remada baixa paralela" ou "Rosca paralela".
+  "Abdominal na prancha" é de reps (a prancha é o banco), "Abdominal
+  isométrico" é de tempo, com ou sem carga (o tempo é testado antes da
+  carga, como em "Prancha com anilha"); "Prancha com anilha" é de tempo, com a carga à
+  vista. A carga aparece sozinha se já foi usada hoje ou da última vez.
+  Existe tabela de nomes no teste — achou outro errado, ponha nela.
+- **Errar a classificação custa um toque, nunca um número:** "+ carga" mostra
+  a carga, e **"contar em reps" / "contar em segundos"** troca a medida nos
+  dois sentidos. Os três campos (kg, reps, seg) são sempre desenhados e
+  **todos guardam o que foi digitado** na sessão: trocar o exercício por
+  engano e tocar "Desfazer" devolve os segundos. **Quem filtra é
+  `serieDe(l, e)`, pela medida do exercício** (`medidaEx`): só ela vai para
+  o histórico, para a contagem de séries do descanso e para o volume. Zerar o
+  campo escondido, como já se fez, perdia o que a pessoa digitou.
+- **A medida escolhida é do exercício, não da posição:** o substituto
+  começa pela medida do nome dele, e a escolha do prescrito (`medida`,
+  `comCarga`) fica guardada na troca (`origMedida`, `origComCarga`) e volta
+  no "Desfazer" (`devolverMedida`) — sem isso, as reps digitadas na prancha
+  ficavam escondidas e não iam para o histórico. Exercício de tempo que da
+  última vez foi contado em reps (referência com reps e sem segundos)
+  **começa em reps**, a não ser que a sessão já tenha segundos digitados.
+- **"+ carga" e "contar em…" não chamam `renderTr()`**: ele termina em
+  `stopRest()` e mataria o descanso. Mostram o campo pelo DOM e gravam
+  `comCarga`/`medida` no exercício da sessão (`trPersist` leva). Existe teste.
+- **Série feita é carga, reps ou segundos** (`serieFeita` sobre `serieDe`), e
+  o mesmo critério vale no finalizar e nos avisos do fim do descanso.
+- **Exercício de carga feito com o kg em branco não vira a referência se
+  houver, mais para trás, uma vez com carga** (`lastExSession`): ela apagaria
+  da tela a última carga de verdade. **Sem nenhuma com carga** ("Tríceps
+  banco" sempre sem anilha), a sem carga é a referência, em reps — pular
+  sempre apagava a referência de quem treina só com o corpo. Na mesma
+  academia, a sem carga vem antes da de outra: o exercício já foi feito ali,
+  e "primeira vez nesta academia" seria falso.
+- **Nunca "kg movidos" inventados.** A fração do corpo que a flexão levanta
+  muda com a variação (Ebben et al., *J Strength Cond Res*
+  2011;25:2891-2894), então o volume em kg desses exercícios é zero e eles
+  contam por séries e reps, que é o que a literatura de dose-resposta usa.
+  O 1RM (`evoData`) ignora série sem carga: Epley com 0 kg dá 0.
+- **O selo compara a medida que as duas sessões têm** (`medidasSessao`,
+  `medidaComum`): volume em kg; sem carga, o total de reps ("+11% de reps"),
+  ou de segundos. Nunca um com o outro. Feito antes, mas medido de outro
+  jeito, o selo diz isso — e não "primeira vez". A referência diz "15 reps" e "45 s" (`serieTxt`), e a diferença por
+  série também ("+2 reps", "mesmo tempo").
+- Coberto em `tests/peso-corpo.spec.js`.
 
 ### Trocar o exercício no meio do treino
 
@@ -878,9 +1395,8 @@ quem digitasse "7,5" gravaria 75. Num app que calcula caloria, isso é número
 errado entrando calado. A leitura passa por `numBR()`, que aceita vírgula e
 ponto, e um filtro impede letra no campo.
 
-> **Isto ainda não foi corrigido no resto do app.** Peso, macros, quantidade em
-> gramas e a carga das séries continuam em `type="number"` e sofrem do mesmo
-> defeito. Quando for mexer num desses campos, troque para texto e use `numBR`.
+Desde a v45 isso vale para o app inteiro: veja "Números digitados", na
+seção 4.
 
 ### Aviso com o app fechado (Web Push)
 

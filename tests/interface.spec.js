@@ -177,6 +177,33 @@ for (const largura of [390, 320]) {
       expect(await cortados(page, '.datenav .chip, .ringstats > div > *')).toEqual([]);
     });
 
+    test('com números de verdade, os valores do anel ficam dentro do cartão', async ({ page }) => {
+      /* Com "0" e "+0" cabia; com meta de 4 dígitos, 195 consumidos e +320 de
+         treino, em 320px o "Consumido" ficava sem valor e o "+320" saía do
+         cartão. O teste de cima, com estado vazio, não pegava. */
+      const h = require('./app').diaISO(0);
+      await abrirApp(page, estadoBase({
+        tdays: { [h]: [{ id: 's', name: 'Treino', min: 50, kcal: 320 }] },
+        days: { [h]: [{ id: 'a', name: 'Arroz', kcal: 195, p: 4, c: 42, g: 0, status: 'consumido' }] },
+      }));
+      await page.evaluate(() => document.querySelector('#tabbar [data-tab="food"]').click());
+      await page.waitForTimeout(300);
+      const fora = await page.evaluate(() => {
+        const caixa = document.querySelector('.hero .ringwrap').getBoundingClientRect();
+        return [...document.querySelectorAll('.ringstats b')]
+          .filter(b => { const r = b.getBoundingClientRect(); return r.width === 0 || r.right > caixa.right - 4 || r.left < caixa.left; })
+          .map(b => b.id + '=' + b.textContent);
+      });
+      expect(fora).toEqual([]);
+    });
+
+    test('o atalho do peso no Início não corta o texto', async ({ page }) => {
+      const h = require('./app').diaISO;
+      await abrirApp(page, estadoBase({ weights: [{ d: h(3), w: 103.4 }] }));
+      const e = await page.evaluate(() => { const x = document.getElementById('fdPesoTx'); return [x.textContent, x.scrollWidth <= x.clientWidth + 1]; });
+      expect(e).toEqual(['Peso · último 103,4 kg', true]);
+    });
+
     test('o feed do Início não corta os números das sessões', async ({ page }) => {
       /* A unidade saiu do valor para o rótulo justamente porque "310 kcal" não
          cabia em 320px e era cortado no meio. */
@@ -190,6 +217,26 @@ for (const largura of [390, 320]) {
 
       expect(await cortados(page, '#fdFeed .fd-stat .v, #fdFeed .fd-nome .n, .fd-tx .fd-v, .fd-tx .fd-m'),
         'número cortado no feed é o defeito que o dono reclamou nos macros').toEqual([]);
+    });
+
+    test('nem durante a entrada de uma tela a página fica mais larga', async ({ page }) => {
+      /* A marca d'água passa da borda direita; enquanto a tela entra
+         (transform), ela alargava a página por 0,4 s. Num CI lento isso
+         caía bem na hora de medir, e o teste do feed em 320px falhava às
+         vezes. Aqui a medida é feita de propósito no meio da animação. */
+      await abrirApp(page, estadoBase());
+      const larguras = await page.evaluate(async () => {
+        const out = [];
+        for (const aba of ['food', 'treino', 'perfil', 'inicio']) {
+          document.querySelector(`#tabbar [data-tab="${aba}"]`).click();
+          for (let i = 0; i < 12; i++) {
+            await new Promise(r => requestAnimationFrame(r));
+            out.push(document.documentElement.scrollWidth - document.documentElement.clientWidth);
+          }
+        }
+        return out;
+      });
+      expect(Math.max(...larguras), 'a página ficou mais larga que a tela durante a troca de aba').toBeLessThanOrEqual(0);
     });
 
     test('nenhuma tela rola para o lado', async ({ page }) => {
