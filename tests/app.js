@@ -29,7 +29,7 @@ window.__t={
   pendente, baseDe, salvar:()=>save(), get enviando(){return !!enviando},
   exTipo, evoData, propostaGetd, gastoBase, pesoConta, pesoNoDia, computeGETD, macroTargets, mesesTxt,
   listaProtocolos, protDoTreino, protPorId, protAberto, protAbertoAqui, protNomeDe, mesmoTreino, treinosDoProt, PROT_PADRAO, T_SUG,
-  carimbarTid, raizTreino, acadsExcluidas,
+  carimbarTid, raizTreino, acadsExcluidas, fracaoCorpo, tipoDe, corpoKgDe, corpoKgSessao, medidasSessao, PC_SEG,
   appAlert, appConfirm, pausas:()=>pausas(), diasEntre, ultimoTreino, retornoDe, prDe, pausaAberta, PAUSA_AVISO_DIAS, PAUSA_QUEDA_DIAS, get trRecorde(){return trRecorde},
   EQUIP, EQUIP_ID, EX_EQUIP, EX_POR_GRUPO_: EX_POR_GRUPO, exEquip, equipFalta, equipFaltam,
   /* Trocar quem está logado, para alcançar o modo local — onde não há conta e

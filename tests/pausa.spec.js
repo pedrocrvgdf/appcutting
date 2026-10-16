@@ -509,9 +509,10 @@ test.describe('Aviso da carga de recorde na volta', () => {
     await page.evaluate(() => document.getElementById('trNext').click());
     await page.waitForTimeout(300);
     expect(await page.evaluate(() => __t.trS.idx)).toBe(1);
-    expect(await nota(page)).toMatch(/recorde neste exercício é 10 kg/);
+    /* #91: na barra fixa, o recorde é a carga acrescentada ao corpo. */
+    expect(await nota(page)).toMatch(/recorde neste exercício é \+10 kg de carga acrescentada/);
     await carga(page, 0, 10);
-    expect(await linhaSerie(page, 0)).toMatch(/É o seu recorde \(10 kg\)/);
+    expect(await linhaSerie(page, 0)).toMatch(/É o seu recorde \(\+10 kg\)/);
     await responder(page, true);
   });
 
