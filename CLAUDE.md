@@ -1520,6 +1520,12 @@ regra derrubou um teste.
 `var` e `function` no bloco, e não `let`/`const`: `listaProtocolos` e
 `save()` rodam antes dele na abertura.
 
+**Nos testes, semeie antes do app** (o `abrirApp` de `treinador.spec.js`,
+como o de `sem-sinal.spec.js`). O `abrirApp` de sempre abre a página vazia,
+semeia e recarrega; a página vazia, ouvindo o vínculo, lia o `__docs`
+recém-semeado, aplicava o plano e gravava o store vazio dela por cima do
+semeado. Falhava uma vez em seis. No app de verdade essa página não existe.
+
 - Coberto em `tests/treinador.spec.js` e `tests-regras/regras.test.js`.
 
 ### Exportar o protocolo em PDF (#92)

@@ -19,7 +19,28 @@
    tests-regras/. */
 
 const { test, expect } = require('@playwright/test');
-const { abrirApp, estadoBase, diaISO, iniciarTreino, preencherSerie, urlApp } = require('./app');
+const { estadoBase, diaISO, iniciarTreino, preencherSerie, urlApp, isolarRede, coletarErros } = require('./app');
+
+/** Semeia o armazenamento UMA vez, antes de qualquer script do app, como em
+    sem-sinal.spec.js. O abrirApp de sempre abre a página vazia, semeia e
+    recarrega; aqui a página vazia, ouvindo o vínculo, lia o "__docs" recém-
+    semeado, aplicava o plano e gravava o store vazio dela por cima do
+    semeado. No app de verdade essa página vazia não existe. */
+async function abrirApp(page, storage) {
+  await isolarRede(page.context());
+  const erros = coletarErros(page);
+  await page.addInitScript(s => {
+    if (sessionStorage.getItem('__semeado') || window.name === '__semeado') return;
+    localStorage.clear();
+    for (const k in s) localStorage.setItem(k, s[k]);
+    sessionStorage.setItem('__semeado', '1');
+    window.name = '__semeado';
+  }, storage);
+  await page.goto(urlApp());
+  await page.waitForFunction(() => !!window.__t, null, { timeout: 15000 });
+  await page.waitForTimeout(400);
+  return erros;
+}
 
 /* ---- O lado do treinador ---- */
 
@@ -208,6 +229,22 @@ test.describe('Treinador', () => {
     expect([d['planos/a1'], d['vinculos/a1']]).toEqual([undefined, undefined]);
     expect(await viewOn(page)).toBe('view-alunos');
     expect(await page.evaluate(() => [...document.querySelectorAll('#alLista .al-n')].map(e => e.textContent))).toEqual(['Bruno']);
+  });
+
+  test('aluno que desfez e voltou recebe o plano de novo', async ({ page }) => {
+    const est = estadoTreinador({
+      tprotos: [{ id: 'p1', nome: 'Força', aluno: 'a1' }],
+      tprotocol: [{ id: 'tw1', nome: 'A', cat: 'A', prot: 'p1', protNome: 'Força', aluno: 'a1', ex: [] }],
+    });
+    await abrirApp(page, comDocs(est, docsTreinador()));
+    await page.waitForFunction(() => JSON.parse(localStorage.getItem('__docs'))['planos/a1']);
+    // o aluno desfez: apagou o plano e o vínculo
+    await page.evaluate(() => { const m = JSON.parse(localStorage.getItem('__docs')); delete m['planos/a1']; delete m['vinculos/a1']; localStorage.setItem('__docs', JSON.stringify(m)); window.__notificar(); });
+    await page.waitForTimeout(150);
+    // e voltou com o código
+    await page.evaluate(v => { const m = JSON.parse(localStorage.getItem('__docs')); m['vinculos/a1'] = v; localStorage.setItem('__docs', JSON.stringify(m)); window.__notificar(); }, vinc('a1', 'Ana'));
+    await page.waitForFunction(() => JSON.parse(localStorage.getItem('__docs'))['planos/a1'], null, { timeout: 3000 });
+    expect((await docs(page))['planos/a1'].tprotocol.map(w => w.nome)).toEqual(['A']);
   });
 
   test('o aluno desfez com a tela dele aberta: ela fecha, com aviso', async ({ page }) => {
@@ -404,6 +441,22 @@ test.describe('Aluno', () => {
     expect(await page.evaluate(() => __t.store.tprotocol.filter(w => w.treinador).length), 'plano de quem não é o treinador dele').toBe(2);
   });
 
+  test('id do plano que já é do aluno não entra: o treino dele não vira só de leitura', async ({ page }) => {
+    const plano = PLANO({
+      tprotos: [{ id: 'principal', nome: 'Invasor' }, { id: 'pt', nome: 'Hipertrofia' }],
+      tprotocol: [
+        { id: 'w1', nome: 'Treino A do treinador', cat: 'A', prot: 'pt', ex: [] },
+        { id: 'tw1', nome: 'Peito', cat: 'A', prot: 'pt', ex: [] },
+        { id: 'tw9', nome: 'No principal', cat: 'B', prot: 'principal', ex: [] },
+      ],
+    });
+    await abrirApp(page, comDocs(estadoBase(), docsAluno({ 'planos/u1': plano })));
+    await page.waitForFunction(() => (__t.store.tprotos || []).some(p => p.treinador));
+    const st = await page.evaluate(() => ({ p: __t.store.tprotos.map(p => [p.id, p.treinador || null]), w: __t.store.tprotocol.map(w => [w.id, w.nome, w.treinador || null]) }));
+    expect(st.p).toEqual([['pt', 't1'], ['principal', null]]);
+    expect(st.w).toEqual([['w1', 'Treino A', null], ['tw1', 'Peito', 't1']]);
+  });
+
   test('treinar o treino do treinador: a sessão é do aluno e sobe no diário, sem o que ele não aceitou mostrar', async ({ page }) => {
     const est = estadoBase({ weights: [{ d: diaISO(2), w: 80 }], academias: [{ id: 'a1', nome: 'Smart Fit' }] });
     await abrirApp(page, comDocs(est, docsAluno()));
@@ -430,14 +483,14 @@ test.describe('Aluno', () => {
     const est = estadoBase({ weights: [{ d: diaISO(2), w: 80 }, { d: diaISO(500), w: 90 }], tdays: { [diaISO(1)]: [{ id: 'z1', name: 'Treino A', min: 40, kcal: 250, vol: 3000, pesoDia: 80, ex: [{ n: 'Barra fixa', g: 'costas', tipo: 'corpo', corpoKg: 80, sets: [{ kg: 10, rep: 6, rir: 1 }] }] }] } });
     await abrirApp(page, comDocs(est, docsAluno()));
     await page.evaluate(() => __t.publicarDiario(true));
-    await page.waitForTimeout(100);
+    await page.waitForFunction(() => JSON.parse(localStorage.getItem('__docs'))['diarios/u1'], null, { timeout: 5000 });
     let d = (await docs(page))['diarios/u1'];
     expect('pesos' in d).toBe(false);
     expect(['pesoDia', 'kcal', 'vol'].map(k => k in d.sessoes[0]).concat('corpoKg' in d.sessoes[0].ex[0])).toEqual([false, false, false, false]);
 
     await irPerfil(page);
     await page.evaluate(() => { const c = document.getElementById('pfTreinPeso'); c.checked = true; c.dispatchEvent(new Event('change')); });
-    await page.waitForTimeout(250);
+    await page.waitForFunction(() => 'pesos' in (JSON.parse(localStorage.getItem('__docs'))['diarios/u1'] || {}), null, { timeout: 5000 });
     d = await docs(page);
     expect(d['vinculos/u1'].pesos).toBe(true);
     expect(d['diarios/u1'].pesos, 'só o último ano').toEqual([{ d: diaISO(2), w: 80 }]);
