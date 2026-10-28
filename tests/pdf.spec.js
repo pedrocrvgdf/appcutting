@@ -198,6 +198,60 @@ test.describe('Exportar o protocolo em PDF', () => {
     expect(await page.evaluate(() => window.__impressoes.length)).toBe(0);
   });
 
+  /* #93: o dono não achou o botão do pop-up, que fica atrás de "Editar". */
+  const aba = async page => {
+    await page.evaluate(() => document.querySelector('#tabbar [data-tab="treino"]').click());
+    await page.waitForTimeout(200);
+  };
+
+  test('o botão fica à vista no protocolo aberto da aba Treino, sem abrir o pop-up', async ({ page }) => {
+    await page.addInitScript(PRINT);
+    const erros = await abrirApp(page, doisTreinos());
+    await aba(page);
+    expect(await page.isVisible('#tPdfProt')).toBe(true);
+    expect(await page.textContent('#tPdfProt')).toBe('Exportar em PDF');
+    await page.click('#tPdfProt');
+    const imp = await page.evaluate(() => window.__impressoes);
+    expect(imp.map(i => i.titulo)).toEqual(['Protocolo Hipertrofia']);
+    const f = await folha(page);
+    expect([f.titulo, f.treinos.map(t => t.nome)]).toEqual(['Hipertrofia', ['Peito e tríceps', 'Costas e bíceps']]);
+    expect(await page.evaluate(() => document.getElementById('tprotoOverlay').classList.contains('open'))).toBe(false);
+    expect(erros).toEqual([]);
+  });
+
+  test('o botão da aba exporta o protocolo aberto nela, e não o último do pop-up', async ({ page }) => {
+    await page.addInitScript(PRINT);
+    await abrirApp(page, doisTreinos());
+    await abrirProtocolo(page);   // o pop-up do "Hipertrofia"…
+    await page.evaluate(() => document.getElementById('tpClose').click());
+    await page.evaluate(() => document.querySelector('[data-protabrir="p2"]').click());   // …e na aba, o "Viagem"
+    await page.waitForTimeout(100);
+    await page.click('#tPdfProt');
+    expect(await page.evaluate(() => window.__impressoes.map(i => i.titulo))).toEqual(['Protocolo Viagem']);
+    const f = await folha(page);
+    expect([f.titulo, f.treinos.map(t => t.nome)]).toEqual(['Viagem', ['Hotel']]);
+  });
+
+  test('protocolo sem treino não tem o botão na aba', async ({ page }) => {
+    const e = doisTreinos({ tprotos: [{ id: 'principal', nome: 'Hipertrofia' }, { id: 'p2', nome: 'Viagem' }, { id: 'p3', nome: 'Vazio' }] });
+    e['tresults.prot'] = 'p3';
+    await abrirApp(page, e);
+    await aba(page);
+    expect(await page.textContent('#tOpenProtocol')).toContain('Montar');
+    expect(await page.$('#tPdfProt')).toBeNull();
+  });
+
+  test('em 320 px o botão da aba cabe', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await abrirApp(page, doisTreinos({ academias: [{ id: 'a1', nome: 'Smart Fit' }] }));
+    await aba(page);
+    const m = await page.evaluate(() => {
+      const b = document.getElementById('tPdfProt').getBoundingClientRect();
+      return { rola: document.documentElement.scrollWidth > document.documentElement.clientWidth, cabe: b.left >= 0 && b.right <= 320 && b.width > 150 };
+    });
+    expect(m).toEqual({ rola: false, cabe: true });
+  });
+
   test('em 320 px o botão e a nota cabem no pop-up', async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 640 });
     await abrirApp(page, doisTreinos());
