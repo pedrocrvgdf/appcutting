@@ -22,3 +22,6 @@ android/local.properties
 # quem tem a chave assina um APK que o Android aceita como atualização deste.
 *.jks
 *.keystore
+
+# Log do emulador do Firestore (tests-regras)
+*-debug.log
