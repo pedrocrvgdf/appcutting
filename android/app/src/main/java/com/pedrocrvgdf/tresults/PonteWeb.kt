@@ -148,4 +148,17 @@ class PonteWeb(private val act: Activity) {
     fun esquecerAtalho() {
         Credencial.esquecer(act)
     }
+
+    /* ---------------- Exportar em PDF ---------------- */
+
+    /**
+     * Abre a impressão do sistema com a página — que, na impressão, mostra
+     * só a folha do protocolo (o CSS de impressão esconde o resto). "Salvar
+     * como PDF" está nela. O WebView ignora `window.print()`: sem isto, o
+     * botão "Exportar em PDF" não faria nada dentro do app.
+     */
+    @JavascriptInterface
+    fun imprimir(titulo: String?) {
+        act.runOnUiThread { (act as? MainActivity)?.imprimir(titulo ?: "") }
+    }
 }

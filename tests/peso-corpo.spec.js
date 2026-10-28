@@ -5,9 +5,11 @@
    vol:0, aparecendo no feed como "registro manual". A prancha, que se mede
    em tempo, nem tinha onde pôr os segundos.
 
-   Nada de "kg movidos" inventado: a fração do corpo que a flexão levanta muda
-   com a variação, então o volume em kg desses exercícios é zero e eles contam
-   por séries, reps e segundos. */
+   Desde o #91, o peso do corpo conta como carga, com a fração medida de
+   cada movimento (flexão 66%, barra e paralela o corpo inteiro, abdominal
+   pelas massas dos segmentos): ver tests/corpo-carga.spec.js. Sem fração
+   medida, ou sem peso conhecido, o exercício segue contando por séries,
+   reps e segundos, como aqui. */
 
 const { test, expect } = require('@playwright/test');
 const { abrirApp, estadoBase, diaISO, iniciarTreino } = require('./app');
@@ -55,7 +57,10 @@ test.describe('Peso do corpo e tempo', () => {
     expect(s.ex.map(e => e.n)).toEqual(['Flexão de braço', 'Prancha']);
     expect(s.ex[0].sets.map(x => [x.kg, x.rep])).toEqual([[0, 15], [0, 12]]);
     expect(s.ex[1].sets.map(x => x.seg)).toEqual([45, 40]);
-    expect(s.vol, 'sem kg movidos inventados').toBe(0);
+    /* #91: a flexão conta 66,4% dos 80 kg (53,1 kg) em cada repetição; a
+       prancha, de tempo, não entra no volume. */
+    expect([s.pesoDia, s.ex[0].corpoKg, 'corpoKg' in s.ex[1]]).toEqual([80, 53.1, false]);
+    expect(s.vol, 'o corpo que a flexão levanta, e nada inventado na prancha').toBe(Math.round(53.1 * 27));
 
     await page.evaluate(() => document.querySelector('#tabbar [data-tab="inicio"]').click());
     await page.waitForTimeout(300);
@@ -112,15 +117,32 @@ test.describe('Peso do corpo e tempo', () => {
   });
 
   test('o 1RM ignora série sem carga', async ({ page }) => {
-    /* Epley com 0 kg dá 0: a curva de força mostraria a flexão despencando. */
+    /* Epley com 0 kg dá 0: a curva de força mostraria a flexão despencando.
+       Desde o #91 a flexão tem carga, o corpo (66% do peso); o que não tem
+       fração medida (mergulho no banco) continua fora. */
     await abrirApp(page, calistenia({
       tdays: { [ontem]: [{ id: 's0', name: 'Treino A', tid: 'w1', min: 40, kcal: 200, vol: 600, ex: [
         { n: 'Supino reto', g: 'peito', sets: [{ kg: 60, rep: 10 }] },
         { n: 'Flexão de braço', g: 'peito', sets: [{ kg: 0, rep: 20 }] },
+        { n: 'Tríceps banco', g: 'triceps', sets: [{ kg: 0, rep: 20 }] },
       ] }] },
     }));
-    const k = await page.evaluate(() => Object.keys(__t.evoData()));
-    expect(k).toEqual(['supino reto']);
+    const k = await page.evaluate(() => Object.keys(__t.evoData()).sort());
+    expect(k).toEqual(['flexao de braco', 'supino reto']);
+  });
+
+  test('sem peso conhecido, o 1RM continua ignorando a flexão sem carga', async ({ page }) => {
+    const e = calistenia({
+      tdays: { [ontem]: [{ id: 's0', name: 'Treino A', tid: 'w1', min: 40, kcal: 200, vol: 600, ex: [
+        { n: 'Supino reto', g: 'peito', sets: [{ kg: 60, rep: 10 }] },
+        { n: 'Flexão de braço', g: 'peito', sets: [{ kg: 0, rep: 20 }] },
+      ] }] },
+    });
+    const st = JSON.parse(e['cutting.v1']);
+    st.goals.pesoAtual = 0;
+    e['cutting.v1'] = JSON.stringify(st);
+    await abrirApp(page, e);
+    expect(await page.evaluate(() => Object.keys(__t.evoData()))).toEqual(['supino reto']);
   });
 
   test('quem faz o nome decide a cara da linha, e o que tem carga continua com carga', async ({ page }) => {
@@ -132,7 +154,15 @@ test.describe('Peso do corpo e tempo', () => {
        "halter" no singular, "sem carga", "paralela" no singular, a pegada da
        flexão e o abdominal isométrico. Os da terceira linha, da terceira:
        "paralela" que é pegada de puxada, remada ou rosca, o isométrico com
-       carga e a flexão com os joelhos apoiados. */
+       carga e a flexão com os joelhos apoiados. Os da quarta, do #91: halter,
+       anilha, colete ou cinto na flexão, na paralela e no abdominal são
+       carga ACRESCENTADA ao corpo, que sobe junto ("Abdominal com halter"
+       era "carga"); aparelho e cabo continuam carga; a barra assistida
+       (graviton) é peso do corpo com contrapeso, e o mergulho no banco é peso
+       do corpo. Os da quinta, da revisão do #91: "flexão de pernas/tronco"
+       não é flexão de braço, "paralela" de pulley e de agachamento é
+       pegada e profundidade, abdominal de pé ou girando com halter é carga,
+       e a suspensão na barra é tempo. */
     const esperado = {
       'Flexão de braço': 'corpo', 'Flexão com joelhos apoiados': 'corpo', 'Barra fixa': 'corpo', 'Mergulho': 'corpo',
       'Abdominal': 'corpo', 'Abdominal infra': 'corpo', 'Abdominal na roda': 'corpo', 'Elevação de pernas': 'corpo',
@@ -146,7 +176,7 @@ test.describe('Peso do corpo e tempo', () => {
       'Abdominal na prancha declinada': 'corpo', 'Abdominal na prancha': 'corpo', 'Prancha abdominal': 'tempo',
       'Prancha com anilha': 'tempo', 'Barra fixa pegada supinada': 'corpo', 'Mergulho nas paralelas': 'corpo',
 
-      'Abdominal com halter': 'carga', 'Flexão lateral com halter': 'carga', 'Prancha com halter': 'tempo',
+      'Abdominal com halter': 'corpo', 'Flexão lateral com halter': 'carga', 'Prancha com halter': 'tempo',
       'Paralela': 'corpo', 'Tríceps paralela': 'corpo', 'Mergulho sem carga': 'corpo', 'Flexão sem carga': 'corpo',
       'Flexão com pegada fechada': 'corpo', 'Elevação de joelho na paralela': 'corpo',
       'Abdominal isométrico': 'tempo', 'Abdominal hollow hold': 'tempo', 'Abdominal joelho no peito': 'corpo',
@@ -155,6 +185,17 @@ test.describe('Peso do corpo e tempo', () => {
       'Remada baixa paralela': 'carga', 'Puxada paralela': 'carga', 'Puxada frente paralela': 'carga',
       'Rosca paralela': 'carga', 'Remada paralela': 'carga', 'Abdominal isométrico com anilha': 'tempo', 'Abdominal hollow hold com halter': 'tempo',
       'Flexão de joelhos apoiados': 'corpo', 'Flexão de joelhos no chão': 'corpo', 'Tríceps paralela': 'corpo',
+
+      'Flexão com anilha nas costas': 'corpo', 'Paralela com anilha': 'corpo', 'Paralela livre': 'corpo', 'Mergulho com cinto de carga': 'corpo',
+      'Abdominal com anilha': 'corpo', 'Abdominal supra': 'corpo', 'Abdominal crunch na polia': 'carga', 'Barra fixa com colete': 'corpo',
+      'Barra fixa assistida': 'corpo', 'Barra graviton': 'corpo', 'Tríceps banco': 'corpo', 'Mergulho no banco': 'corpo',
+      'Flexão de punho com halter': 'carga', 'Flexão plantar': 'carga',
+
+      'Flexão de pernas em pé com caneleira': 'carga', 'Flexão de pernas com halter': 'carga', 'Flexão de tronco com anilha': 'carga',
+      'Pulley frente paralela': 'carga', 'Elevação frontal paralela com halter': 'carga', 'Agachamento até a paralela': 'carga',
+      'Tríceps francês paralela': 'carga', 'Abdominal lateral com halter': 'carga', 'Abdominal russo com anilha': 'carga',
+      'Suspensão na barra fixa': 'tempo', 'Barra pronada': 'corpo', 'Barra supinada': 'corpo', 'Crunch com anilha': 'corpo',
+      'Sit up': 'corpo', 'Supra abdominal': 'corpo', 'Elevação de joelho na paralela': 'corpo',
     };
     const r = await page.evaluate(n => Object.fromEntries(n.map(x => [x, __t.exTipo(x)])), Object.keys(esperado));
     expect(r).toEqual(esperado);

@@ -656,11 +656,14 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 | `tests/nuvem.spec.js` | Sincronização: outra conta no celular não herda exógeno, academias, líquidos nem treino em andamento; campo ausente não apaga; quem não sabe não envia; campo de versão mais nova volta como chegou; histórico de líquidos sobe |
 | `tests/virgula.spec.js` | Nenhum `type="number"`; carga, peso, ml, rótulo e objetivo com vírgula; macros na tela; conferências de peso, carga e quantidade; corrigir série salva; prazo "1,5 mês", ritmo e RIR com vírgula |
 | `tests/peso-corpo.spec.js` | Flexão com reps, prancha com segundos, feed sem "registro manual", referência e diferença em reps, "+ carga" sem matar o descanso, selo em reps, 1RM sem série sem carga, classificação por nome; "contar em reps/segundos" nos dois sentidos, desfazer a troca devolve o digitado, medida que não fica presa à posição, referência sem carga quando nunca houve carga |
+| `tests/corpo-carga.spec.js` | O peso do corpo é a carga: frações com fonte (e `null` sem fonte), peso do dia gravado, abdominal por sexo e fora do 1RM, nota e campo "+", o próprio peso digitado pergunta, marcação do editor vencendo o nome, troca e desfazer, selo com o mesmo peso, sessão de antes sem "+900%", gráfico com o peso daquele dia, sessão inteira, corrigir série, volume da semana, nuvem, 320px |
 | `tests/peso.spec.js` | Peso do dia no Início e na Alimentação, conferência, apagar; cartão "Atualizar/Manter", plano que não reinicia, dia passado que não muda, proteína; GETD manual, vazio ou abaixo de 500 recusado, só leitura num dia passado; prazo novo que não descarta pesagens nem o peso aceito; dia anterior ao histórico de GETD; passos com o peso do dia; nuvem |
 | `tests/sem-sinal.spec.js` | Treino feito sem sinal sobrevive ao app descartado; dois aparelhos sem sinal juntam; apagado não volta; água soma; transação não apaga o de outro aparelho; envio ao sair do app; aviso atrasado; excluir dados substitui; a mescla direto na função (água sem base, GETD pelo histórico, peso da conta com o peso de partida) |
-| `tests/protocolos.spec.js` | Protocolos com nome: "Meu protocolo" virtual sem regravar nada, criar/renomear/excluir, sugestão que preenche ou cria, mover treino, selo que não mistura dois "Treino A", sessão com `tid`/`prot`, nuvem com versão anterior |
+| `tests/protocolos.spec.js` | Protocolos com nome: "Meu protocolo" virtual sem regravar nada, criar/renomear/excluir, sugestão que preenche ou cria, mover treino, selo que não mistura dois "Treino A", sessão com `tid`/`prot`, nuvem com versão anterior; tocar de novo no aberto recolhe |
+| `tests/editor.spec.js` | Editor de treino: editar exercício no lugar (nome, séries, descanso, grupo, sinergistas), campo desconhecido preservado, cancelar, edição pendente ao salvar, excluir durante a edição, referência que segue o nome, 320px |
+| `tests/pdf.spec.js` | Exportar o protocolo em PDF: folha na ordem, com grupo, séries, descanso e marcações; título no nome do arquivo e devolvido depois; protocolo vazio sem botão; nome do título ainda não gravado; HTML escapado e nada de saúde na folha; academias; na impressão só a folha, clara no tema escuro, em várias páginas; ponte do Android e o APK antigo; 320px |
 | `tests/inventario.spec.js` | Inventário: catálogo inteiro reconhecido, "não informado" sem aviso, gravação por toque, aviso no cartão/treino/editor, troca com o que tem primeiro, "Tem, sim" sem matar o descanso, alternativas, nome desconhecido sem aviso |
-| `tests/academias.spec.js` | Academias: sem cadastro o app fica igual; cada academia um bloco que abre os protocolos dela; treino novo nascendo na aberta; "Iniciar" grava a sessão nela; referência, selo e gráfico só da mesma academia ("Academia nova", carga do zero); copiar protocolo independente, levando o já feito ali; excluir sem apagar treino nem histórico; nuvem; 320px |
+| `tests/academias.spec.js` | Academias: sem cadastro o app fica igual; cada academia um bloco que abre os protocolos dela; treino novo nascendo na aberta; "Iniciar" grava a sessão nela; referência, selo e gráfico só da mesma academia ("Academia nova", carga do zero); copiar protocolo independente, levando o já feito ali; excluir sem apagar treino nem histórico; nuvem; 320px; tocar de novo na aberta recolhe e ela segue escolhida |
 | `tests/pausa.spec.js` | Diário de pausas (musculação e cardio): registrar, em aberto, recusas, conferência das datas, excluir, fechar ao treinar (cada tipo o seu), dica, marcador no feed; aviso do recorde: nota, linha, pergunta sem porcentagem, "Mudar a carga", uma vez por exercício, limiar 13/14/28, cardio não zera, outra academia, peso do corpo, vírgula vence, descanso continua, diálogos em fila, trocar e desfazer; nuvem, mescla, privacidade, 320px |
 | `tests/historico.spec.js` | Referência da última sessão, sugestões, indicador de progressão de carga |
 | `tests/interface.spec.js` | Zoom bloqueado, diálogos internos, layout em 390/320px (inclusive no meio da troca de aba), tema claro e escuro |
@@ -758,8 +761,11 @@ treinos (aqui) e tem um **inventário de aparelhos** (seção própria, abaixo).
   um"). O `#protArea` (protocolos, "Novo protocolo", sugestões) é **movido**
   para dentro da academia aberta; `renderAcadBar` o tira de lá antes de
   redesenhar, senão o `innerHTML` o apagaria. Embaixo do nome, quantos
-  treinos ela tem (`acadResumo`). **Sempre há uma aberta**: tocar na aberta
-  não fecha.
+  treinos ela tem (`acadResumo`). **Tocar de novo na aberta a recolhe** (#88:
+  "clico de volta para fechar, ele não fecha"), e tocar de novo a abre;
+  recolhida, ela **continua sendo a escolhida** (`acadRecolhida`, só na
+  memória: ao reabrir o app, ela volta aberta), e "Iniciar" continua gravando
+  nela. Tocar em outra abre a outra.
 - **Não existe mais "Todas".** A carga de um aparelho só vale naquele
   aparelho, e "Todas" gravava sessão sem academia. Sem escolha guardada, ou
   com a escolhida excluída (aqui ou em outro aparelho), abre a do último
@@ -938,7 +944,9 @@ treino avulso (cardio) é treino, um treino cardiovascular. `store.pausas =
 - **Recorde** (`prDe`): a maior carga já feita no exercício, com qualquer
   número de reps (pedido literal: "a mesma carga PR"), **só na mesma
   academia** (`mesmaAcad`; registro sem academia vale em todas). Peso do
-  corpo sem carga não tem recorde; barra fixa com colete tem.
+  corpo sem carga não tem recorde; barra fixa com colete tem, e é a carga
+  **acrescentada** ("+10 kg de carga acrescentada", #91): é ela que a
+  pessoa escolhe pôr.
 - Com `PAUSA_AVISO_DIAS` (14) ou mais: nota `.tr-pausa` acima das séries,
   linha `.tsrec` na série que chega ao recorde, e a pergunta "Carga de
   recorde depois da pausa" quando a pessoa termina de digitar (`change`),
@@ -970,7 +978,9 @@ treino avulso (cardio) é treino, um treino cardiovascular. `store.pausas =
 O dono pediu que, ao abrir a aba Treino, aparecessem "os protocolos da pessoa,
 que ela possa batizar com o nome que bem entender". A aba mostra um bloco por
 protocolo (`renderProtLista`), **um aberto por vez**, com os cartões dos
-treinos dele; o aberto é lembrado no aparelho (`tresults.prot`) e, sem
+treinos dele. Com dois ou mais, tocar de novo no aberto o recolhe
+(`protRecolhido`, #88), e tocar de novo, ou em outro, abre; com um só não há
+seta. O aberto é lembrado no aparelho (`tresults.prot`) e, sem
 escolha, é o do último treino feito (`protAberto`). Com academia cadastrada,
 os blocos ficam **dentro da academia aberta** e só aparecem os protocolos
 com treino nela (veja "Academias"); protocolo lembrado que não tem treino ali
@@ -1230,9 +1240,15 @@ segundos.
   fica atrás de "+ carga (colete, anilha)"; nas isometrias o campo é de
   segundos e o plano diz "segure com a forma certa". **Sinal de carga vence o
   movimento** (`EX_CARGA_RE`: máquina, polia, cabo, corda, halter, anilha,
-  punho…): "Mergulho máquina", "Abdominal na corda", "Abdominal com halter"
-  e "Flexão de joelho" (mesa flexora, regra própria — com os joelhos
-  apoiados ou no chão é flexão de braço) têm carga. **O nome é
+  punho…): "Mergulho máquina", "Abdominal na corda" e "Flexão de joelho"
+  (mesa flexora, regra própria — com os joelhos apoiados ou no chão é
+  flexão de braço) têm carga. **Exceção desde o #91:** na flexão, na
+  paralela e no abdominal, halter, anilha, colete e cinto são carga
+  acrescentada ao corpo, que sobe junto ("Abdominal com halter" e
+  "Paralela com anilha" são peso do corpo); só aparelho e cabo
+  (`EX_MAQ_RE`) fazem deles exercício de carga. A barra assistida
+  (graviton) é aparelho: o número é o contrapeso. "Tríceps banco" é o
+  mergulho no banco, peso do corpo. **O nome é
   lido sem o que não fala de carga** (`exSinal`): "sem carga" não é sinal de
   carga, e a pegada ("Flexão com pegada fechada", "Puxada pegada paralela")
   é a mão, não o aparelho — "paralela" ali não é a barra de mergulho, nem
@@ -1269,17 +1285,175 @@ segundos.
   sempre apagava a referência de quem treina só com o corpo. Na mesma
   academia, a sem carga vem antes da de outra: o exercício já foi feito ali,
   e "primeira vez nesta academia" seria falso.
-- **Nunca "kg movidos" inventados.** A fração do corpo que a flexão levanta
-  muda com a variação (Ebben et al., *J Strength Cond Res*
-  2011;25:2891-2894), então o volume em kg desses exercícios é zero e eles
-  contam por séries e reps, que é o que a literatura de dose-resposta usa.
-  O 1RM (`evoData`) ignora série sem carga: Epley com 0 kg dá 0.
+- **O peso do corpo entra no volume desde o #91**, com fração de fonte, e
+  só com ela (veja a seção seguinte). Sem fração medida (mergulho no banco,
+  elevação de pernas, burpee) ou sem peso conhecido, o exercício segue
+  contando por séries e reps, e o 1RM (`evoData`) ignora a série sem carga:
+  Epley com 0 kg dá 0.
 - **O selo compara a medida que as duas sessões têm** (`medidasSessao`,
-  `medidaComum`): volume em kg; sem carga, o total de reps ("+11% de reps"),
-  ou de segundos. Nunca um com o outro. Feito antes, mas medido de outro
+  `medidaComum`): a carga total com o corpo (só entre sessões gravadas com o
+  peso do dia), a carga acrescentada, o total de reps ("+11% de reps"), ou
+  de segundos. Nunca um com o outro. Feito antes, mas medido de outro
   jeito, o selo diz isso — e não "primeira vez". A referência diz "15 reps" e "45 s" (`serieTxt`), e a diferença por
   série também ("+2 reps", "mesmo tempo").
 - Coberto em `tests/peso-corpo.spec.js`.
+
+### O peso do corpo é a carga (#91)
+
+O pedido: "Exercícios em que usa o peso corporal como ABDOMINAL, PRANCHA,
+PARALELA LIVRE, BARRA FIXA e etc, o app deve entender que o peso já é o do
+corpo (use a ciência para entender como é feito no abdominal essa
+distribuição) e que o peso que deve aparecer é para adicionar. Para fins de
+resguardo o usuário pode identificar quando o exercício é com o próprio peso
+corporal."
+
+- **A carga de cada repetição é `fração × peso do dia + o acrescentado`**
+  (`fracaoCorpo`, `corpoKgDe`). O campo de carga desses exercícios é só o
+  acrescentado: tem um "+" na frente (`.fld.acresc`; `.mais` já é o botão
+  redondo do Início e espremia o campo), o rótulo de leitura de
+  tela diz "Carga acrescentada", e a referência sai "+10 kg × 8". Uma nota
+  acima das séries (`.tr-corpo`) diz quanto do peso já conta.
+- **Só entra fração com fonte, e os PMIDs foram conferidos no PubMed** (o
+  bloco "O PESO DO CORPO É A CARGA" no `index.html` traz cada uma):
+  - **Barra fixa: 1,0**, e é **convenção**, não massa medida: os estudos de
+    força da barra definem a carga como o corpo mais o lastro (Johnson et
+    al. 2009, PMID 19387371; Muñoz-López et al. 2017, PMID 28253041).
+  - **Paralelas: 1,0**, pela mesma física (pés fora do chão). Nenhum
+    estudo de paralelas define a carga: extrapolação declarada.
+  - **Flexão: 66,4%; com os joelhos no chão, 52,9%** (Gouvali & Boudolos
+    2005, PMID 15705025, lido no resumo). Os 64%/49% de Ebben 2011 só
+    aparecem em fontes secundárias. Pegada fechada, aberta ou diamante usa a
+    da comum (inferência mecânica, declarada). Declinada, inclinada, na
+    parede e com uma mão contam por reps: dependem da altura do apoio, que o
+    app não sabe.
+  - **Abdominal: estimativa por modelo** (`modelo:true`). Nenhum estudo mede
+    "quanto do peso" sobe no abdominal. O que foi medido é a massa de cada
+    segmento (de Leva 1996, PMID 8872282, por sexo): cabeça, braços e tronco
+    de cima somam 33% (homens) e 31% (mulheres); no completo, 60% e 58%.
+    Quais segmentos sobem é escolha anatômica: a faixa possível vai de 22% a
+    49%. Entra no volume, **nunca no 1RM**. A tela diz "estimativa".
+  - **Barra e paralela assistidas (graviton): o corpo menos o
+    contrapeso**, a mesma convenção de Johnson 2009 ("counter-weighting
+    the body mass"). O campo da série é o **contrapeso** (`.fld.contra`,
+    "−30 kg"), `cargaSerie` o tira do corpo, e **menos contrapeso é
+    progresso** (selo, gráfico e a diferença por série invertida,
+    `trContra`). O contrapeso nunca é carga: fora da carga acrescentada e
+    sem recorde (`prDe` devolve null). Sem peso conhecido, a série
+    assistida não tem carga.
+  - **Sem fração** (conta pelas repetições, como sempre): mergulho no
+    banco (e dips no banco, entre cadeiras), elevação de pernas, abdominal
+    infra, remador, na roda ou na rodinha, em V, de pé ou girando,
+    abdominal pendurado na barra ou na paralela, barra australiana ou
+    invertida, flexão declinada, inclinada, no TRX, na bola, pike ou com
+    uma mão, burpee, polichinelo, escalador, canivete, superman, barra com
+    elástico. A prancha, a suspensão na barra e as isometrias contam pelo
+    tempo, sem peso no volume. **Não invente fração**: sem estudo, `null`.
+  - **Só a flexão DE BRAÇO é flexão** (`ehFlexaoBraco`): "flexão de
+    pernas", "de tronco", "de quadril" são outros movimentos, e com
+    caneleira ou halter continuam exercício de carga. **Só o mergulho é
+    paralela** (`ehMergulho`, pelo começo do nome): em "Pulley frente
+    paralela" e "Agachamento até a paralela" a palavra é pegada ou
+    profundidade (`exSinal` a tira).
+- **O peso é o do dia da sessão, e fica gravado** (`pesoDia` na sessão,
+  `corpoKg` em cada exercício), como os passos: uma pesagem nova não
+  reescreve o volume de ontem. `pesoDia` vai sempre, até 0 (peso
+  desconhecido). **A sessão grava também o tipo de cada exercício**
+  (`tipo`, e `contra` na barra assistida): é ele que o histórico relê
+  (`tipoGravado`, `contraGravado`), e não o nome com a regra de outra
+  versão nem a marcação de hoje.
+- **O volume mostrado é refeito das séries** (`volDe`) na sessão gravada
+  com o peso: um aparelho com versão anterior que corrige uma série
+  regrava o `vol` sem o corpo.
+- **O histórico não é reescrito.** A sessão de antes (sem `pesoDia`)
+  mantém o volume gravado e o selo de sempre. Só o gráfico de 1RM e o
+  volume da semana a recalculam pelo peso daquele dia (`corpoKgSessao`),
+  **com a marcação que o treino tem hoje** (`marcaNoTreino`, pelo `tid`):
+  sem isso, a barra com lastro de antes ("10 kg") e a de agora ("90 kg")
+  fariam um degrau falso no gráfico, e a "Paralela" marcada "Com carga"
+  ganharia 80 kg nas sessões de antes. A sessão gravada com `pesoDia` 0
+  (peso desconhecido na hora) também é recalculada assim.
+- **O selo compara com o mesmo peso** (`medidasSessao(w, pesoRef)`): a
+  sessão anterior entra com o peso da mais nova. Quem emagreceu no cutting
+  e fez as mesmas barras vê "mesma carga", e não "−3%": o selo mede o
+  treino, não a balança. Carga total só se compara entre duas sessões
+  gravadas com o peso; contra uma de antes, vale a carga acrescentada (ou
+  as reps), senão a primeira sessão nova diria "+900%".
+- **O próprio peso digitado como carga acrescentada pergunta** (de 85% a
+  115% do peso, `confereCargas`, `pesoNaFaixa`): contaria o corpo duas
+  vezes. Uma vez por exercício na sessão (`pesoOk`, lista por nome
+  procurada em todas as posições, como `recordeOk`), e no lugar da
+  pergunta da vírgula. **A pergunta do recorde (#81) espera por ela**
+  (`pareceCorpo` em `noRecorde`). Sem fração medida, o texto não diz que
+  o peso "já conta" (seria falso). Na barra assistida não pergunta: o
+  contrapeso pode ser qualquer número. "Corrigir série" pergunta igual, e
+  o rótulo diz "Carga acrescentada" ou "Contrapeso".
+- **A pessoa identifica o exercício** no editor: "Com carga" / "Peso do
+  corpo" (`#tpExCarga`, `tpCorpoSel`). Sem tocar, vale o nome, e nada é
+  gravado; tocando, `pesoCorpo: true|false` no exercício do treino, que
+  **vence o nome** (`tipoDe`, e `lastExSession(nome, acad, tipo)`). Na
+  lista do editor, a etiqueta "peso do corpo". **Renomear o exercício no
+  editor volta a seguir o nome novo** (`corpoSelAgora`), até a pessoa
+  tocar de novo: "Abdominal" marcado e renomeado "Abdominal na polia" não
+  pode levar a marcação. Trocar o exercício no treino guarda a marcação do
+  prescrito (`origPesoCorpo`) e o "Desfazer" a devolve.
+- **O recorde do aviso da pausa (#81) continua sendo o acrescentado.**
+- Coberto em `tests/corpo-carga.spec.js`.
+
+### Exportar o protocolo em PDF (#92)
+
+O pedido: "Coloque a opção de exportar o protocolo em pdf". O botão
+"Exportar em PDF" fica no pop-up do protocolo (`#tpPdf`, só com treino), e a
+folha vai para a **impressão do sistema**, que tem "Salvar como PDF". O app
+não gera o arquivo: sem biblioteca, sem rede, e a impressão do celular já
+salva, compartilha e imprime.
+
+- **A folha** (`folhaProtocolo`, em `#printArea`, filho direto do `body`):
+  nome do protocolo, data, e cada treino com os exercícios na ordem, grupo,
+  sinergistas, séries e descanso; "peso do corpo", "com contrapeso" e "por
+  tempo" pela regra do #91 (`tipoDe`, `fracaoCorpo`); com academias, onde
+  cada treino vale. **Só o plano**: nada de peso, medida, exógeno ou nome da
+  pessoa, que são dados pessoais ou de saúde.
+- **Na tela a folha não aparece; na impressão, só ela** (`@media print`:
+  `body>*:not(#printArea)` some). As cores são fixas, e não os tokens: no
+  tema escuro a folha sairia com texto claro. `html` ganha `color-scheme`
+  claro: com o escuro, o Chrome pintava de grafite a margem da página.
+  Colunas fixas (`table-layout:fixed`): alinham de um treino para o outro.
+  Se um dia a página prender a altura do `body`, o teste de várias páginas
+  avisa.
+- **No navegador**, `window.print()`, com o título da página trocado para
+  "Protocolo X" (é o nome do arquivo que o navegador propõe) e devolvido no
+  `afterprint`.
+- **No app Android, o WebView ignora `window.print()`**: quem imprime é a
+  ponte `TResults.imprimir(titulo)` (`PonteWeb` → `MainActivity.imprimir`),
+  com o `PrintManager` e `createPrintDocumentAdapter` da própria página, em
+  A4. Entrou no APK 1.6 (versionCode 7). **Com o APK antigo** (sem
+  `imprimir`), o app avisa para atualizar, em vez de o botão não fazer nada.
+- O nome digitado no título e ainda não gravado é gravado antes
+  (`salvarNomeProt`) e vai para a folha.
+- Coberto em `tests/pdf.spec.js`, que também gera o PDF de verdade
+  (`page.pdf`) e confere que um protocolo longo sai em mais de uma página.
+
+### Editar um exercício do treino
+
+O pedido (#89): "eu devo poder editar aquele exercício pois eu posso só mudar
+o nome (ex.: ELEVAÇÃO LATERAL MÁQUINA -> ELEVAÇÃO LATERAL HALTER)". Antes só
+dava para excluir e adicionar de novo, e o exercício ia para o fim da lista.
+
+- **O lápis (ou o toque no nome) carrega o exercício no formulário** de baixo
+  (`editarExTp`): nome, grupo, séries, descanso e **os sinergistas dele**, não
+  os sugeridos pelo grupo (`renderSynChips(sel)`). O botão vira "Salvar
+  alteração" e aparece "Cancelar a edição" (`pintarModoEx`).
+- **"Salvar alteração" troca no lugar, na mesma posição** (`gravarFormEx`,
+  `tpExEdit`), partindo do exercício que existia (`Object.assign`): campo que
+  esta versão não conhece continua nele, como em `tpSave`.
+- **Edição não confirmada entra ao "Salvar treino"**; sem nome ou sem séries,
+  o app avisa e não salva. Excluir outro exercício durante a edição move a
+  marca junto; excluir o editado encerra a edição. Reabrir o editor começa no
+  modo de adicionar.
+- **A referência de carga segue o nome** (`lastExSession`): renomeado, o
+  exercício começa sem a da última vez — máquina e halter não se comparam. A
+  nota `#tpExNota` diz isso quando o nome muda. O histórico não é reescrito.
+- Coberto em `tests/editor.spec.js`.
 
 ### Trocar o exercício no meio do treino
 
@@ -1438,6 +1612,7 @@ O que a casca acrescenta, e a web não alcança:
 | Alarme que sobrepõe a música | `AlarmeService` toca com `MediaPlayer` em `USAGE_ALARM` e pede foco `TRANSIENT_EXCLUSIVE` |
 | Disparo no segundo certo com o app fechado | `AlarmManager.setAlarmClock`, o único agendamento que o Android não adia |
 | Tela cheia por cima do TikTok | `setFullScreenIntent` com `CATEGORY_ALARM` |
+| Exportar em PDF (o WebView ignora `window.print()`) | `PrintManager` com `createPrintDocumentAdapter` da página, pela ponte `imprimir` (#92) |
 
 Duas coisas do perfil também vivem aqui, e por isso mudam de cara conforme o
 lugar (`tests/perfil.spec.js` cobre os dois lados):

@@ -338,6 +338,22 @@ test.describe('Protocolos', () => {
     expect((await blocos(page)).map(b => b.nome), 'na Smart Fit, os dois').toEqual(['Hipertrofia', 'Viagem']);
   });
 
+  test('tocar de novo no protocolo aberto o recolhe; tocar de novo, ou em outro, abre', async ({ page }) => {
+    /* Pedido do dono (#88). Com um protocolo só não há seta, e ele não recolhe. */
+    await abrirApp(page, doisProtocolos());
+    await irTreino(page);
+    const abertos = () => page.evaluate(() => [...document.querySelectorAll('#protLista .prot-bloco')].filter(b => b.classList.contains('aberto')).map(b => b.querySelector('.prot-nome').textContent));
+    const aberto = (await abertos())[0];
+    await page.evaluate(n => [...document.querySelectorAll('#protLista .prot-bloco')].find(b => b.querySelector('.prot-nome').textContent === n).querySelector('button.prot-cab').click(), aberto);
+    await page.waitForTimeout(150);
+    expect(await abertos()).toEqual([]);
+    expect(await page.evaluate(() => !!document.getElementById('tprotoCards'))).toBe(false);
+    await page.evaluate(n => [...document.querySelectorAll('#protLista .prot-bloco')].find(b => b.querySelector('.prot-nome').textContent === n).querySelector('button.prot-cab').click(), aberto);
+    await page.waitForTimeout(150);
+    expect(await abertos()).toEqual([aberto]);
+    expect(await cartoes(page)).not.toEqual([]);
+  });
+
   test('dois protocolos com "Treino A": o selo compara cada um só com o seu', async ({ page }) => {
     await abrirApp(page, doisProtocolos({
       tdays: {

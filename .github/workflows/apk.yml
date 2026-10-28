@@ -42,8 +42,13 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      # O padrão da ação instala "tools platform-tools", e o pacote "tools" não
+      # existe mais no sdkmanager do cmdline-tools 16: a montagem morria aqui,
+      # antes de compilar uma linha. O Gradle baixa o resto sozinho.
       - name: Preparar o Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
 
       # A versão é fixada de propósito: o projeto não tem gradle wrapper, então
       # sem isto a compilação usaria o Gradle que estiver no runner — que muda

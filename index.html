@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v51";
+window.APP_RELEASE = "tresults-v54";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -654,6 +654,11 @@ window.APP_RELEASE = "tresults-v51";
   .tr-maiscarga{display:block;margin:0;padding:6px 12px;border:0;border-radius:999px;background:var(--surface);box-shadow:var(--sombra-sm);color:var(--primary);font:inherit;font-size:12px;font-weight:800;cursor:pointer}
   .tr-set .fld input:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-08);outline:none}
   .tr-set .fld .un{position:absolute;right:9px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:900;color:var(--muted);text-transform:uppercase;pointer-events:none}
+  /* Peso do corpo (#91): o campo é a carga acrescentada, e o "+" diz isso. */
+  .tr-set .fld.acresc::before{content:"+";position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:14px;font-weight:900;color:var(--muted);pointer-events:none}
+  .tr-set .fld.acresc input.ikg{padding-left:18px}
+  .tr-set .fld.contra::before{content:"−";position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:14px;font-weight:900;color:var(--muted);pointer-events:none}
+  .tr-set .fld.contra input.ikg{padding-left:18px}
   .tr-set .tsr2{display:flex;align-items:center;gap:10px;margin-top:10px}
   .tr-set .rirl{font-size:10.5px;font-weight:800;color:var(--muted);letter-spacing:.06em;flex:none}
   .rirseg{display:flex;gap:6px;flex:1}
@@ -777,6 +782,8 @@ window.APP_RELEASE = "tresults-v51";
   .troca-inv b{color:var(--ink)}
   .troca-inv button{align-self:flex-start;font-size:12.5px;font-weight:700;color:var(--primary);padding:4px 0}
   .tr-ref-outra{font-size:12px;line-height:1.5;color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:9px 12px;margin-bottom:10px;overflow-wrap:anywhere}
+  .tr-corpo{font-size:12px;line-height:1.5;color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:9px 12px;margin-bottom:10px;overflow-wrap:anywhere}
+  .tr-corpo b{color:var(--ink)}
   /* Tempo sem treinar (#81): a nota da volta, acima das séries, e a linha da
      série com a carga do recorde. Cor de aviso, não de erro: é cautela. */
   .tr-pausa{font-size:12.5px;line-height:1.5;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-left:3px solid var(--warn);border-radius:14px;padding:9px 12px;margin-bottom:10px;overflow-wrap:anywhere}
@@ -847,6 +854,17 @@ window.APP_RELEASE = "tresults-v51";
   .how-imgwrap img{width:100%;display:block;aspect-ratio:4/3;object-fit:contain}
   .how-step{position:absolute;bottom:8px;right:10px;background:rgba(0,0,0,.55);color:#fff;font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:999px;letter-spacing:.04em}
   .pm-item .how{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--surface);font-size:14px;flex:none;margin-right:6px}
+  /* Editar um exercício do treino (#89): o lápis carrega o exercício no
+     formulário de baixo, e a linha fica marcada enquanto ele é editado. */
+  .pm-item .ed{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--surface);flex:none;display:grid;place-items:center;color:var(--primary)}
+  .pm-item .ed svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+  .pm-item .pm-txt{flex:1;min-width:0;text-align:left;background:none;border:0;padding:0;color:inherit;font:inherit}
+  .pm-item .pm-txt .pn{overflow-wrap:anywhere}
+  .pm-item.editando{background:var(--primary-08);border-radius:12px;padding-left:8px;padding-right:4px}
+  .tp-carga-nota{display:block;margin-top:6px;line-height:1.45}
+  .pm-item .pm-corpo{color:var(--primary);font-weight:700}
+  .tp-ex-nota{display:block;margin:6px 2px 0;font-size:11.5px;color:var(--muted);line-height:1.45}
+  .tp-ex-nota[hidden]{display:none}
   .pace-opt .pt-row{display:flex;align-items:center;gap:7px}
   .pace-opt .pt{font-size:14px}
   .badge-rec{font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;background:var(--primary);color:#fff;padding:2.5px 8px;border-radius:999px}
@@ -1045,6 +1063,7 @@ window.APP_RELEASE = "tresults-v51";
   /* Sessão inteira, em tela cheia */
   .ss-ex{margin-bottom:14px}
   .ss-ex .ssn{font-family:var(--display);font-size:16px;font-weight:800;margin-bottom:6px}
+  .ss-ex .ss-corpo{font-size:12px;color:var(--muted);margin:-2px 0 6px;line-height:1.4}
   .ss-serie{display:flex;align-items:center;gap:9px;padding:7px 0;font-size:13px}
   .ss-serie+.ss-serie{border-top:1px solid var(--line)}
   .ss-serie .i{flex:none;width:24px;height:24px;border-radius:50%;border:0;
@@ -1305,6 +1324,42 @@ window.APP_RELEASE = "tresults-v51";
   #view-treino{--marca:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M8 40h8v20H8zM16 34h10v32H16zM74 34h10v32H74zM84 40h8v20h-8zM26 46h48v8H26z'/%3E%3C/svg%3E")}
   #view-perfil{--marca:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none' stroke='black' stroke-width='6' stroke-linecap='round'%3E%3Ccircle cx='50' cy='30' r='16'/%3E%3Cpath d='M18 92c0-20 14-32 32-32s32 12 32 32'/%3E%3C/svg%3E")}
 
+
+  /* ---- Exportar o protocolo em PDF (#92) ----
+     A folha vive em #printArea, filho direto do body. Na tela ela não
+     aparece; na impressão, só ela aparece. As cores são fixas (tinta escura
+     no papel branco), e não os tokens: no tema escuro a folha sairia com
+     texto claro. */
+  .tp-pdf-nota{font-size:12px;color:var(--muted);margin:-4px 2px 10px;line-height:1.45}
+  #printArea{display:none}
+  @media print{
+    @page{size:A4;margin:14mm 12mm}
+    /* color-scheme claro: com o escuro, o Chrome pinta de grafite a margem da folha */
+    html{color-scheme:only light!important}
+    html,body{background:#fff!important;color:#141414!important;-webkit-user-select:text;user-select:text}
+    body>*:not(#printArea){display:none!important}
+    #printArea{display:block!important;font-family:var(--sans);font-size:10.5pt;line-height:1.4}
+    #printArea .pa-topo{border-bottom:2px solid #0f6b4f;padding-bottom:8px;margin-bottom:14px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    #printArea .pa-marca{font-size:8.5pt;font-weight:800;letter-spacing:.14em;color:#0f6b4f;text-transform:uppercase}
+    #printArea h1{font-size:19pt;font-weight:800;margin:2px 0 2px}
+    #printArea .pa-sub{font-size:9.5pt;color:#555}
+    #printArea .pa-treino{break-inside:avoid;page-break-inside:avoid;margin:0 0 16px}
+    #printArea h2{font-size:13pt;font-weight:800;margin:0 0 2px}
+    #printArea .pa-meta{font-size:9pt;color:#555;margin-bottom:6px}
+    #printArea table{width:100%;border-collapse:collapse;table-layout:fixed}   /* as colunas alinham de um treino para o outro */
+    #printArea .pa-c-ex{width:41%}
+    #printArea .pa-c-g{width:30%}
+    #printArea .pa-c-s{width:10%}
+    #printArea .pa-c-d{width:14%}
+    #printArea th{font-size:8pt;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#555;text-align:left;border-bottom:1px solid #999;padding:4px 6px}
+    #printArea td{border-bottom:1px solid #ddd;padding:6px;vertical-align:top}
+    #printArea tr{break-inside:avoid;page-break-inside:avoid}
+    #printArea .pa-n{width:5%;color:#777}
+    #printArea .pa-num{text-align:right;white-space:nowrap}
+    #printArea .pa-ex{font-weight:700}
+    #printArea .pa-tag{display:inline-block;font-size:8pt;font-weight:700;color:#0f6b4f;margin-left:6px}
+    #printArea .pa-rodape{margin-top:18px;font-size:8.5pt;color:#777}
+  }
 </style>
 </head>
 <body>
@@ -1921,7 +1976,7 @@ window.APP_RELEASE = "tresults-v51";
     <h3 style="margin-bottom:4px">Corrigir série</h3>
     <p class="gw-sub">O que ficar aqui vale no histórico, no volume da sessão e na referência da próxima vez.</p>
     <div class="row">
-      <div class="field" id="serieKgWrap"><label class="lbl" for="serieKg">Carga (kg)</label><input class="in num" id="serieKg" type="text" data-num="dec" inputmode="decimal" placeholder="0"></div>
+      <div class="field" id="serieKgWrap"><label class="lbl" for="serieKg" id="serieKgLbl">Carga (kg)</label><input class="in num" id="serieKg" type="text" data-num="dec" inputmode="decimal" placeholder="0"></div>
       <div class="field" id="serieRepWrap"><label class="lbl" for="serieRep">Reps</label><input class="in num" id="serieRep" type="text" data-num="int" inputmode="numeric"></div>
       <div class="field" id="serieSegWrap"><label class="lbl" for="serieSeg">Segundos</label><input class="in num" id="serieSeg" type="text" data-num="int" inputmode="numeric"></div>
     </div>
@@ -2111,6 +2166,9 @@ window.APP_RELEASE = "tresults-v51";
     <div id="tprotoList"></div>
     <button id="tpNew" class="btn secondary">＋ Novo treino</button>
     <button id="tpSugAqui" class="btn secondary" style="display:none">✨ Preencher com uma sugestão</button>
+    <!-- Exportar em PDF (#92): a folha vai para a impressão do sistema, que tem "Salvar como PDF". -->
+    <button id="tpPdf" class="btn secondary" type="button">Exportar em PDF</button>
+    <p class="tp-pdf-nota" id="tpPdfNota">Abre a impressão do celular: escolha "Salvar como PDF".</p>
     <button id="tpClose" class="btn">Concluir</button>
     <button id="tpProtDel" class="btn secondary prot-del" style="display:none">Excluir este protocolo</button>
   </div>
@@ -2189,7 +2247,12 @@ window.APP_RELEASE = "tresults-v51";
     <label class="lbl" style="margin:14px 0 6px">Exercícios</label>
     <p style="font-size:12px;color:var(--muted);margin:0 0 8px;line-height:1.5">Carga, repetições e RIR são registrados <b>durante o treino</b> — aqui só o plano: séries e descanso.</p>
     <div id="tpExList"></div>
-    <div class="field" style="margin-top:6px"><label class="lbl" for="tpExName">Exercício</label><input class="in" id="tpExName" placeholder="Ex.: Supino reto"></div>
+    <div class="field" style="margin-top:6px"><label class="lbl" for="tpExName" id="tpExNameLbl">Exercício</label><input class="in" id="tpExName" placeholder="Ex.: Supino reto"><p class="campo-nota tp-ex-nota" id="tpExNota" hidden>A carga de referência segue o nome: com outro nome, o exercício começa sem a da última vez.</p></div>
+    <!-- A pessoa identifica o exercício com o peso do corpo (#91): a marcação
+         vence o nome. Sem tocar, vale o que o nome diz. -->
+    <div class="field tp-carga" style="margin-top:8px"><label class="lbl" id="tpExCargaLbl">Carga do exercício</label>
+      <div class="seg" id="tpExCarga" role="radiogroup" aria-labelledby="tpExCargaLbl"><button type="button" role="radio" data-v="carga">Com carga</button><button type="button" role="radio" data-v="corpo">Peso do corpo</button></div>
+      <p class="campo-nota tp-carga-nota" id="tpExCargaNota"></p></div>
     <div class="row" style="align-items:flex-end;margin-top:8px">
       <div class="field" style="flex:2"><label class="lbl" for="tpExG">Grupo muscular</label>
         <select class="in" id="tpExG">
@@ -2219,6 +2282,7 @@ window.APP_RELEASE = "tresults-v51";
       <div class="synchips" id="tpExSyn"></div>
     </div>
     <button class="btn secondary" id="tpExAdd" style="margin-top:10px">＋ Adicionar exercício</button>
+    <button class="btn secondary" id="tpExCancelar" style="display:none">Cancelar a edição</button>
     <button id="tpSave" class="btn" style="margin-top:14px">Salvar treino</button>
     <button id="tpCancel" class="btn secondary">Cancelar</button>
   </div>
@@ -3375,13 +3439,32 @@ function fdSessoes(){return fdTodas().slice(0,FD_MAX);}
 /* O que se compara entre duas sessões do mesmo treino: o volume em kg; sem
    carga nenhuma (treino só de peso do corpo), o total de reps, ou de
    segundos. Nunca um com o outro, e nunca um "volume" inventado. */
-function medidasSessao(w){
-  let rep=0,seg=0;
-  (w.ex||[]).forEach(e=>(e.sets||[]).forEach(x=>{rep+=x.rep||0;seg+=x.seg||0;}));
-  const m={carga:w.vol||0,reps:rep,tempo:seg};
-  return (m.carga>0||m.reps>0||m.tempo>0)?m:null;
+/* Com o peso do corpo (#91), a sessão gravada com o peso do dia tem também
+   a carga TOTAL (corpo + acrescentado). Ela só se compara com outra que
+   também a tenha; contra uma sessão de antes, vale a carga acrescentada,
+   como sempre foi — senão a primeira sessão nova diria "+300%". */
+/* `pesoRef`: o peso com que o corpo entra na conta. Para comparar duas
+   sessões, as duas usam o peso da mais nova: quem emagreceu no cutting e
+   fez as mesmas barras não pode ver "−3% de carga" — o selo mede o treino,
+   não a balança. */
+function medidasSessao(w,pesoRef){
+  const fator=w.pesoDia>0&&pesoRef>0?pesoRef/w.pesoDia:1;
+  let rep=0,seg=0,ext=0,tot=0;
+  (w.ex||[]).forEach(e=>{
+    /* O contrapeso da barra assistida não é carga: fora da carga
+       acrescentada, e tirando do corpo na total. Só na sessão que gravou o
+       tipo: a de antes continua comparando como sempre comparou. */
+    const contra=typeof e.tipo==="string"&&!!e.contra;
+    (e.sets||[]).forEach(x=>{
+      rep+=x.rep||0;seg+=x.seg||0;
+      if(!contra)ext+=(x.kg||0)*(x.rep||0);
+      tot+=cargaSerie(x,(e.corpoKg||0)*fator,contra)*(x.rep||0);
+    });
+  });
+  const m={total:(w.pesoDia>0)?tot:0,carga:(w.ex||[]).length?ext:(w.vol||0),reps:rep,tempo:seg};
+  return (m.total>0||m.carga>0||m.reps>0||m.tempo>0)?m:null;
 }
-const medidaComum=(a,b)=>["carga","reps","tempo"].find(t=>a[t]>0&&b[t]>0)||null;
+const medidaComum=(a,b)=>["total","carga","reps","tempo"].find(t=>a[t]>0&&b[t]>0)||null;
 function fdProgressao(lista,i){
   const at=lista[i].w,m=medidasSessao(at);
   if(!m)return null;
@@ -3391,7 +3474,7 @@ function fdProgressao(lista,i){
     /* Na mesma academia: o volume do mesmo treino em aparelhos diferentes
        não se compara. Registro sem academia casa com qualquer uma. */
     if(!mesmoTreino(at,p)||!mesmaAcad(at.acad,p.acad))continue;
-    const mp=medidasSessao(p);if(!mp)continue;
+    const mp=medidasSessao(p,at.pesoDia);if(!mp)continue;
     const t=medidaComum(m,mp);
     if(t)return {pct:(m[t]/mp[t]-1)*100,de:mp[t],dia:lista[j].dia,j,tipo:t};
     /* Já foi feito, mas medido de outro jeito (só segundos contra só
@@ -3500,13 +3583,13 @@ function renderInicio(){
       <div class="fd-stats">
         <div class="fd-stat"><div class="k">Duração (min)</div><div class="v">${r0(w.min)}</div></div>
         <div class="fd-stat"><div class="k">Gasto (kcal)</div><div class="v">${r0(w.kcal)}</div></div>
-        <div class="fd-stat"><div class="k">${forca?"Volume (kg)":(w.km?"Distância (km)":"Tipo")}</div><div class="v">${forca?r0(w.vol||0):(w.km?kgTxt(w.km):esc((w.intens||"—").split(" · ")[0]))}</div></div>
+        <div class="fd-stat"><div class="k">${forca?"Volume (kg)":(w.km?"Distância (km)":"Tipo")}</div><div class="v">${forca?r0(volDe(w)):(w.km?kgTxt(w.km):esc((w.intens||"—").split(" · ")[0]))}</div></div>
       </div>
       ${forca?fdSelo(pr,!pr&&fdSoEmOutra(todas,i)):""}
       <div class="fd-mais">
         ${forca?w.ex.map(e=>{
-          const st=(e.sets||[]);
-          return `<div class="fd-ex"><span class="en">${esc(e.n)}</span><span class="es">${st.length}× · até ${melhorTxt(melhorDe(st))}</span></div>`;
+          const st=(e.sets||[]),contra=contraGravado(e,w),m=melhorDe(st,contra);
+          return `<div class="fd-ex"><span class="en">${esc(e.n)}</span><span class="es">${st.length}× · ${m.contra?"contrapeso de":"até"} ${melhorTxt(m,tipoGravado(e,w)!=="carga")}</span></div>`;
         }).join(""):'<div class="fd-ex"><span class="en">Registro manual, sem detalhe de séries.</span></div>'}
         ${forca?`<button class="fd-vertudo" data-fdver="${esc(w.id)}">Ver a sessão inteira</button>`:""}
       </div>
@@ -3541,7 +3624,7 @@ function abrirSessao(id){
     if(!ant)return null;
     const e=(ant.ex||[]).find(x=>x.n===n);
     if(!e||!(e.sets||[]).length)return null;
-    return melhorDe(e.sets);
+    return melhorDe(e.sets,contraGravado(e,ant));
   };
 
   $("ssTitulo").textContent=w.name;
@@ -3549,16 +3632,20 @@ function abrirSessao(id){
   $("ssSub").textContent=`${fdRotuloDia(dia)}${prot?" · "+prot:""} · ${r0(w.min)} min · ${r0(w.kcal)} kcal${onde?" · "+onde:""}`;
   $("ssSelo").innerHTML=(w.ex&&w.ex.length)?fdSelo(pr,!pr&&fdSoEmOutra(lista,i)):"";
   $("ssCorpo").innerHTML=(w.ex||[]).map((e,ei)=>{
-    const antes=antDe(e.n),agora=melhorDe(e.sets);
+    const contra=contraGravado(e,w),antes=antDe(e.n),agora=melhorDe(e.sets,contra);
     let comp="";
-    if(antes&&antes.un===agora.un){
-      const d=agora.v-antes.v;
-      const cls=d>0?"up":d<0?"down":"same";
+    if(antes&&antes.un===agora.un&&!!antes.contra===!!agora.contra){
+      const d=agora.v-antes.v,m=agora.contra?-d:d;   // menos contrapeso é mais carga
+      const cls=m>0?"up":m<0?"down":"same";
       comp=`<span class="tp-d ${cls}">${d>0?"+":""}${agora.un==="kg"?kgTxt(d)+" kg":r0(d)+" "+agora.un}</span>`;
     }
+    /* Peso do corpo (#91): a carga digitada foi a acrescentada, e o corpo
+       que contou fica dito. */
+    const mais=!contra&&((e.corpoKg||0)>0||tipoGravado(e,w)!=="carga");
     return `<div class="ss-ex">
       <div class="ssn">${esc(e.n)} ${comp}</div>
-      ${(e.sets||[]).map((x,k)=>`<button class="ss-serie" type="button" data-ssc="${ei}:${k}" aria-label="Série ${k+1}: ${serieTxt(x)}${x.rir!=null?", RIR "+x.rir:""}. Corrigir"><span class="i">${k+1}</span><span class="c">${serieTxt(x)}</span><span class="r">${x.rir!=null?"RIR "+x.rir:""}</span><svg class="ed" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>`).join("")}
+      ${(e.corpoKg||0)>0?`<div class="ss-corpo">Seu peso contou ${kgTxt(e.corpoKg)} kg em cada repetição${contra?", menos o contrapeso":w.pesoDia>0&&e.corpoKg<w.pesoDia?` (de ${kgTxt(w.pesoDia)} kg)`:""}</div>`:""}
+      ${(e.sets||[]).map((x,k)=>`<button class="ss-serie" type="button" data-ssc="${ei}:${k}" aria-label="Série ${k+1}: ${serieTxt(x,mais,contra)}${x.rir!=null?", RIR "+x.rir:""}. Corrigir"><span class="i">${k+1}</span><span class="c">${serieTxt(x,mais,contra)}</span><span class="r">${x.rir!=null?"RIR "+x.rir:""}</span><svg class="ed" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>`).join("")}
     </div>`;
   }).join("")||'<div class="fd-vazio">Sem detalhe de séries neste registro.</div>';
   $("ssDica").hidden=!(w.ex||[]).length;
@@ -3602,10 +3689,12 @@ if($("fdDia"))$("fdDia").onclick=()=>{viewKey=todayKey();showView("food");};
 if($("fdIrProgresso"))$("fdIrProgresso").onclick=()=>showView("progresso");
 if($("fdIrTreino"))$("fdIrTreino").onclick=()=>showView("treino");
 if($("ssFechar"))$("ssFechar").onclick=fecharSessao;
-/* Uma série em texto: carga × reps, só reps (peso do corpo) ou segundos. */
-function serieTxt(x){
-  if((x.seg||0)>0)return `${(x.kg||0)>0?kgTxt(x.kg)+" kg · ":""}${r0(x.seg)} s`;
-  return (x.kg||0)>0?`${kgTxt(x.kg)} kg × ${r0(x.rep)}`:`${r0(x.rep)} reps`;
+/* Uma série em texto: carga × reps, só reps (peso do corpo) ou segundos.
+   `mais`: a carga é acrescentada ao corpo (#91), e sai "+10 kg". */
+function serieTxt(x,mais,contra){
+  const kg=(x.kg||0)>0?`${mais?"+":contra?"−":""}${kgTxt(x.kg)} kg`:"";   // barra assistida: "−30 kg" é o contrapeso
+  if((x.seg||0)>0)return `${kg?kg+" · ":""}${r0(x.seg)} s`;
+  return kg?`${kg} × ${r0(x.rep)}`:`${r0(x.rep)} reps`;
 }
 /* ---- Corrigir uma série já salva ----
    Antes, um número errado (575 por 57,5) só saía apagando a sessão
@@ -3624,7 +3713,11 @@ function abrirSerie(id,ei,si){
   $("serieKg").value=(x.kg||0)>0?campoBR(x.kg):"";
   $("serieRep").value=(x.rep||0)>0?String(x.rep):"";
   $("serieSeg").value=(x.seg||0)>0?String(x.seg):"";
-  $("serieNota").textContent="";
+  /* Peso do corpo (#91): o número é o acrescentado (ou o contrapeso), como
+     no treino, e o corpo que contou fica dito. */
+  const contra=contraGravado(e,w),mais=!contra&&((e.corpoKg||0)>0||tipoGravado(e,w)!=="carga");
+  $("serieKgLbl").textContent=contra?"Contrapeso (kg)":mais?"Carga acrescentada (kg)":"Carga (kg)";
+  $("serieNota").textContent=(e.corpoKg||0)>0?`Seu peso contou ${kgTxt(e.corpoKg)} kg em cada repetição${contra?", menos o contrapeso":""}.`:"";
   $("serieOverlay").classList.add("open");
 }
 function fecharSerie(){$("serieOverlay").classList.remove("open");}
@@ -3635,9 +3728,12 @@ $("serieSalvar").onclick=async()=>{
   const kg=numBR($("serieKg").value),rep=inteiroBR($("serieRep").value),seg=inteiroBR($("serieSeg").value);
   if(tempo?seg<=0:rep<=0){$("serieNota").textContent=tempo?"Digite os segundos.":"Digite as repetições.";return;}
   if(kg>CARGA_TETO&&!await appConfirm(`Confere ${kgTxt(kg)} kg?`,{title:"Conferir a carga",okText:"Está certo",cancelText:"Corrigir",danger:false}))return;
+  /* O próprio peso no campo do acrescentado contaria o corpo duas vezes. */
+  const ex=w.ex[a.ei],pd=w.pesoDia||0;
+  if(pd>0&&(ex.corpoKg||0)>0&&!ex.contra&&kg!==(x.kg||0)&&kg>=pd*0.85&&kg<=pd*1.15&&!await appConfirm(`${kgTxt(kg)} kg a mais? Seu peso (${kgTxt(pd)} kg) já contou neste exercício: aqui vai só o que você acrescentou, como colete, anilha ou cinto.`,{title:"Carga acrescentada",okText:"Está certo",cancelText:"Corrigir",danger:false}))return;
   x.kg=kg;
   if(tempo)x.seg=seg;else x.rep=rep;
-  w.vol=Math.round((w.ex||[]).reduce((t,e)=>t+(e.sets||[]).reduce((u,s)=>u+(s.kg||0)*(s.rep||0),0),0));
+  w.vol=Math.round((w.ex||[]).reduce((t,e)=>t+(e.sets||[]).reduce((u,s)=>u+cargaSerie(s,e.corpoKg||0,!!e.contra)*(s.rep||0),0),0));
   save();renderInicio();renderTreino();
   fecharSerie();
   abrirSessao(a.id);
@@ -3966,7 +4062,7 @@ function renderTreino(){
   // treinos de hoje
   const td=((store.tdays||{})[todayKey()])||[];
   $("tCount").textContent=td.length+(td.length===1?" treino":" treinos");
-  $("tTodayList").innerHTML=td.length?td.map(w=>`<div class="proto-meal-row"><div><div class="n">${esc(w.name)}</div><div class="m">${r0(w.min)} min${w.km?` · ${kgTxt(w.km)} km`:""}${w.inc?` · ${kgTxt(w.inc)}% de inclinação`:""}${w.ganho?` · ${r0(w.ganho)} m de ganho`:""} · ${r0(w.kcal)} kcal${w.intens?` · ${w.intens}`:""}${w.rir!=null?` · RIR médio ${kgTxt(w.rir)}`:""}${w.vol?` · ${r0(w.vol)} kg movimentados`:""}${acadNomeDe(w)?` · ${esc(acadNomeDe(w))}`:""}${fdProtTxt(w)?` · ${esc(fdProtTxt(w))}`:""}</div></div><div class="acts"><button class="del" data-tdel="${w.id}">Excluir</button></div></div>`).join(""):'<div class="proto-empty">Nenhum treino registrado hoje.</div>';
+  $("tTodayList").innerHTML=td.length?td.map(w=>`<div class="proto-meal-row"><div><div class="n">${esc(w.name)}</div><div class="m">${r0(w.min)} min${w.km?` · ${kgTxt(w.km)} km`:""}${w.inc?` · ${kgTxt(w.inc)}% de inclinação`:""}${w.ganho?` · ${r0(w.ganho)} m de ganho`:""} · ${r0(w.kcal)} kcal${w.intens?` · ${w.intens}`:""}${w.rir!=null?` · RIR médio ${kgTxt(w.rir)}`:""}${volDe(w)?` · ${r0(volDe(w))} kg movimentados`:""}${acadNomeDe(w)?` · ${esc(acadNomeDe(w))}`:""}${fdProtTxt(w)?` · ${esc(fdProtTxt(w))}`:""}</div></div><div class="acts"><button class="del" data-tdel="${w.id}">Excluir</button></div></div>`).join(""):'<div class="proto-empty">Nenhum treino registrado hoje.</div>';
   $("tTodayList").querySelectorAll("[data-tdel]").forEach(b=>b.onclick=()=>{
     store.tdays[todayKey()]=tToday().filter(x=>x.id!==b.dataset.tdel);reabrirPausaDe(b.dataset.tdel);save();renderTreino();render();renderInicio();
   });
@@ -4122,7 +4218,7 @@ function acadPadrao(){
   for(const it of fdTodas()){const a=it.w&&it.w.acad;if(a&&acadPorId(a))return a;}
   return lista[0].id;
 }
-function setAcadSel(id){try{if(id)localStorage.setItem(ACAD_KEY,id);else localStorage.removeItem(ACAD_KEY);}catch(e){}}
+function setAcadSel(id){acadRecolhida=false;try{if(id)localStorage.setItem(ACAD_KEY,id);else localStorage.removeItem(ACAD_KEY);}catch(e){}}
 /** As academias do treino que ainda existem. */
 function acadsDoTreino(w){return ((w&&w.acads)||[]).filter(id=>acadPorId(id));}
 /** O treino aparece nesta academia? Sem academia marcada, aparece em todas. */
@@ -4194,10 +4290,17 @@ function acadResumo(id){
    "Iniciar" de um treino ali registra a sessão naquela academia. Os
    protocolos, o "Novo protocolo" e as sugestões (#protArea) moram dentro da
    academia aberta. Sem academia cadastrada, a tela é a de sempre. */
+/* Recolher (pedido do dono, #88): tocar de novo na academia aberta, ou no
+   protocolo aberto, fecha. É só a tela: a academia recolhida continua a
+   escolhida (o treino iniciado depois é dela), e abrir outra academia ou
+   outro protocolo desfaz o recolhido. Não fica guardado: ao abrir o app,
+   a escolhida vem aberta. var, e não let: renderTreino pode rodar antes
+   desta linha. */
+var acadRecolhida=false,protRecolhido=false;
 function renderAcadBar(){
   const el=$("acadBar");if(!el)return;
   const lista=academias(),area=$("protArea");
-  if(area)el.after(area);   // fora do bloco antes de redesenhá-lo: o innerHTML a apagaria
+  if(area){el.after(area);area.hidden=false;}   // fora do bloco antes de redesenhá-lo: o innerHTML a apagaria
   if(!lista.length){
     el.innerHTML='<button type="button" class="acad-primeira" id="acadPrimeira">＋ Treina em mais de uma academia? Cadastre cada uma</button>';
     $("acadPrimeira").onclick=()=>abrirAcademias(true);
@@ -4206,16 +4309,17 @@ function renderAcadBar(){
   const sel=acadSel();
   el.innerHTML=`<div class="acad-topo"><span class="lbl">Suas academias</span><button type="button" class="acad-editar" id="acadEditar">Editar</button></div>
     <div class="acad-blocos">${lista.map(a=>{
-      const ab=a.id===sel;
+      const ab=a.id===sel&&!acadRecolhida;
       return `<div class="acad-bloco${ab?" aberto":""}" data-acadbloco="${esc(a.id)}"><button type="button" class="acad-cab" data-acad="${esc(a.id)}" aria-expanded="${ab}"><span class="acad-tx"><span class="acad-nome">${esc(a.nome)}</span><span class="acad-n">${esc(acadResumo(a.id))}</span></span>${CHEV}</button>${ab?'<div class="acad-corpo" id="acadCorpo"></div>':""}</div>`;
     }).join("")}<button type="button" class="acad-nova-bt" id="acadMais">＋ Outra academia</button></div>`;
   el.querySelectorAll("[data-acad]").forEach(b=>b.onclick=()=>{
-    if(b.dataset.acad===sel)return;   // sempre há uma aberta: o treino continua a um toque
+    if(b.dataset.acad===sel){acadRecolhida=!acadRecolhida;renderTreino();return;}   // a aberta: recolhe ou abre de novo
     setAcadSel(b.dataset.acad);evoAcadEsc=null;renderTreino();
   });
   $("acadEditar").onclick=()=>abrirAcademias(false);
   $("acadMais").onclick=()=>abrirAcademias(true);
   const corpo=$("acadCorpo");
+  if(area&&!corpo)area.hidden=true;   // academia recolhida: os protocolos dela não ficam soltos embaixo da lista
   if(corpo&&area){
     /* O botão do estado vazio, que renderProtLista ainda não trocou, sai
        antes: com dois #acadCopiar na página, o clique ia para o que some. */
@@ -4514,7 +4618,7 @@ function protAbertoAqui(){
   const pa=protAberto(),lista=protsDaAcad(acadSel());
   return (!lista.length||lista.some(p=>p.id===pa))?pa:lista[0].id;
 }
-function setProtAberto(id){try{if(id)localStorage.setItem(PROT_KEY,id);else localStorage.removeItem(PROT_KEY);}catch(e){}}
+function setProtAberto(id){protRecolhido=false;try{if(id)localStorage.setItem(PROT_KEY,id);else localStorage.removeItem(PROT_KEY);}catch(e){}}
 /** Nome livre a partir de outro: "Divisão A/B/C", "Divisão A/B/C 2"… */
 function protNomeLivre(base){
   const usados=new Set(listaProtocolos().map(p=>norm(p.nome)));
@@ -4538,8 +4642,10 @@ function renderProtLista(){
     return;
   }
   const aberto=protAbertoAqui(),varios=lista.length>1;
+  /* Com um protocolo só não há seta, e ele não recolhe. */
+  const recolhido=varios&&protRecolhido;
   el.innerHTML=`<div class="acad-topo"><span class="lbl">${comAcad?"Protocolos desta academia":"Seus protocolos"}</span></div>`+lista.map(p=>{
-    const ws=treinosDoProt(p.id),vis=ws.filter(w=>treinoNaAcad(w,sel)),ab=p.id===aberto;
+    const ws=treinosDoProt(p.id),vis=ws.filter(w=>treinoNaAcad(w,sel)),ab=p.id===aberto&&!recolhido;
     const n=vis.length?vis.length+(vis.length===1?" treino":" treinos"):"nenhum treino";
     const miolo=`<span class="prot-nome">${esc(p.nome)}</span><span class="prot-n">${n}</span>`;
     const cab=varios?`<button type="button" class="prot-cab" data-protabrir="${esc(p.id)}" aria-expanded="${ab}">${miolo}${CHEV}</button>`:`<div class="prot-cab">${miolo}</div>`;
@@ -4547,9 +4653,10 @@ function renderProtLista(){
     return `<div class="prot-bloco${ab?" aberto":""}" data-prot="${esc(p.id)}">${cab}${corpo}</div>`;
   }).join("");
   el.querySelectorAll("[data-protabrir]").forEach(b=>b.onclick=()=>{
-    if(b.dataset.protabrir===aberto)return;   // sempre há um aberto: o treino continua a um toque
-    setProtAberto(b.dataset.protabrir);renderTreino();
+    if(b.dataset.protabrir===aberto&&!recolhido){protRecolhido=true;renderTreino();return;}   // o aberto: recolhe
+    setProtAberto(b.dataset.protabrir);renderTreino();   // outro, ou o mesmo recolhido: abre
   });
+  if(recolhido)return;   // nenhum aberto: sem cartões nem "Editar"
   $("tOpenProtocol").onclick=()=>openTProtocol(aberto);
 
   /* Os cartões do protocolo aberto, só os da academia aberta. O filtro de
@@ -5090,6 +5197,7 @@ $("tpProtDel").onclick=async()=>{
 function renderTpList(){
   const list=treinosDoProt(tpProtAtual);
   $("tpSugAqui").style.display=list.length?"none":"";
+  $("tpPdf").style.display=$("tpPdfNota").style.display=list.length?"":"none";   // sem treino, não há folha
   $("tpProtDel").style.display=listaProtocolos().length>1?"":"none";
   const onde=w=>academias().length?` · ${acadsDoTreino(w).length?esc(acadsTxt(w)):"todas as academias"}`:"";
   $("tprotoList").innerHTML=list.length?list.map(w=>`<div class="proto-meal-row"><div><div class="n">${esc(w.nome)}</div><div class="m">Treino ${esc(w.cat||"")} · ${qtdTxt((w.ex||[]).length,"exercício","exercícios")} · ${qtdTxt(tpSeries(w),"série","séries")}${onde(w)}</div></div><div class="acts"><button data-ted="${w.id}">Editar</button><button class="del" data-tdl="${w.id}">Excluir</button></div></div>`).join(""):'<div class="proto-empty" style="margin-bottom:12px">Nenhum treino cadastrado ainda.</div>';
@@ -5097,6 +5205,49 @@ function renderTpList(){
   $("tprotoList").querySelectorAll("[data-tdl]").forEach(b=>b.onclick=async()=>{if(await appConfirm("Excluir este treino do protocolo?",{okText:"Excluir"})){store.tprotocol=(store.tprotocol||[]).filter(x=>x.id!==b.dataset.tdl);save();renderTpList();}});
 }
 $("tpNew").onclick=()=>{if(salvarNomeProt())openTpEditor(null);};
+/* ---- Exportar o protocolo em PDF (#92) ----
+   Pedido do dono: "Coloque a opção de exportar o protocolo em pdf". A folha
+   (#printArea) é montada aqui e vai para a impressão do sistema, que tem
+   "Salvar como PDF": no navegador, window.print(); no app Android, o WebView
+   ignora window.print(), e quem imprime é o PrintManager, pela ponte
+   (TResults.imprimir). Só o plano entra na folha: nada de peso, medida ou
+   exógeno, que são dado de saúde. */
+function folhaProtocolo(id){
+  const p=protPorId(id),ws=treinosDoProt(id),comAcad=academias().length>0;
+  const [y,m,d]=todayKey().split("-");
+  const linha=(e,i)=>{
+    const tipo=tipoDe(e),fr=tipo==="corpo"?fracaoCorpo(e.n):null;
+    const tag=tipo==="tempo"?"por tempo":fr&&fr.contra?"peso do corpo, com contrapeso":tipo==="corpo"?"peso do corpo":"";
+    const grupo=(TG[e.g]||"—")+((e.sec&&e.sec.length)?` (+${e.sec.map(k=>TG[k]||k).join(", ")})`:"");
+    return `<tr><td class="pa-n">${i+1}</td><td><span class="pa-ex">${esc(e.n)}</span>${tag?`<span class="pa-tag">${tag}</span>`:""}</td><td>${esc(grupo)}</td><td class="pa-num">${r0(e.s||0)}</td><td class="pa-num">${r0(e.rest||90)} s</td></tr>`;
+  };
+  const treino=w=>{
+    const onde=comAcad?` · ${acadsDoTreino(w).length?esc(acadsTxt(w)):"todas as academias"}`:"";
+    return `<section class="pa-treino"><h2>${esc(w.nome)}</h2><div class="pa-meta">Treino ${esc(w.cat||"")} · ${qtdTxt((w.ex||[]).length,"exercício","exercícios")} · ${qtdTxt(tpSeries(w),"série","séries")}${onde}</div>`
+      +`<table><thead><tr><th class="pa-n">#</th><th class="pa-c-ex">Exercício</th><th class="pa-c-g">Grupo</th><th class="pa-num pa-c-s">Séries</th><th class="pa-num pa-c-d">Descanso</th></tr></thead><tbody>${(w.ex||[]).map(linha).join("")}</tbody></table></section>`;
+  };
+  return `<div class="pa-topo"><div class="pa-marca">T-RESULTS</div><h1>${esc(p?p.nome:"Protocolo")}</h1><div class="pa-sub">${qtdTxt(ws.length,"treino","treinos")} · exportado em ${d}/${m}/${y}</div></div>`
+    +ws.map(treino).join("")
+    +`<div class="pa-rodape">Carga, repetições e RIR são registrados no app, durante o treino.</div>`;
+}
+function exportarProtocoloPdf(){
+  if(!salvarNomeProt())return;   // o nome digitado no título vai para a folha
+  const p=protPorId(tpProtAtual),ws=treinosDoProt(tpProtAtual);
+  if(!p||!ws.length)return appAlert("Este protocolo ainda não tem treinos para exportar.","Nada para exportar");
+  const titulo=`Protocolo ${p.nome}`;
+  /* APK de antes da 1.6: não tem a ponte, e o WebView não imprime sozinho. */
+  if(appNativo&&!(window.TResults&&typeof window.TResults.imprimir==="function"))
+    return appAlert("Para exportar em PDF no app, atualize o T-RESULTS para a versão mais nova (o Obtainium baixa sozinho). No navegador do celular já funciona.","Atualize o app");
+  $("printArea").innerHTML=folhaProtocolo(tpProtAtual);
+  rastro("exportar pdf");
+  if(appNativo){try{window.TResults.imprimir(titulo);}catch(e){}return;}
+  /* O título da página vira o nome do arquivo que o navegador propõe. */
+  const antes=document.title;document.title=titulo;
+  const voltar=()=>{document.title=antes;window.removeEventListener("afterprint",voltar);};
+  window.addEventListener("afterprint",voltar);
+  try{window.print();}catch(e){voltar();}
+}
+$("tpPdf").onclick=exportarProtocoloPdf;
 function tpSeries(w){return (w.ex||[]).reduce((a,e)=>a+(e.s||0),0);}
 function openTpEditor(id){
   tpEditId=id||null;
@@ -5105,27 +5256,108 @@ function openTpEditor(id){
   else{const sel=acadSel();tpEditing={ex:[],acads:sel?[sel]:[],prot:tpProtAtual,protNome:(protPorId(tpProtAtual)||{}).nome||tpProtNomeIni};$("tpTitle").textContent="Novo treino";$("tpName").value="";$("tpCat").value="A";}
   renderTpProts();
   renderTpAcads();
-  $("tpExName").value="";$("tpExS").value=4;$("tpExRest").value=90;$("tpExG").value="peito";renderSynChips();
+  tpExEdit=-1;$("tpExG").value="peito";limparFormEx();pintarModoEx();
   renderTpEx();tpEditOverlay.classList.add("open");
 }
 $("tpCancel").onclick=()=>tpEditOverlay.classList.remove("open");
 tpEditOverlay.onclick=e=>{if(e.target===tpEditOverlay)tpEditOverlay.classList.remove("open");};
 function renderTpEx(){
   const ex=tpEditing.ex||[];
-  $("tpExList").innerHTML=ex.length?ex.map((e,i)=>`<div class="pm-item"><div><span class="pn">${esc(e.n)}</span><div class="pm-mac">${TG[e.g]||"—"}${(e.sec&&e.sec.length)?` (+${e.sec.map(k=>TG[k]).join(", ")})`:""} · ${e.s} séries · ${r0(e.rest||90)}s de descanso</div></div><button class="how" data-how="${i}" title="Como fazer">🎬</button><button class="rm" data-i="${i}">×</button></div>`).join(""):'<div class="ins-empty" style="padding:4px 0 8px">Nenhum exercício ainda — adicione abaixo.</div>';
+  $("tpExList").innerHTML=ex.length?ex.map((e,i)=>`<div class="pm-item${i===tpExEdit?" editando":""}"><button type="button" class="pm-txt" data-ed="${i}"><span class="pn">${esc(e.n)}</span><div class="pm-mac">${TG[e.g]||"—"}${(e.sec&&e.sec.length)?` (+${e.sec.map(k=>TG[k]).join(", ")})`:""} · ${qtdTxt(e.s,"série","séries")} · ${r0(e.rest||90)}s de descanso${tipoDe(e)!=="carga"&&e.pesoCorpo!==false?' · <span class="pm-corpo">peso do corpo</span>':""}</div></button><button type="button" class="ed" data-ed="${i}" title="Editar exercício" aria-label="Editar ${esc(e.n)}"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/></svg></button><button class="how" data-how="${i}" title="Como fazer">🎬</button><button class="rm" data-i="${i}" aria-label="Excluir ${esc(e.n)}">×</button></div>`).join(""):'<div class="ins-empty" style="padding:4px 0 8px">Nenhum exercício ainda — adicione abaixo.</div>';
   $("tpExList").querySelectorAll(".how[data-how]").forEach(b=>b.onclick=()=>openHow(tpEditing.ex[+b.dataset.how].n));
-  $("tpExList").querySelectorAll(".rm[data-i]").forEach(b=>b.onclick=()=>{tpEditing.ex.splice(+b.dataset.i,1);renderTpEx();});
+  $("tpExList").querySelectorAll("[data-ed]").forEach(b=>b.onclick=()=>editarExTp(+b.dataset.ed));
+  $("tpExList").querySelectorAll(".rm[data-i]").forEach(b=>b.onclick=()=>{
+    const i=+b.dataset.i;
+    tpEditing.ex.splice(i,1);
+    /* A edição em andamento acompanha a posição: o exercício editado foi
+       excluído (a edição sai), ou subiu uma casa. */
+    if(i===tpExEdit)sairEdicaoEx();else if(i<tpExEdit)tpExEdit--;
+    renderTpEx();
+  });
   paintTpMap();
   renderTpEquip();
 }
-$("tpExAdd").onclick=()=>{
+/* ---- Editar um exercício do treino (#89) ----
+   Pedido do dono: "posso só mudar o nome (ex.: Elevação lateral máquina ->
+   Elevação lateral halter)". O lápis (ou o toque no exercício) carrega o
+   exercício no formulário de baixo; "Salvar alteração" o troca no lugar,
+   na mesma posição, e guarda o que o exercício tinha e esta versão não
+   conhece. A referência de carga segue o nome (lastExSession): máquina e
+   halter não se comparam, e a nota embaixo do nome diz isso. */
+let tpExEdit=-1;   // posição do exercício no formulário; -1 = adicionando um novo
+/* "Com carga" / "Peso do corpo" (#91): null = a pessoa não tocou, e vale o
+   nome; true/false = a escolha dela, gravada em `pesoCorpo`. */
+var tpCorpoSel=null,tpCorpoToque=false;
+/** A escolha que vale agora: a marcação de um exercício editado só segue
+    com o mesmo nome; renomeado, volta a valer o nome novo, até a pessoa
+    tocar de novo — como a troca no treino, que apaga a do prescrito. */
+function corpoSelAgora(){
+  const ant=tpExEdit>-1&&tpEditing.ex[tpExEdit],n=$("tpExName").value.trim();
+  if(ant&&!tpCorpoToque&&norm(n)!==norm(ant.n))return null;
+  return tpCorpoSel;
+}
+function pintarCargaEx(){
+  const sel=corpoSelAgora(),n=$("tpExName").value.trim(),ex={n,pesoCorpo:sel===null?undefined:sel};
+  const corpo=tipoDe(ex)!=="carga"&&sel!==false;
+  $("tpExCarga").querySelectorAll("button").forEach(b=>{const on=(b.dataset.v==="corpo")===corpo;b.classList.toggle("on",on);b.setAttribute("aria-checked",on?"true":"false");});
+  const nota=$("tpExCargaNota"),sx=(store.goals||{}).sexo;
+  if(!corpo){nota.textContent="A carga é a do aparelho, da barra ou do halter, digitada no treino.";return;}
+  if(tipoDe(ex)==="tempo"){nota.textContent="Conta pelo tempo. O que você acrescentar (anilha, colete) fica registrado.";return;}
+  const fr=fracaoCorpo(n,sx);
+  if(fr&&fr.contra){nota.textContent="Seu peso conta em cada repetição, menos o contrapeso da máquina. No treino, o campo de carga é o contrapeso.";return;}
+  nota.textContent=fr
+    ?`Seu peso conta em cada repetição: ${fr.f===1?"o corpo inteiro":`≈ ${Math.round(fr.f*100)}% dele (${fr.txt}${fr.modelo?", estimativa pela massa de cada parte do corpo":""})`}. No treino, o campo de carga é só o que você acrescenta.`
+    :"Conta pelas repetições: não há medida de quanto do peso este movimento levanta. No treino, o campo de carga é só o que você acrescenta.";
+}
+$("tpExCarga").querySelectorAll("button").forEach(b=>b.onclick=()=>{tpCorpoSel=b.dataset.v==="corpo";tpCorpoToque=true;pintarCargaEx();});
+function pintarModoEx(){
+  const ed=tpExEdit>-1;
+  $("tpExAdd").textContent=ed?"Salvar alteração":"＋ Adicionar exercício";
+  $("tpExCancelar").style.display=ed?"":"none";
+  $("tpExNameLbl").textContent=ed?"Editar exercício":"Exercício";
+  pintarNotaEx();
+}
+function pintarNotaEx(){
+  const e=tpExEdit>-1&&tpEditing.ex[tpExEdit];
+  $("tpExNota").hidden=!(e&&norm($("tpExName").value.trim())!==norm(e.n)&&$("tpExName").value.trim());
+}
+function limparFormEx(){$("tpExName").value="";$("tpExS").value=4;$("tpExRest").value=90;tpCorpoSel=null;tpCorpoToque=false;renderSynChips();pintarCargaEx();}
+function sairEdicaoEx(){tpExEdit=-1;limparFormEx();pintarModoEx();}
+function editarExTp(i){
+  const e=tpEditing.ex[i];if(!e)return;
+  tpExEdit=i;
+  $("tpExName").value=e.n;$("tpExS").value=String(e.s||"");$("tpExRest").value=String(e.rest||90);
+  tpCorpoSel=typeof e.pesoCorpo==="boolean"?e.pesoCorpo:null;tpCorpoToque=false;pintarCargaEx();
+  if([...$("tpExG").options].some(o=>o.value===e.g))$("tpExG").value=e.g;
+  renderSynChips(Array.isArray(e.sec)?e.sec:[]);
+  pintarModoEx();renderTpEx();
+  try{$("tpExName").scrollIntoView({block:"center",behavior:"smooth"});}catch(err){}
+  setTimeout(()=>{try{$("tpExName").focus();}catch(err){}},250);
+}
+/** Grava o formulário: troca o exercício editado no lugar, ou acrescenta.
+    Falso quando o formulário não vale (sem nome ou sem séries). */
+function gravarFormEx(){
   const n=$("tpExName").value.trim(),s=inteiroBR($("tpExS").value),rest=inteiroBR($("tpExRest").value)||90,g=$("tpExG").value;
-  if(!n||s<=0)return;
-  tpEditing.ex.push({n,s,rest,g,sec:[...tpSynSel]});
-  $("tpExName").value="";$("tpExS").value=4;$("tpExRest").value=90;renderSynChips();renderTpEx();$("tpExName").focus();
-};
+  if(!n||s<=0)return false;
+  let novo;const sel=corpoSelAgora();   // antes de trocar: ela compara com o nome de antes
+  if(tpExEdit>-1&&tpEditing.ex[tpExEdit]){
+    const ant=tpEditing.ex[tpExEdit];
+    novo=tpEditing.ex[tpExEdit]=Object.assign({},ant,{n,s,rest,g:g||ant.g,sec:[...tpSynSel]});
+    tpExEdit=-1;
+  }else tpEditing.ex.push(novo={n,s,rest,g,sec:[...tpSynSel]});
+  /* A marcação só vai quando a pessoa tocou; sem ela, vale o nome. */
+  if(sel===null)delete novo.pesoCorpo;else novo.pesoCorpo=sel;
+  limparFormEx();pintarModoEx();renderTpEx();
+  return true;
+}
+$("tpExAdd").onclick=()=>{const ed=tpExEdit>-1;if(gravarFormEx()&&!ed)$("tpExName").focus();};
+$("tpExCancelar").onclick=()=>{sairEdicaoEx();renderTpEx();};
+$("tpExName").addEventListener("input",()=>{pintarNotaEx();pintarCargaEx();});
 $("tpExG").addEventListener("change",renderSynChips);
 $("tpSave").onclick=()=>{
+  /* Exercício em edição e não confirmado: a alteração entra, em vez de se
+     perder calada ao salvar o treino. */
+  if(tpExEdit>-1&&!gravarFormEx())return appAlert("O exercício em edição precisa de nome e de ao menos uma série.");
   const nome=$("tpName").value.trim();
   if(!nome)return appAlert("Dê um nome ao treino.");
   if(!tpEditing.ex.length)return appAlert("Adicione ao menos um exercício.");
@@ -5820,21 +6052,212 @@ const exSinal=n=>{
   let t=exNome(n).replace(/\bsem (carga|peso)\b/g," ").replace(/\bpegada (paralela|neutra|fechada|aberta|larga|supinada|pronada|invertida|mista)\b/g," ");
   /* "Puxada paralela", "Remada baixa paralela", "Rosca paralela": a paralela
      é a pegada, dita sem a palavra "pegada". */
-  if(/^(puxada|puxador|remada|rosca|pulldown|pull down|desenvolvimento|supino)\b/.test(t))t=t.replace(/\bparalelas?\b/g," ");
+  if(/^(puxada|puxador|pulley|remada|rosca|pulldown|pull down|desenvolvimento|supino|crucifixo|encolhimento|agachamento|elevacao (frontal|lateral)|triceps (frances|testa|corda|pulley|coice|na polia|no pulley))\b/.test(t))t=t.replace(/\bparalelas?\b/g," ");   // e a profundidade ("Agachamento até a paralela")
   return t.replace(/\s+/g," ").trim();
 };
+/* Aparelho e cabo: a resistência é a do aparelho, e não o corpo. Halter,
+   anilha, colete e cinto na flexão, na paralela ou no abdominal são carga
+   ACRESCENTADA ao corpo, que continua subindo junto (#91). A barra
+   assistida (graviton) tira peso com contrapeso: é peso do corpo, e o
+   número que a pessoa digita é o contrapeso (EX_ASSIST_RE; cargaSerie). */
+const EX_MAQ_RE=/\b(maquina|polia|cabo|corda|crossover|smith|articulad[ao])\b/;
+const EX_ASSIST_RE=/\b(assistid[a-z]*|graviton|gravitron)\b/;
+/* A barra fixa e as variações dela, inclusive pelo nome da pegada. */
+const EX_BARRA_RE=/\b(barra fixa|chin ?ups?|pull ?ups?)\b|^barra (pronada|supinada|neutra|graviton|gravitron|assistida)\b/;
+const ABD_RE=/^(abdominal|supra|crunch|sit ?ups?)\b/;
+/* Flexão de BRAÇO: "flexão de pernas", "de tronco", "de quadril" são outros
+   movimentos; "de joelhos apoiados" (ou no chão) é a flexão nos joelhos. */
+const ehFlexaoBraco=t=>/^(flexao|push ?ups?)\b/.test(t)&&!/\b(punho|plantar|lateral|nordica)\b/.test(t)
+  &&(!/^flexao de /.test(t)||/^flexao de bracos?\b/.test(t)||/^flexao de joelhos? (apoiad[a-z]*|no chao)\b/.test(t));
+/* Mergulho nas paralelas: o nome começa pelo movimento. "Pulley frente
+   paralela" e "Elevação de joelho na paralela" não são o mergulho. */
+const ehMergulho=t=>/^(paralelas?|mergulho|dips?)\b/.test(t)||/^triceps (na |nas |no |em )?(paralelas?|dips?|mergulho)\b/.test(t);
 function exTipo(nome){
   const t=exSinal(nome);
-  if(/\b(barra fixa|chin ?up|pull ?up)\b/.test(t))return "corpo";     // pegada supinada ou neutra continua peso do corpo
+  /* Tempo antes da barra: "Suspensão na barra fixa" é segurar, não puxar. */
+  if(!ABD_RE.test(t)&&EX_TEMPO_RE.test(t))return "tempo";              // "Prancha com anilha" continua de tempo, com a carga à vista
+  if(EX_BARRA_RE.test(t))return "corpo";                                // pegada supinada ou neutra continua peso do corpo
   if(/\bflexao de joelhos?\b/.test(t)&&!/\b(apoiad[a-z]*|chao)\b/.test(t))return "carga";   // mesa flexora; com os joelhos apoiados (ou no chão) é flexão de braço
-  if(/^abdominal\b/.test(t)){                                         // "Abdominal na prancha declinada": a prancha é o banco
+  if(ABD_RE.test(t)){                                                   // "Abdominal na prancha declinada": a prancha é o banco
     if(EX_TEMPO_RE.test(t.replace(/\bprancha\b/g," ")))return "tempo";      // "Abdominal isométrico (com anilha)" segura tempo; a carga aparece pelo nome
-    return EX_CARGA_RE.test(t)?"carga":"corpo";
+    if(EX_MAQ_RE.test(t))return "carga";
+    /* De pé, ou girando sentado ("Abdominal lateral com halter", "russo com
+       anilha"), o tronco não sobe do chão: o halter é a carga. */
+    if(EX_CARGA_RE.test(t)&&/\b(lateral|em pe|russo|russian|twist|rotacao)\b/.test(t))return "carga";
+    return "corpo";                                                     // "Abdominal com halter": o tronco sobe com o halter
   }
-  if(EX_TEMPO_RE.test(t))return "tempo";                                // "Prancha com anilha" continua de tempo, com a carga à vista
+  /* Flexão de braço e paralela com anilha, colete ou cinto: peso do corpo
+     com carga acrescentada. */
+  if((ehFlexaoBraco(t)||ehMergulho(t))&&!EX_MAQ_RE.test(t))return "corpo";
+  if(/^triceps (no |em )?banco\b/.test(t))return "corpo";               // mergulho no banco, com os pés no chão
   if(EX_CARGA_RE.test(t))return "carga";
   if(EX_CORPO_RE.test(t))return "corpo";
   return "carga";
+}
+/* ============================================================
+   O PESO DO CORPO É A CARGA (#91)
+
+   O pedido: "Exercícios em que usa o peso corporal como ABDOMINAL,
+   PRANCHA, PARALELA LIVRE, BARRA FIXA e etc, o app deve entender que o
+   peso já é o do corpo (use a ciência para entender como é feito no
+   abdominal essa distribuição) e que o peso que deve aparecer é para
+   adicionar. Para fins de resguardo o usuário pode identificar quando o
+   exercício é com o próprio peso corporal."
+
+   A carga de cada repetição é a parte do corpo que o movimento levanta
+   (fração × peso do dia) mais o que a pessoa acrescenta (colete, anilha,
+   cinto). O campo de carga desses exercícios é só o acrescentado. O peso é
+   o do dia da sessão (pesoNoDia), e fica GRAVADO nela (`pesoDia`, e
+   `corpoKg` em cada exercício): uma pesagem nova não reescreve o volume
+   de ontem. A marcação "Peso do corpo" / "Com carga" do editor
+   (`pesoCorpo` no exercício do treino) vence o nome.
+
+   Só entra fração com fonte (os PMIDs abaixo foram conferidos no registro
+   do PubMed); sem ela, o exercício conta pelas repetições, como sempre:
+   - Barra fixa: 1,0. Não é medida de massa deslocada: é a CONVENÇÃO dos
+     estudos de força da barra, em que a carga é o corpo mais o lastro
+     ("PUmax was determined by adding to or counter-weighting the body
+     mass", Johnson et al., J Strength Cond Res 2009;23(3):1022-1028, PMID
+     19387371; 1RM de 1,5 × a massa corporal em 82 homens treinados,
+     Muñoz-López et al., Int J Sports Physiol Perform 2017;12(9):1249-1255,
+     PMID 28253041). Pendurada, a pessoa é sustentada inteira pelas mãos.
+   - Paralelas: 1,0, pela mesma física (pés fora do chão, as barras
+     sustentam o corpo inteiro). Não achamos estudo de paralelas que
+     defina a carga: é extrapolação declarada da barra fixa.
+   - Flexão de braço: as mãos sustentam 66,4% do peso; com os joelhos no
+     chão, 52,9% ("The initial load relative to body weight was 66.4% at
+     the normal position, while only 52.9% at the on-knees", 8 homens,
+     plataforma de força, Gouvali & Boudolos, J Strength Cond Res
+     2005;19(1):146-151, PMID 15705025). Outros estudos acham o mesmo na
+     posição alta (65–69%; Suprak et al., J Strength Cond Res
+     2011;25(2):497-503, PMID 20179649); os 64%/49% de Ebben 2011 (PMID
+     21873902) não estão no resumo e não foram lidos na tabela. A largura
+     da pegada (fechada, aberta, diamante) não muda a divisão do peso entre
+     mãos e pés: vale a da comum, por inferência mecânica, declarada.
+     Declinada e inclinada dependem da altura do apoio, que o app não sabe
+     (de 41% a 74% em Ebben 2011), e a flexão com uma mão muda a posição:
+     contam por reps.
+   - Abdominal: ver PC_SEG, abaixo.
+   - Sem medida: mergulho no banco (depende de onde estão os pés),
+     elevação de pernas (a resistência é o torque no quadril, não o peso
+     das pernas), abdominal infra, remador e na roda, burpee, polichinelo,
+     escalador, canivete, superman, barra com elástico. A prancha e as
+     isometrias contam pelo tempo.
+   O recorde do aviso da pausa (#81) continua sendo a carga acrescentada:
+   é ela que a pessoa escolhe pôr.
+   ============================================================ */
+/* Abdominal. Nenhum estudo mede "quanto do peso" sobe num abdominal: a
+   literatura de carga do abdominal fala em compressão da coluna (N) e
+   momento (Nm), não em quilos levantados (Axler & McGill, Med Sci Sports
+   Exerc 1997;29(6):804-811, PMID 9219209). O que foi medido em pessoas é a
+   massa de cada segmento do corpo, por varredura gama em jovens dos dois
+   sexos: de Leva, J Biomech 1996;29(9):1223-1230, PMID 8872282, que
+   ajusta os dados de Zatsiorsky e Seluyanov e dá tabela para homens e
+   para mulheres. No abdominal (crunch), a lombar quase não sai do chão, e
+   sobem a cabeça, os braços e o tronco de cima, até a ponta do esterno:
+   32,8% do peso nos homens e 31,1% nas mulheres. No completo, o tronco
+   inteiro: 60,3% e 58,2%. É ESTIMATIVA POR MODELO, declarada: a massa foi
+   medida, mas quais segmentos sobem é escolha anatômica (com o tronco do
+   meio, seriam 49% e 46%; sem os braços, 23% e 22%). Foi o que o dono
+   pediu: "use a ciência para entender como é feito no abdominal essa
+   distribuição". Por ser modelo (`modelo:true`), entra no volume, mas não
+   no 1RM: o Epley foi feito para carga livre, e a do abdominal é um
+   momento que muda ao longo do movimento. A posição dos braços muda o
+   momento, não a massa: a fração não a captura. */
+const PC_SEG={
+  M:{cab:6.94,troncoSup:15.96,tronco:43.46,braco:2.71,antebraco:1.62,mao:0.61},
+  F:{cab:6.68,troncoSup:15.45,tronco:42.57,braco:2.55,antebraco:1.38,mao:0.56},
+};
+/** A parte do peso que o movimento levanta, com o que ela é; null quando
+    não há medida (o exercício conta pelas repetições). */
+function fracaoCorpo(nome,sexo){
+  const t=exSinal(nome),S=PC_SEG[sexo==="F"?"F":"M"],bracos=2*(S.braco+S.antebraco+S.mao);
+  if(/\b(elastico|faixa)\b/.test(t))return null;   // o elástico tira um peso que ninguém mede
+  /* Abdominal, e o que sobe as pernas. Pendurado na barra ou na paralela
+     (infra, joelho no peito), quem sobe são as pernas: a resistência é o
+     torque no quadril, e nem o corpo inteiro nem a massa das pernas a
+     representam. De pé, girando, na rodinha ou com as pernas: sem medida. */
+  const abd=ABD_RE.test(t);
+  if(abd||/\b(infra|joelhos? no peito|elevacao de (pernas?|joelhos?)|toes to bar)\b/.test(t)){
+    if(!abd||/\b(infra|inferior|reverso|remador|canivete|bicicleta|roda|rodinha|roller|rollout|tesoura|pernas?|joelhos? no peito|v ?ups?|em v|v|barra|paralelas?|pendurad[ao]|suspens[ao]|lateral|em pe|russo|russian|twist|rotacao)\b/.test(t))return null;
+    if(/\b(completo|sit ?ups?)\b/.test(t))return {f:Math.round(S.cab+S.tronco+bracos)/100,txt:"cabeça, braços e tronco",modelo:true};
+    return {f:Math.round(S.cab+S.troncoSup+bracos)/100,txt:"cabeça, braços e tronco de cima",modelo:true};
+  }
+  /* Na barra assistida o corpo inteiro conta MENOS o contrapeso, a mesma
+     convenção de Johnson 2009 ("counter-weighting the body mass"). */
+  const contra=EX_ASSIST_RE.test(t);
+  if(EX_BARRA_RE.test(t)){
+    if(/\b(australiana|invertida|baixa|remada|suspensao|isometric[a-z]*)\b/.test(t))return null;   // pés no chão, ou segurar parado
+    return contra?{f:1,txt:"o corpo inteiro, menos o contrapeso",contra:true}:{f:1,txt:"o corpo inteiro"};
+  }
+  if(ehFlexaoBraco(t)){
+    if(/\b(declinad[ao]|inclinad[ao]|elevad[ao]s?|parede|banco|caixa|step|cadeira|trx|bola|suspens[ao]|pike|pes|uma mao|um braco|unilateral|arqueiro)\b/.test(t))return null;
+    if(/\b(joelhos?|ajoelhad[ao])\b/.test(t))return {f:0.529,txt:"o que as mãos sustentam com os joelhos no chão"};
+    return {f:0.664,txt:"o que as mãos sustentam"};
+  }
+  if(ehMergulho(t)){
+    if(/\b(bancos?|bench|cadeiras?|chao|solo|step|caixa|sofa|pes elevados)\b/.test(t))return null;   // os pés no chão sustentam uma parte que ninguém mediu
+    return contra?{f:1,txt:"o corpo inteiro, menos o contrapeso",contra:true}:{f:1,txt:"o corpo inteiro"};
+  }
+  return null;
+}
+/** O tipo do exercício com a marcação da pessoa: "Peso do corpo" ou "Com
+    carga" no editor vence o nome. Tempo continua tempo. */
+function tipoDe(e){
+  const t=exTipo(e&&e.n);
+  if(e&&e.pesoCorpo===true&&t==="carga")return "corpo";
+  if(e&&e.pesoCorpo===false&&t==="corpo")return "carga";
+  return t;
+}
+/** Quilos do corpo em cada repetição deste exercício, com o peso dado. */
+function corpoKgDe(e,peso,sexo){
+  if(tipoDe(e)!=="corpo"||!(peso>0))return 0;
+  const fr=fracaoCorpo(e.n,sexo);
+  return fr?Math.round(fr.f*peso*10)/10:0;
+}
+/** A marcação "Peso do corpo" / "Com carga" que o treino da sessão tem
+    hoje para este exercício (sessão de antes da marcação gravada). */
+function marcaNoTreino(w,n){
+  const t=w&&w.tid&&(store.tprotocol||[]).find(x=>x&&x.id===w.tid);
+  const e=t&&(t.ex||[]).find(x=>x&&norm(x.n)===norm(n));
+  return e&&typeof e.pesoCorpo==="boolean"?e.pesoCorpo:undefined;
+}
+/** O tipo de um exercício já gravado: o que a sessão gravou (`tipo`, desde o
+    #91); antes disso, a marcação do treino de hoje, e senão o nome. */
+function tipoGravado(e,w){
+  if(e&&typeof e.tipo==="string")return e.tipo;
+  return tipoDe({n:e&&e.n,pesoCorpo:marcaNoTreino(w,e&&e.n)});
+}
+/** Barra assistida: o número da série é o contrapeso. */
+function contraGravado(e,w){
+  if(e&&typeof e.tipo==="string")return !!e.contra;
+  return tipoGravado(e,w)==="corpo"&&!!(fracaoCorpo(e&&e.n)||{}).contra;
+}
+/** A carga de uma série com o corpo: o acrescentado soma; o contrapeso da
+    barra assistida tira, e sem o peso do corpo a série assistida não tem
+    carga nenhuma (o contrapeso não é carga). */
+function cargaSerie(x,ck,contra){
+  const kg=x.kg||0;
+  if(contra)return ck>0?Math.max(0,ck-kg):0;
+  return kg+ck;
+}
+/** O peso do corpo de um exercício já gravado. Sessão gravada com o peso
+    do dia: o que ficou gravado. Sessão de antes, ou gravada sem peso
+    conhecido (`pesoDia` 0): o peso daquele dia pela regra de hoje, com a
+    marcação — só o gráfico e o volume da semana usam isto; o selo e o
+    volume da sessão continuam como a pessoa os viu. */
+function corpoKgSessao(e,w,dk){
+  if(w&&w.pesoDia>0)return e.corpoKg||0;
+  if(tipoGravado(e,w)!=="corpo")return 0;
+  const fr=fracaoCorpo(e.n,(store.goals||{}).sexo),p=pesoNoDia(dk);
+  return fr&&p>0?Math.round(fr.f*p*10)/10:0;
+}
+/** Volume de uma sessão. A gravada com o peso do dia é refeita das séries:
+    um aparelho com versão anterior que corrige uma série regrava o `vol`
+    sem o corpo. */
+function volDe(w){
+  if(!(w&&w.pesoDia>0&&(w.ex||[]).length))return (w&&w.vol)||0;
+  return Math.round(w.ex.reduce((t,e)=>t+(e.sets||[]).reduce((u,x)=>u+cargaSerie(x,e.corpoKg||0,!!e.contra)*(x.rep||0),0),0));
 }
 /* A medida do exercício nesta sessão: segundos ou reps. Quem decide é a
    pessoa ("contar em reps" / "contar em segundos"); sem escolha, o nome. */
@@ -5848,7 +6271,8 @@ function medidaEx(e){
 function devolverMedida(e){
   if(e.origMedida)e.medida=e.origMedida;
   if(e.origComCarga)e.comCarga=true;
-  delete e.origMedida;delete e.origComCarga;
+  if(typeof e.origPesoCorpo==="boolean")e.pesoCorpo=e.origPesoCorpo;
+  delete e.origMedida;delete e.origComCarga;delete e.origPesoCorpo;
 }
 /* A série como ela vale: só a medida do exercício conta. O campo escondido
    continua guardado na sessão (o "Desfazer" da troca o devolve), mas não
@@ -5863,23 +6287,27 @@ const campoVisivel=el=>!!el&&!el.closest(".fld").classList.contains("oculto");
 function semBotoesVazios(){const b=$("trSets").querySelector(".tr-botoes");if(b&&!b.children.length)b.remove();}
 /* O melhor de um exercício: a maior carga; sem carga, o máximo de segundos
    ou de reps. */
-function melhorDe(sets){
+function melhorDe(sets,contra){
   const st=sets||[];
+  /* Barra assistida: o melhor é o MENOR contrapeso. */
+  const ks=st.map(x=>x.kg||0).filter(k=>k>0);
+  if(contra&&ks.length)return {v:Math.min(...ks),un:"kg",contra:true};
   const kg=st.reduce((a,x)=>Math.max(a,x.kg||0),0);
   if(kg>0)return {v:kg,un:"kg"};
   const seg=st.reduce((a,x)=>Math.max(a,x.seg||0),0);
   if(seg>0)return {v:seg,un:"s"};
   return {v:st.reduce((a,x)=>Math.max(a,x.rep||0),0),un:"reps"};
 }
-const melhorTxt=m=>m.un==="kg"?`${kgTxt(m.v)} kg`:`${r0(m.v)} ${m.un}`;
+/* `mais`: carga acrescentada ao corpo (#91), "+10 kg"; o contrapeso sai "−30 kg". */
+const melhorTxt=(m,mais)=>m.un==="kg"?`${m.contra?"−":mais?"+":""}${kgTxt(m.v)} kg`:`${r0(m.v)} ${m.un}`;
 /* A referência é a da MESMA academia: o leg press de uma não é o da
    outra, e a carga de lá enganaria (pedido do dono: "preservar a realidade
    do peso daquele aparelho"). Registro sem academia — de antes de ela
    existir — continua valendo em qualquer uma. Sem nada aqui, não há
    referência: a tela diz "Academia nova" (`exEmOutraAcad`). Sem academia
    cadastrada, é a última de qualquer lugar, como sempre foi. */
-function lastExSession(nome,acad){
-  const alvo=norm(nome||""),tds=store.tdays||{},deCarga=exTipo(nome)==="carga";
+function lastExSession(nome,acad,tipo){
+  const alvo=norm(nome||""),tds=store.tdays||{},deCarga=(tipo||exTipo(nome))==="carga";   // `tipo`: com a marcação do editor
   const dias=Object.keys(tds).sort().reverse(); // datas ISO: ordem alfabética = cronológica
   /* Exercício de carga feito com o kg em branco (esquecido) não vira a
      referência se houver, mais para trás, uma vez com carga: ela apagaria
@@ -5931,8 +6359,9 @@ function trDelta(row){
   }
   if(!kg||kg<=0||!((p.kg||0)>0))return limpar();
   const d=Math.round((kg-p.kg)*10)/10;
-  chip.className="tp-d "+(d>0?"up":d<0?"down":"same");
-  chip.textContent=d>0?`+${kgTxt(d)} kg`:d<0?`${kgTxt(d)} kg`:"mesma carga";
+  /* Barra assistida: menos contrapeso é mais carga. */
+  chip.className="tp-d "+((trContra?-d:d)>0?"up":(trContra?-d:d)<0?"down":"same");
+  chip.textContent=d>0?`+${kgTxt(d)} kg`:d<0?`${kgTxt(d)} kg`:(trContra?"mesmo contrapeso":"mesma carga");
 }
 function renderTr(){
   const w=trS.w,e=w.ex[trS.idx],logs=trS.logs[trS.idx];
@@ -5948,8 +6377,11 @@ function renderTr(){
   };
   /* A referência da última vez segue o exercício que está sendo feito: comparar
      a carga de hoje no leg press com a do agachamento não diria nada. */
-  trPrevRef=lastExSession(e.n,trS.acad);
-  const tipo=exTipo(e.n);
+  const tipo=tipoDe(e);   // a marcação do editor ("Peso do corpo" / "Com carga") vence o nome
+  trPrevRef=lastExSession(e.n,trS.acad,tipo);
+  const sx=(store.goals||{}).sexo,fr=tipo==="corpo"?fracaoCorpo(e.n,sx):null;
+  /* Barra assistida (#91): o campo é o CONTRAPESO, que tira do corpo. */
+  trContra=!!(fr&&fr.contra);
   /* Exercício de tempo que da última vez foi contado em reps começa em reps:
      senão as 20 reps de hoje entrariam como 20 segundos. */
   if(tipo==="tempo"&&!e.medida&&trPrevRef&&trPrevRef.sets.some(x=>(x.rep||0)>0)&&!trPrevRef.sets.some(x=>(x.seg||0)>0)&&!logs.some(l=>(l.seg||0)>0))e.medida="reps";
@@ -5959,7 +6391,22 @@ function renderTr(){
   /* A carga aparece no peso do corpo quando ela já foi usada (hoje ou da
      última vez), quando o nome fala dela ("Prancha com anilha") ou quando a
      pessoa pediu "+ carga". */
-  const cargaVis=tipo==="carga"||!!e.comCarga||EX_CARGA_RE.test(exSinal(e.n))||logs.some(l=>(l.kg||0)>0)||!!(trPrevRef&&trPrevRef.sets.some(x=>(x.kg||0)>0));
+  const cargaVis=tipo==="carga"||e.pesoCorpo===false||trContra||!!e.comCarga||EX_CARGA_RE.test(exSinal(e.n))||logs.some(l=>(l.kg||0)>0)||!!(trPrevRef&&trPrevRef.sets.some(x=>(x.kg||0)>0));
+  /* No peso do corpo, o campo é a carga ACRESCENTADA (#91): "+ kg". */
+  const maisKg=tipo!=="carga"&&e.pesoCorpo!==false&&!trContra;
+  /* Quanto do peso já conta em cada repetição, e com que peso. Sem fração
+     medida, nada a dizer: o exercício conta pelas repetições, como sempre. */
+  let notaCorpo="";
+  if(tipo==="corpo"){
+    const pd=pesoNoDia(todayKey());
+    if(fr&&fr.contra)notaCorpo=pd>0
+      ?`<div class="tr-corpo"><b>Seu peso: ${kgTxt(pd)} kg</b> em cada repetição, menos o contrapeso da máquina. No campo, o contrapeso: menos contrapeso é mais carga.</div>`
+      :'<div class="tr-corpo">No campo, o contrapeso da máquina. Lance o seu peso (Início, "Lançar o peso de hoje") para o app contar a carga de verdade.</div>';
+    else if(fr&&pd>0){
+      const ck=corpoKgDe(e,pd,sx);
+      notaCorpo=`<div class="tr-corpo"><b>Seu peso já conta: ${fr.f===1?"":"≈ "}${kgTxt(ck)} kg</b> em cada repetição (${fr.f===1?`o corpo inteiro, ${kgTxt(pd)} kg`:`${fr.modelo?"estimativa, ":""}${Math.round(fr.f*100)}% dos seus ${kgTxt(pd)} kg: ${fr.txt}`}). A carga é só o que você acrescenta.</div>`;
+    }else if(fr)notaCorpo='<div class="tr-corpo">Lance o seu peso (Início, "Lançar o peso de hoje") para o app contar o peso do corpo neste exercício.</div>';
+  }
   /* Academia nova: o exercício já foi feito em outra, e nunca nesta. Dito
      uma vez, acima das séries; a carga de lá não aparece (outro aparelho). */
   /* Tempo sem treinar (#81): a nota da volta acima das séries. Com
@@ -5972,11 +6419,11 @@ function renderTr(){
      sentidos. Nenhum dos dois redesenha a tela, que mataria o descanso. */
   const botoes=(cargaVis?"":`<button class="tr-maiscarga" type="button" id="trMaisCarga">+ carga (colete, anilha)</button>`)
     +(tipo==="tempo"?`<button class="tr-maiscarga" type="button" id="trEmReps">${emSeg?"contar em reps":"contar em segundos"}</button>`:"");
-  $("trSets").innerHTML=notaVolta+refOutra+(botoes?`<div class="tr-botoes">${botoes}</div>`:"")+logs.map((l,i)=>{
+  $("trSets").innerHTML=notaVolta+refOutra+notaCorpo+(botoes?`<div class="tr-botoes">${botoes}</div>`:"")+logs.map((l,i)=>{
     const p=trPrevRef&&trPrevRef.sets[i];
     return `<div class="tr-set" data-i="${i}">
-    <div class="tsr1"><span class="snum">${i+1}</span><span class="sl">Série ${i+1}</span><span class="fld fkg${cargaVis?"":" oculto"}"><input class="ikg" type="text" data-num="dec" inputmode="decimal" value="${l.kg?campoBR(l.kg):""}" placeholder="${p?kgTxt(p.kg):"0"}"><span class="un">kg</span></span><span class="fld frep${emSeg?" oculto":""}"><input class="irep" type="text" data-num="int" inputmode="numeric" value="${l.rep||""}" placeholder="${p?(p.rep||0):"0"}"><span class="un">reps</span></span>${tipo==="tempo"?`<span class="fld fseg${emSeg?"":" oculto"}"><input class="iseg" type="text" data-num="int" inputmode="numeric" value="${l.seg||""}" placeholder="${p&&p.seg?p.seg:"0"}"><span class="un">seg</span></span>`:""}</div>
-    ${p?`<div class="tsprev"><span class="tp-t">anterior <span class="tp-v">${serieTxt(p)}</span>${(p.rir!==null&&p.rir!==undefined)?` · RIR ${p.rir}`:""}</span><span class="tp-d"></span></div>`:""}
+    <div class="tsr1"><span class="snum">${i+1}</span><span class="sl">Série ${i+1}</span><span class="fld fkg${cargaVis?"":" oculto"}${maisKg?" acresc":trContra?" contra":""}"><input class="ikg" type="text" data-num="dec" inputmode="decimal" value="${l.kg?campoBR(l.kg):""}" placeholder="${p?kgTxt(p.kg):"0"}" aria-label="${maisKg?"Carga acrescentada":trContra?"Contrapeso":"Carga"}, série ${i+1}"><span class="un">kg</span></span><span class="fld frep${emSeg?" oculto":""}"><input class="irep" type="text" data-num="int" inputmode="numeric" value="${l.rep||""}" placeholder="${p?(p.rep||0):"0"}"><span class="un">reps</span></span>${tipo==="tempo"?`<span class="fld fseg${emSeg?"":" oculto"}"><input class="iseg" type="text" data-num="int" inputmode="numeric" value="${l.seg||""}" placeholder="${p&&p.seg?p.seg:"0"}"><span class="un">seg</span></span>`:""}</div>
+    ${p?`<div class="tsprev"><span class="tp-t">anterior <span class="tp-v">${serieTxt(p,maisKg,trContra)}</span>${(p.rir!==null&&p.rir!==undefined)?` · RIR ${p.rir}`:""}</span><span class="tp-d"></span></div>`:""}
     ${trRecorde?'<div class="tsrec" hidden></div>':""}
     <div class="tsr2"><span class="rirl">RIR</span><div class="rirseg">${[0,1,2,3].map(v=>`<button data-rir="${v}" class="${l.rir===v?"on":""}">${v===3?"3+":v}</button>`).join("")}</div></div>
   </div>`;}).join("");
@@ -6111,8 +6558,8 @@ function aplicarTroca(){
      para a volta — com eles, o que foi digitado nessa medida. */
   const volta=norm(novo)===norm(prescrito);
   if(norm(novo)!==norm(e.n)){
-    if(!e.orig){e.origMedida=e.medida;e.origComCarga=e.comCarga;}
-    delete e.medida;delete e.comCarga;
+    if(!e.orig){e.origMedida=e.medida;e.origComCarga=e.comCarga;e.origPesoCorpo=e.pesoCorpo;}
+    delete e.medida;delete e.comCarga;delete e.pesoCorpo;   // "Peso do corpo" / "Com carga" era do prescrito
     if(volta)devolverMedida(e);
   }
   if(volta){ delete e.orig; e.n=prescrito; }  // voltou ao original
@@ -6135,11 +6582,45 @@ $("trPrev").onclick=async()=>{trSaveInputs();if(recordePend&&!await recordePend)
    produto. A referência é só da mesma academia (outro aparelho não é
    régua); sem régua, só acima de CARGA_TETO. */
 const CARGA_TETO=400;
+/** O peso do dia, quando a carga digitada neste exercício pode ser ele: peso
+    do corpo com o campo de carga acrescentada (a barra assistida tem
+    contrapeso, que pode ser qualquer número). 0 = não conferir. */
+function pesoNaFaixa(e){
+  if(!e||tipoDe(e)!=="corpo"||(fracaoCorpo(e.n)||{}).contra)return 0;
+  return pesoNoDia(todayKey());
+}
+/** "Está certo" já respondido para este exercício nesta sessão. Lista por
+    nome, procurada em todas as posições, como recordeOk: o mesmo exercício
+    duas vezes no treino pergunta uma vez, e trocar e desfazer não
+    pergunta de novo. */
+function pesoOk(e){const n=norm(e.n);return !!trS&&trS.w.ex.some(x=>Array.isArray(x.pesoOk)&&x.pesoOk.includes(n));}
+/** A carga digitada pode ser o peso do corpo, e a pessoa ainda não disse
+    "Está certo": a pergunta do recorde espera a do peso, como espera a
+    da vírgula. */
+function pareceCorpo(kg){
+  const e=trS&&trS.w.ex[trS.idx],pd=pesoNaFaixa(e);
+  return pd>0&&kg>=pd*0.85&&kg<=pd*1.15&&!pesoOk(e);
+}
 async function confereCargas(){
   const logs=(trS&&trS.logs[trS.idx])||[],ref=trPrevRef;
   const maior=ref?ref.sets.reduce((a,x)=>Math.max(a,x.kg||0),0):0;
+  /* Peso do corpo (#91): o campo é só o acrescentado. O próprio peso
+     digitado nele contaria o corpo duas vezes; perguntar uma vez por
+     exercício, e o "Está certo" vale para a sessão. */
+  const e=trS&&trS.w.ex[trS.idx],pd=pesoNaFaixa(e);
   for(let i=0;i<logs.length;i++){
     const kg=logs[i].kg||0;if(kg<=0)continue;
+    if(pd>0&&kg>=pd*0.85&&kg<=pd*1.15){
+      if(!pesoOk(e)){
+        /* "Seu peso já conta" só onde conta: sem fração medida, o corpo não
+           entra no volume, e a frase seria falsa. */
+        const conta=!!fracaoCorpo(e.n,(store.goals||{}).sexo);
+        const ok=await appConfirm(`Série ${i+1} com ${kgTxt(kg)} kg a mais? ${conta?`Seu peso (${kgTxt(pd)} kg) já conta neste exercício: no campo`:"No campo"} vai só o que você acrescenta, como colete, anilha ou cinto${conta?"":", e não o seu peso"}.`,{title:"Carga acrescentada",okText:"Está certo",cancelText:"Corrigir",danger:false});
+        if(!ok){const c=document.querySelector(`#trSets .tr-set[data-i="${i}"] .ikg`);if(c)c.focus();return false;}
+        if(trS&&trS.w.ex[trS.idx]===e&&!pesoOk(e)){e.pesoOk=(Array.isArray(e.pesoOk)?e.pesoOk:[]).concat(norm(e.n));trPersist();}
+      }
+      continue;   // respondido aqui: não pergunta de novo pela vírgula
+    }
     if(!pareceVirgula(kg,maior))continue;
     const dez=maior>0&&kg/10<=maior*1.5?` Talvez seja ${kgTxt(kg/10)} kg.`:"";
     const ok=await appConfirm(`Série ${i+1} com ${kgTxt(kg)} kg?${maior>0?` Da última vez a maior carga foi ${kgTxt(maior)} kg.`:""}${dez}`,{title:"Conferir a carga",okText:"Está certo",cancelText:"Corrigir",danger:false});
@@ -6243,6 +6724,8 @@ function retornoDe(dia){
     qualquer uma). null sem carga nenhuma: peso do corpo não tem recorde em
     kg. dk = o dia mais recente com esse máximo. */
 function prDe(nome,acad){
+  /* Barra assistida: o número é o contrapeso, e o maior é o mais fácil. */
+  if(EX_ASSIST_RE.test(exSinal(nome)))return null;
   const alvo=norm(nome||""),tds=store.tdays||{};let best=null;
   Object.keys(tds).sort().forEach(dk=>(tds[dk]||[]).forEach(r=>{
     if(!mesmaAcad(acad,r.acad))return;
@@ -6265,6 +6748,7 @@ function reabrirPausaDe(id){
 
 /* ---- o aviso, no treino em andamento ---- */
 let trRecorde=null;     // {pr, ret} do exercício na tela, ou null
+var trContra=false;     // o exercício na tela é a barra assistida: o kg é o contrapeso (#91)
 let recordePend=null;   // a pergunta em aberto: trNext/trPrev esperam por ela
 function diaDaSessao(){return trS?keyOf(new Date(trS.start)):todayKey();}
 function maiorRef(){return trPrevRef?trPrevRef.sets.reduce((a,x)=>Math.max(a,x.kg||0),0):0;}
@@ -6276,22 +6760,22 @@ function recordeDe(e){
   const ret=retornoDe(diaDaSessao());
   if(!ret||ret.dias<PAUSA_AVISO_DIAS)return null;
   const pr=prDe(e.n,trS.acad);
-  return pr?{pr,ret}:null;
+  return pr?{pr,ret,mais:tipoDe(e)!=="carga"&&e.pesoCorpo!==false}:null;
 }
 function notaPausa(r){
   const {pr,ret}=r,p=ret.pausa,mot=pausaMotivoTxt(p);
   const cab=p?`<b>De volta da pausa${mot?` (${esc(mot)})`:""}: último treino de força há ${ret.dias} dias.</b>`:`<b>Último treino de força registrado: há ${ret.dias} dias.</b>`;
-  return `<div class="tr-pausa">${cab} Seu recorde neste exercício é <b>${kgTxt(pr.kg)} kg</b> (${dataCurta(pr.dk)}). Comece abaixo dele e suba se as repetições sobrarem.</div>`;
+  return `<div class="tr-pausa">${cab} Seu recorde neste exercício é <b>${r.mais?"+":""}${kgTxt(pr.kg)} kg</b>${r.mais?" de carga acrescentada":""} (${dataCurta(pr.dk)}). Comece abaixo dele e suba se as repetições sobrarem.</div>`;
 }
 /** A carga da série chega ao recorde? (campo de kg visível, e fora da
     regra da vírgula) */
-function noRecorde(kg,confirmada){return !!trRecorde&&kg>0&&kg>=trRecorde.pr.kg&&(confirmada||!pareceVirgula(kg,maiorRef()));}
+function noRecorde(kg,confirmada){return !!trRecorde&&kg>0&&kg>=trRecorde.pr.kg&&(confirmada||(!pareceVirgula(kg,maiorRef())&&!pareceCorpo(kg)));}
 function pintarRecorde(row){
   const el=row.querySelector(".tsrec");if(!el)return;
   const ikg=row.querySelector(".ikg"),kg=campoVisivel(ikg)?numBR(ikg.value):0;
   if(!noRecorde(kg)){el.hidden=true;el.textContent="";return;}
   const r=trRecorde;
-  el.textContent=`${kg>r.pr.kg?"Acima do":"É o"} seu recorde (${kgTxt(r.pr.kg)} kg), e o último treino de força foi há ${r.ret.dias} dias.`;
+  el.textContent=`${kg>r.pr.kg?"Acima do":"É o"} seu recorde (${r.mais?"+":""}${kgTxt(r.pr.kg)} kg), e o último treino de força foi há ${r.ret.dias} dias.`;
   el.hidden=false;
 }
 /** Pergunta, uma vez por exercício por sessão, quando a série chega ao
@@ -6307,8 +6791,8 @@ function perguntarRecorde(i,confirmada){
   const ikg=row&&row.querySelector(".ikg");
   const kg=ikg&&campoVisivel(ikg)?numBR(ikg.value):((l&&l.kg)||0);
   if(!noRecorde(kg,confirmada))return Promise.resolve(true);
-  const {pr,ret}=trRecorde,p=ret.pausa;
-  const a=kg>pr.kg?`Série ${i+1} com ${kgTxt(kg)} kg: acima do seu recorde em ${e.n} (${kgTxt(pr.kg)} kg, em ${dataCurta(pr.dk)}).`:`Série ${i+1} com ${kgTxt(kg)} kg: é o seu recorde em ${e.n} (${dataCurta(pr.dk)}).`;
+  const {pr,ret,mais}=trRecorde,p=ret.pausa,am=mais?" a mais":"";   // peso do corpo (#91): a carga é a acrescentada
+  const a=kg>pr.kg?`Série ${i+1} com ${kgTxt(kg)} kg${am}: acima do seu recorde em ${e.n} (${mais?"+":""}${kgTxt(pr.kg)} kg, em ${dataCurta(pr.dk)}).`:`Série ${i+1} com ${kgTxt(kg)} kg${am}: é o seu recorde em ${e.n} (${dataCurta(pr.dk)}).`;
   const b=p?` Seu último treino de força foi há ${ret.dias} dias (pausa registrada${pausaMotivoTxt(p)?": "+pausaMotivoTxt(p):""}).`:` Seu último treino de força registrado foi há ${ret.dias} dias.`;
   const c=ret.dias>=PAUSA_QUEDA_DIAS
     ?" Numa pausa longa assim, a força máxima pode ter caído, e a força para frear a descida do peso costuma cair antes dela. Faça a primeira série abaixo do recorde e suba se as repetições sobrarem."
@@ -6473,7 +6957,12 @@ $("trNext").onclick=async()=>{
   /* Cada série pela medida do exercício: o campo escondido não conta. */
   const series=trS.w.ex.map((e,i)=>(trS.logs[i]||[]).map(l=>serieDe(l,e)));
   const feita=serieFeita;
-  series.forEach(sets=>sets.forEach(l=>{vol+=(l.kg||0)*(l.rep||0);if(feita(l))setsDoneTotal++;if(l.rir!==null&&l.rir!==undefined){rirSum+=l.rir;rirN++;}}));
+  /* O peso do corpo entra na carga de cada repetição (#91), com o peso de
+     hoje, gravado na sessão. */
+  const pesoDia=pesoNoDia(todayKey()),sexo=(store.goals||{}).sexo;
+  const ck=trS.w.ex.map(e=>corpoKgDe(e,pesoDia,sexo)),tp=trS.w.ex.map(e=>tipoDe(e));
+  const ct=trS.w.ex.map((e,i)=>tp[i]==="corpo"&&!!(fracaoCorpo(e.n,sexo)||{}).contra);   // barra assistida: o número é o contrapeso
+  series.forEach((sets,i)=>sets.forEach(l=>{vol+=cargaSerie(l,ck[i],ct[i])*(l.rep||0);if(feita(l))setsDoneTotal++;if(l.rir!==null&&l.rir!==undefined){rirSum+=l.rir;rirN++;}}));
   // descanso estimado: (séries − 1) × descanso cadastrado, por exercício
   let restSec=0;
   trS.w.ex.forEach((e,i)=>{
@@ -6494,8 +6983,13 @@ $("trNext").onclick=async()=>{
   // líquido: esforço no MET do RIR; descanso entre séries ≈ MET 2 (em pé/circulando)
   const kcal=Math.round(netKcal(met,workMin)+netKcal(2,restMin));
   const avgTxt=rirN>0?(rirSum/rirN):null;
-  const exDetail=trS.w.ex.map((e,i)=>({n:e.n,g:e.g||"outros",sec:(e.sec!==undefined?e.sec:synFor(e.g||"")),sets:series[i].filter(l=>(l.rep||0)>0||(l.seg||0)>0).map(l=>Object.assign({kg:l.kg||0,rep:l.rep||0,rir:l.rir},(l.seg||0)>0?{seg:l.seg}:{}))})).filter(x=>x.sets.length);
-  const reg={id:uid(),name:trS.w.nome,min,kcal,vol:Math.round(vol),intens:label,rir:avgTxt!==null?Math.round(avgTxt*10)/10:null,ex:exDetail};
+  const exDetail=trS.w.ex.map((e,i)=>Object.assign({n:e.n,g:e.g||"outros",sec:(e.sec!==undefined?e.sec:synFor(e.g||"")),sets:series[i].filter(l=>(l.rep||0)>0||(l.seg||0)>0).map(l=>Object.assign({kg:l.kg||0,rep:l.rep||0,rir:l.rir},(l.seg||0)>0?{seg:l.seg}:{})),
+    /* O tipo como foi feito (a marcação do editor vence o nome): é ele que
+       o histórico relê, e não o nome com a regra de outra versão. */
+    tipo:tp[i]},ck[i]>0?{corpoKg:ck[i]}:{},ct[i]?{contra:true}:{})).filter(x=>x.sets.length);
+  /* `pesoDia` sempre vai, mesmo 0 (peso desconhecido): é ele que diz que a
+     sessão já foi gravada com a regra do peso do corpo. */
+  const reg={id:uid(),name:trS.w.nome,min,kcal,vol:Math.round(vol),intens:label,rir:avgTxt!==null?Math.round(avgTxt*10)/10:null,ex:exDetail,pesoDia:pesoDia>0?Math.round(pesoDia*10)/10:0};
   if(trS.acad){reg.acad=trS.acad;reg.acadNome=acadNomeDe(trS);}
   /* Qual treino, de qual protocolo: dois protocolos podem ter "Treino A" com
      exercícios diferentes, e o selo de progressão não pode compará-los. */
@@ -6643,10 +7137,13 @@ const TG={peito:"Peito",costas:"Costas",ombro:"Ombro",biceps:"Bíceps",triceps:"
 const SYN={peito:["triceps","ombro"],ombro:["triceps"],costas:["biceps","antebraco"],quadriceps:["gluteo","adutor"],posterior:["gluteo"],gluteo:["posterior"]};
 const synFor=g=>SYN[g]||[];
 let tpSynSel=new Set();
-function renderSynChips(){
+/* `sel`: os sinergistas do exercício sendo editado (sem ele, os sugeridos
+   pelo grupo). Chamada também pelo "change" do grupo, que passa o evento. */
+function renderSynChips(sel){
   const g=$("tpExG").value,sug=synFor(g),el=$("tpExSyn");
-  tpSynSel=new Set(sug);
-  el.innerHTML=sug.length?sug.map(k=>`<button type="button" data-syn="${k}" class="on">${TG[k]}</button>`).join(""):'<span class="none">Nenhum — exercício isolado</span>';
+  const marcados=Array.isArray(sel)?sel.filter(k=>TG[k]):sug,todos=[...new Set([...sug,...marcados])];
+  tpSynSel=new Set(marcados);
+  el.innerHTML=todos.length?todos.map(k=>`<button type="button" data-syn="${k}" class="${tpSynSel.has(k)?"on":""}">${TG[k]}</button>`).join(""):'<span class="none">Nenhum — exercício isolado</span>';
   el.querySelectorAll("[data-syn]").forEach(b=>b.onclick=()=>{
     const k=b.dataset.syn;
     if(tpSynSel.has(k)){tpSynSel.delete(k);b.classList.remove("on");}
@@ -6666,7 +7163,8 @@ function renderTVol(){
         const n=(e.sets||[]).length;if(!n)return;
         const g=e.g||"outros",a=ini(g);
         a.dir+=n;
-        (e.sets||[]).forEach(st=>{a.kg+=(st.kg||0)*(st.rep||0);});
+        const ck=corpoKgSessao(e,w,dk),contra=contraGravado(e,w);
+        (e.sets||[]).forEach(st=>{a.kg+=cargaSerie(st,ck,contra)*(st.rep||0);});
         const sec=(e.sec!==undefined?e.sec:synFor(e.g||""));
         (sec||[]).forEach(sg=>{ini(sg).ind+=n*0.5;});
       });
@@ -6699,14 +7197,19 @@ function evoData(acad){
       if(acad&&!mesmaAcad(acad,w.acad))return;
       (w.ex||[]).forEach(e=>{
         let best=null;
-        /* Epley com 0 kg dá 0: série sem carga não entra no 1RM */
-        (e.sets||[]).forEach(s=>{if(!((s.kg||0)>0&&(s.rep||0)>0))return;const v=e1rm(s.kg,s.rep);if(!best||v>best.v)best={v,kg:s.kg,rep:s.rep};});
+        /* Epley com 0 kg dá 0: série sem carga não entra no 1RM. No peso
+           do corpo (#91), a carga é o corpo mais o acrescentado; nenhum
+           estudo valida o Epley assim, é a fórmula do app aplicada à carga
+           total. `kg` no ponto continua sendo a carga da série inteira. */
+        const fr=fracaoCorpo(e.n,(store.goals||{}).sexo),ck=fr&&fr.modelo?0:corpoKgSessao(e,w,dk);   // abdominal: estimativa por modelo, fora do Epley
+        const contra=contraGravado(e,w);
+        (e.sets||[]).forEach(s=>{const kg=cargaSerie(s,ck,contra);if(!(kg>0&&(s.rep||0)>0))return;const v=e1rm(kg,s.rep);if(!best||v>best.v)best={v,kg,rep:s.rep,ck};});
         if(!best)return;
         const k=norm(e.n);
         map[k]=map[k]||{name:e.n,pts:[]};
         const ex=map[k].pts.find(p=>p.d===dk);
-        if(ex){if(best.v>ex.v){ex.v=best.v;ex.kg=best.kg;ex.rep=best.rep;}}
-        else map[k].pts.push({d:dk,v:best.v,kg:best.kg,rep:best.rep});
+        if(ex){if(best.v>ex.v){ex.v=best.v;ex.kg=best.kg;ex.rep=best.rep;ex.ck=best.ck;}}
+        else map[k].pts.push({d:dk,v:best.v,kg:best.kg,rep:best.rep,ck:best.ck});
       });
     });
   });
@@ -6719,7 +7222,7 @@ function acadsExcluidas(){
   const m=new Map(),tds=store.tdays||{};
   Object.keys(tds).sort().forEach(dk=>(tds[dk]||[]).forEach(r=>{
     if(!r.acad||acadPorId(r.acad))return;
-    if((r.ex||[]).some(x=>(x.sets||[]).some(st=>(st.kg||0)>0&&(st.rep||0)>0)))m.set(r.acad,r.acadNome||"Academia excluída");
+    if((r.ex||[]).some(x=>(x.sets||[]).some(st=>cargaSerie(st,corpoKgSessao(x,r,dk),contraGravado(x,r))>0&&(st.rep||0)>0)))m.set(r.acad,r.acadNome||"Academia excluída");
   }));
   return [...m].map(([id,nome])=>({id,nome}));
 }
@@ -6788,7 +7291,7 @@ function renderEvo(){
     vL+=`<text x="${px.toFixed(1)}" y="${Math.max(10,py-10).toFixed(1)}" text-anchor="${anch}" class="wt-pt${isLast?" last":""}">${kgTxt(p.v)}</text>`;
     dL+=`<text x="${px.toFixed(1)}" y="${H-4}" text-anchor="${anch}" class="cap-label">${fmtD(p.d)}</text>`;
   });
-  el.innerHTML=`${trendHtml}${emptyMsg}<div class="wt-scroll"><svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${line}${dots}${vL}${dL}</svg></div><div class="wt-latest">Última sessão: melhor série <b>${kgTxt(last.kg)} kg × ${last.rep}</b> → 1RM estimado <b>${kgTxt(last.v)} kg</b></div>`;
+  el.innerHTML=`${trendHtml}${emptyMsg}<div class="wt-scroll"><svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${line}${dots}${vL}${dL}</svg></div><div class="wt-latest">Última sessão: melhor série <b>${last.ck>0?`${kgTxt(last.ck)} kg do corpo${last.kg-last.ck>0.05?` + ${kgTxt(last.kg-last.ck)} kg`:""}`:`${kgTxt(last.kg)} kg`} × ${last.rep}</b> → 1RM estimado <b>${kgTxt(last.v)} kg</b></div>`;
   const sc=el.querySelector(".wt-scroll");if(sc)sc.scrollLeft=sc.scrollWidth;
 }
 $("evoSel").onchange=()=>{evoSelName=$("evoSel").value;renderEvo();};
@@ -9412,5 +9915,8 @@ document.addEventListener("gesturechange",function(e){e.preventDefault();});
 window.addEventListener("wheel",function(e){if(e.ctrlKey)e.preventDefault();},{passive:false});
 document.addEventListener("contextmenu",function(e){if(!e.target.closest("input,textarea"))e.preventDefault();});
 </script>
+<!-- A folha que vai para o PDF (#92). Só aparece na impressão: o resto da
+     página some no @media print. Filho direto do body, de propósito. -->
+<div id="printArea" aria-hidden="true"></div>
 </body>
 </html>
