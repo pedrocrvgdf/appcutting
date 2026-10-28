@@ -58,3 +58,32 @@ jobs:
           name: relatorio-playwright
           path: playwright-report/
           retention-days: 14
+
+  # As regras do Firestore (firestore.rules) guardam dado de outra pessoa: o
+  # treino e, com permissao, o peso do aluno que o treinador enxerga (#95).
+  # Rodam no emulador. Quem publica no console continua sendo o dono.
+  regras:
+    name: Regras do Firestore
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Preparar o Java (o emulador roda nele)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Instalar dependencias
+        working-directory: tests-regras
+        run: npm ci
+
+      - name: Testar as regras no emulador
+        working-directory: tests-regras
+        run: npm test

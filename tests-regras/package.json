@@ -1,0 +1,14 @@
+{
+  "name": "t-results-regras",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Testes das regras do Firestore (../firestore.rules) no emulador. Separado do package.json da raiz para não pesar na suíte do app.",
+  "scripts": {
+    "test": "firebase emulators:exec --only firestore --project demo-tresults \"node --test regras.test.js\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "firebase": "^11.0.0",
+    "firebase-tools": "^14.0.0"
+  }
+}

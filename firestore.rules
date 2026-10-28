@@ -1,0 +1,96 @@
+rules_version = '2';
+
+// Regras do Firestore do T-RESULTS.
+//
+// Quem publica é o dono, no console do Firebase (Firestore → Regras): copie
+// este arquivo inteiro. Elas são testadas no emulador por tests-regras/
+// (`npm test` dentro da pasta), e o CI roda os mesmos testes.
+//
+// - users/{uid}: o documento de cada conta, gravado inteiro pelo app. Só a
+//   própria conta lê e grava. As funções (functions/) usam o Admin SDK, que
+//   não passa por estas regras.
+// - Treinador e aluno (#95). O treinador nunca escreve no documento do aluno:
+//   o celular do aluno grava users/{uid} inteiro e apagaria o que ele
+//   escrevesse. Por isso há coleções próprias:
+//   - convites/{codigo}: o código que o treinador manda ao aluno;
+//   - vinculos/{aluno}: um treinador por aluno, criado pelo ALUNO, que viu o
+//     que o treinador vai enxergar e aceitou;
+//   - planos/{aluno}: o treino que o treinador montou, escrito só por ele;
+//   - diarios/{aluno}: os treinos feitos, escritos só pelo aluno, lidos pelo
+//     treinador ligado a ele. O peso corporal só entra com a permissão
+//     guardada no vínculo.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function logado() { return request.auth != null; }
+    function eu(uid) { return logado() && request.auth.uid == uid; }
+    function vinculo(aluno) { return /databases/$(database)/documents/vinculos/$(aluno); }
+    function treinadorDe(aluno) {
+      return logado() && exists(vinculo(aluno))
+        && get(vinculo(aluno)).data.treinador == request.auth.uid;
+    }
+    function texto(v, max) { return v is string && v.size() <= max; }
+
+    match /users/{uid} {
+      allow read, write: if eu(uid);
+    }
+
+    // O código: 6 letras e números sem os que se confundem (0, O, 1, I).
+    // Ninguém lista os convites: só lê quem já tem o código.
+    match /convites/{codigo} {
+      allow get: if logado();
+      allow create: if logado()
+        && codigo.matches('^[A-HJ-NP-Z2-9]{6}$')
+        && request.resource.data.keys().hasOnly(['treinador', 'nome', 'criado'])
+        && request.resource.data.treinador == request.auth.uid
+        && texto(request.resource.data.nome, 80)
+        && request.resource.data.criado is int;
+      allow delete: if logado() && resource.data.treinador == request.auth.uid;
+    }
+
+    match /vinculos/{aluno} {
+      allow get: if eu(aluno) || (logado() && resource.data.treinador == request.auth.uid);
+      // A lista de alunos do treinador: a consulta precisa filtrar por ele.
+      allow list: if logado() && resource.data.treinador == request.auth.uid;
+      // Só o aluno cria, e só com um convite de verdade daquele treinador.
+      allow create: if eu(aluno)
+        && request.resource.data.keys().hasOnly(['treinador', 'treinadorNome', 'aluno', 'alunoNome', 'codigo', 'desde', 'pesos'])
+        && request.resource.data.aluno == aluno
+        && request.resource.data.treinador != aluno
+        && texto(request.resource.data.treinadorNome, 80)
+        && texto(request.resource.data.alunoNome, 80)
+        && request.resource.data.desde is int
+        && request.resource.data.pesos is bool
+        && request.resource.data.codigo is string
+        && exists(/databases/$(database)/documents/convites/$(request.resource.data.codigo))
+        && get(/databases/$(database)/documents/convites/$(request.resource.data.codigo)).data.treinador == request.resource.data.treinador;
+      // O aluno muda a permissão do peso e o próprio nome; o resto fica.
+      allow update: if eu(aluno)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pesos', 'alunoNome'])
+        && request.resource.data.pesos is bool
+        && texto(request.resource.data.alunoNome, 80);
+      // Qualquer um dos dois desfaz a ligação.
+      allow delete: if eu(aluno) || (logado() && resource.data.treinador == request.auth.uid);
+    }
+
+    match /planos/{aluno} {
+      allow get: if eu(aluno) || treinadorDe(aluno);
+      allow create, update: if treinadorDe(aluno)
+        && request.resource.data.treinador == request.auth.uid
+        && request.resource.data.tprotos is list
+        && request.resource.data.tprotocol is list;
+      allow delete: if eu(aluno) || treinadorDe(aluno);
+    }
+
+    match /diarios/{aluno} {
+      allow get: if eu(aluno) || treinadorDe(aluno);
+      // Peso corporal no diário só com a permissão guardada no vínculo.
+      allow create, update: if eu(aluno)
+        && request.resource.data.sessoes is list
+        && (!('pesos' in request.resource.data)
+            || (exists(vinculo(aluno)) && get(vinculo(aluno)).data.pesos == true));
+      allow delete: if eu(aluno);
+    }
+  }
+}
