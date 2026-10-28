@@ -661,7 +661,7 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 | `tests/sem-sinal.spec.js` | Treino feito sem sinal sobrevive ao app descartado; dois aparelhos sem sinal juntam; apagado não volta; água soma; transação não apaga o de outro aparelho; envio ao sair do app; aviso atrasado; excluir dados substitui; a mescla direto na função (água sem base, GETD pelo histórico, peso da conta com o peso de partida) |
 | `tests/protocolos.spec.js` | Protocolos com nome: "Meu protocolo" virtual sem regravar nada, criar/renomear/excluir, sugestão que preenche ou cria, mover treino, selo que não mistura dois "Treino A", sessão com `tid`/`prot`, nuvem com versão anterior; tocar de novo no aberto recolhe |
 | `tests/editor.spec.js` | Editor de treino: editar exercício no lugar (nome, séries, descanso, grupo, sinergistas), campo desconhecido preservado, cancelar, edição pendente ao salvar, excluir durante a edição, referência que segue o nome, 320px |
-| `tests/pdf.spec.js` | Exportar o protocolo em PDF: folha na ordem, com grupo, séries, descanso e marcações; título no nome do arquivo e devolvido depois; protocolo vazio sem botão; nome do título ainda não gravado; HTML escapado e nada de saúde na folha; academias; na impressão só a folha, clara no tema escuro, em várias páginas; ponte do Android e o APK antigo; 320px |
+| `tests/pdf.spec.js` | Exportar o protocolo em PDF: folha na ordem, com grupo, séries, descanso e marcações; título no nome do arquivo e devolvido depois; protocolo vazio sem botão; nome do título ainda não gravado; HTML escapado e nada de saúde na folha; academias; na impressão só a folha, clara no tema escuro, em várias páginas; ponte do Android e o APK antigo; botão à vista na aba Treino, exportando o protocolo aberto nela; 320px |
 | `tests/inventario.spec.js` | Inventário: catálogo inteiro reconhecido, "não informado" sem aviso, gravação por toque, aviso no cartão/treino/editor, troca com o que tem primeiro, "Tem, sim" sem matar o descanso, alternativas, nome desconhecido sem aviso |
 | `tests/academias.spec.js` | Academias: sem cadastro o app fica igual; cada academia um bloco que abre os protocolos dela; treino novo nascendo na aberta; "Iniciar" grava a sessão nela; referência, selo e gráfico só da mesma academia ("Academia nova", carga do zero); copiar protocolo independente, levando o já feito ali; excluir sem apagar treino nem histórico; nuvem; 320px; tocar de novo na aberta recolhe e ela segue escolhida |
 | `tests/pausa.spec.js` | Diário de pausas (musculação e cardio): registrar, em aberto, recusas, conferência das datas, excluir, fechar ao treinar (cada tipo o seu), dica, marcador no feed; aviso do recorde: nota, linha, pergunta sem porcentagem, "Mudar a carga", uma vez por exercício, limiar 13/14/28, cardio não zera, outra academia, peso do corpo, vírgula vence, descanso continua, diálogos em fila, trocar e desfazer; nuvem, mescla, privacidade, 320px |
@@ -1401,11 +1401,17 @@ corporal."
 
 ### Exportar o protocolo em PDF (#92)
 
-O pedido: "Coloque a opção de exportar o protocolo em pdf". O botão
-"Exportar em PDF" fica no pop-up do protocolo (`#tpPdf`, só com treino), e a
-folha vai para a **impressão do sistema**, que tem "Salvar como PDF". O app
-não gera o arquivo: sem biblioteca, sem rede, e a impressão do celular já
-salva, compartilha e imprime.
+O pedido: "Coloque a opção de exportar o protocolo em pdf". A folha vai para
+a **impressão do sistema**, que tem "Salvar como PDF". O app não gera o
+arquivo: sem biblioteca, sem rede, e a impressão do celular já salva,
+compartilha e imprime.
+
+- **O botão "Exportar em PDF" fica à vista na aba Treino**, no bloco do
+  protocolo aberto, embaixo de "Editar" (`#tPdfProt`, #93). Ele nasceu só no
+  fim do pop-up do protocolo (`#tpPdf`, que continua lá), e o dono não o
+  achou: quem procura "exportar" não toca em "Editar". Os dois só aparecem
+  com treino. `exportarProtocoloPdf(id)`: com `id`, o protocolo do bloco;
+  sem, o do pop-up, gravando antes o título digitado.
 
 - **A folha** (`folhaProtocolo`, em `#printArea`, filho direto do `body`):
   nome do protocolo, data, e cada treino com os exercícios na ordem, grupo,

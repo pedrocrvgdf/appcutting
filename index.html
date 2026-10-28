@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v54";
+window.APP_RELEASE = "tresults-v55";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -4649,7 +4649,9 @@ function renderProtLista(){
     const n=vis.length?vis.length+(vis.length===1?" treino":" treinos"):"nenhum treino";
     const miolo=`<span class="prot-nome">${esc(p.nome)}</span><span class="prot-n">${n}</span>`;
     const cab=varios?`<button type="button" class="prot-cab" data-protabrir="${esc(p.id)}" aria-expanded="${ab}">${miolo}${CHEV}</button>`:`<div class="prot-cab">${miolo}</div>`;
-    const corpo=ab?`<div class="prot-corpo"><div class="proto-cards" id="tprotoCards"></div><button class="btn secondary prot-editar" id="tOpenProtocol">${ws.length?"Editar":"＋ Montar"} <span class="prot-q">“${esc(p.nome)}”</span></button></div>`:"";
+    /* "Exportar em PDF" à vista (#93): só no pop-up, o dono não o achou. */
+    const pdf=ws.length?`<button type="button" class="btn secondary prot-editar" id="tPdfProt">Exportar em PDF</button>`:"";
+    const corpo=ab?`<div class="prot-corpo"><div class="proto-cards" id="tprotoCards"></div><button class="btn secondary prot-editar" id="tOpenProtocol">${ws.length?"Editar":"＋ Montar"} <span class="prot-q">“${esc(p.nome)}”</span></button>${pdf}</div>`:"";
     return `<div class="prot-bloco${ab?" aberto":""}" data-prot="${esc(p.id)}">${cab}${corpo}</div>`;
   }).join("");
   el.querySelectorAll("[data-protabrir]").forEach(b=>b.onclick=()=>{
@@ -4658,6 +4660,7 @@ function renderProtLista(){
   });
   if(recolhido)return;   // nenhum aberto: sem cartões nem "Editar"
   $("tOpenProtocol").onclick=()=>openTProtocol(aberto);
+  if($("tPdfProt"))$("tPdfProt").onclick=()=>exportarProtocoloPdf(aberto);
 
   /* Os cartões do protocolo aberto, só os da academia aberta. O filtro de
      cima garante que o aberto tem algum aqui, ou nenhum treino. */
@@ -5230,15 +5233,16 @@ function folhaProtocolo(id){
     +ws.map(treino).join("")
     +`<div class="pa-rodape">Carga, repetições e RIR são registrados no app, durante o treino.</div>`;
 }
-function exportarProtocoloPdf(){
-  if(!salvarNomeProt())return;   // o nome digitado no título vai para a folha
-  const p=protPorId(tpProtAtual),ws=treinosDoProt(tpProtAtual);
+/** Sem `id`, é o do pop-up; com `id`, o bloco da aba Treino (#93). */
+function exportarProtocoloPdf(id){
+  if(!id){if(!salvarNomeProt())return;id=tpProtAtual;}   // o nome digitado no título vai para a folha
+  const p=protPorId(id),ws=treinosDoProt(id);
   if(!p||!ws.length)return appAlert("Este protocolo ainda não tem treinos para exportar.","Nada para exportar");
   const titulo=`Protocolo ${p.nome}`;
   /* APK de antes da 1.6: não tem a ponte, e o WebView não imprime sozinho. */
   if(appNativo&&!(window.TResults&&typeof window.TResults.imprimir==="function"))
     return appAlert("Para exportar em PDF no app, atualize o T-RESULTS para a versão mais nova (o Obtainium baixa sozinho). No navegador do celular já funciona.","Atualize o app");
-  $("printArea").innerHTML=folhaProtocolo(tpProtAtual);
+  $("printArea").innerHTML=folhaProtocolo(id);
   rastro("exportar pdf");
   if(appNativo){try{window.TResults.imprimir(titulo);}catch(e){}return;}
   /* O título da página vira o nome do arquivo que o navegador propõe. */
@@ -5247,7 +5251,7 @@ function exportarProtocoloPdf(){
   window.addEventListener("afterprint",voltar);
   try{window.print();}catch(e){voltar();}
 }
-$("tpPdf").onclick=exportarProtocoloPdf;
+$("tpPdf").onclick=()=>exportarProtocoloPdf();
 function tpSeries(w){return (w.ex||[]).reduce((a,e)=>a+(e.s||0),0);}
 function openTpEditor(id){
   tpEditId=id||null;
