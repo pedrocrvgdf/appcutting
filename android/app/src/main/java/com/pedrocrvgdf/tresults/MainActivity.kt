@@ -3,6 +3,7 @@ package com.pedrocrvgdf.tresults
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.NotificationManager
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
@@ -10,6 +11,8 @@ import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.print.PrintAttributes
+import android.print.PrintManager
 import android.provider.Settings
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
@@ -123,6 +126,24 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) {
             emOutraTela = false
         }
+    }
+
+    /**
+     * Chamado pela página, por `window.TResults.imprimir()`: imprime o WebView
+     * pela impressão do sistema, onde está "Salvar como PDF". O nome do
+     * trabalho vira o nome do arquivo ("Protocolo Hipertrofia.pdf"). Precisa
+     * do fio principal, e a ponte já chega por `runOnUiThread`.
+     */
+    fun imprimir(titulo: String) {
+        val nome = titulo.ifBlank { "T-RESULTS" }
+        val impressao = getSystemService(Context.PRINT_SERVICE) as? PrintManager ?: return
+        try {
+            impressao.print(
+                nome,
+                web.createPrintDocumentAdapter(nome),
+                PrintAttributes.Builder().setMediaSize(PrintAttributes.MediaSize.ISO_A4).build()
+            )
+        } catch (e: Exception) { /* sem serviço de impressão no aparelho: nada quebra */ }
     }
 
     /* ---------------- Entrar com a digital ----------------

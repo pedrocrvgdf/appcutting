@@ -661,6 +661,7 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 | `tests/sem-sinal.spec.js` | Treino feito sem sinal sobrevive ao app descartado; dois aparelhos sem sinal juntam; apagado não volta; água soma; transação não apaga o de outro aparelho; envio ao sair do app; aviso atrasado; excluir dados substitui; a mescla direto na função (água sem base, GETD pelo histórico, peso da conta com o peso de partida) |
 | `tests/protocolos.spec.js` | Protocolos com nome: "Meu protocolo" virtual sem regravar nada, criar/renomear/excluir, sugestão que preenche ou cria, mover treino, selo que não mistura dois "Treino A", sessão com `tid`/`prot`, nuvem com versão anterior; tocar de novo no aberto recolhe |
 | `tests/editor.spec.js` | Editor de treino: editar exercício no lugar (nome, séries, descanso, grupo, sinergistas), campo desconhecido preservado, cancelar, edição pendente ao salvar, excluir durante a edição, referência que segue o nome, 320px |
+| `tests/pdf.spec.js` | Exportar o protocolo em PDF: folha na ordem, com grupo, séries, descanso e marcações; título no nome do arquivo e devolvido depois; protocolo vazio sem botão; nome do título ainda não gravado; HTML escapado e nada de saúde na folha; academias; na impressão só a folha, clara no tema escuro, em várias páginas; ponte do Android e o APK antigo; 320px |
 | `tests/inventario.spec.js` | Inventário: catálogo inteiro reconhecido, "não informado" sem aviso, gravação por toque, aviso no cartão/treino/editor, troca com o que tem primeiro, "Tem, sim" sem matar o descanso, alternativas, nome desconhecido sem aviso |
 | `tests/academias.spec.js` | Academias: sem cadastro o app fica igual; cada academia um bloco que abre os protocolos dela; treino novo nascendo na aberta; "Iniciar" grava a sessão nela; referência, selo e gráfico só da mesma academia ("Academia nova", carga do zero); copiar protocolo independente, levando o já feito ali; excluir sem apagar treino nem histórico; nuvem; 320px; tocar de novo na aberta recolhe e ela segue escolhida |
 | `tests/pausa.spec.js` | Diário de pausas (musculação e cardio): registrar, em aberto, recusas, conferência das datas, excluir, fechar ao treinar (cada tipo o seu), dica, marcador no feed; aviso do recorde: nota, linha, pergunta sem porcentagem, "Mudar a carga", uma vez por exercício, limiar 13/14/28, cardio não zera, outra academia, peso do corpo, vírgula vence, descanso continua, diálogos em fila, trocar e desfazer; nuvem, mescla, privacidade, 320px |
@@ -1398,6 +1399,40 @@ corporal."
 - **O recorde do aviso da pausa (#81) continua sendo o acrescentado.**
 - Coberto em `tests/corpo-carga.spec.js`.
 
+### Exportar o protocolo em PDF (#92)
+
+O pedido: "Coloque a opção de exportar o protocolo em pdf". O botão
+"Exportar em PDF" fica no pop-up do protocolo (`#tpPdf`, só com treino), e a
+folha vai para a **impressão do sistema**, que tem "Salvar como PDF". O app
+não gera o arquivo: sem biblioteca, sem rede, e a impressão do celular já
+salva, compartilha e imprime.
+
+- **A folha** (`folhaProtocolo`, em `#printArea`, filho direto do `body`):
+  nome do protocolo, data, e cada treino com os exercícios na ordem, grupo,
+  sinergistas, séries e descanso; "peso do corpo", "com contrapeso" e "por
+  tempo" pela regra do #91 (`tipoDe`, `fracaoCorpo`); com academias, onde
+  cada treino vale. **Só o plano**: nada de peso, medida, exógeno ou nome da
+  pessoa, que são dados pessoais ou de saúde.
+- **Na tela a folha não aparece; na impressão, só ela** (`@media print`:
+  `body>*:not(#printArea)` some). As cores são fixas, e não os tokens: no
+  tema escuro a folha sairia com texto claro. `html` ganha `color-scheme`
+  claro: com o escuro, o Chrome pintava de grafite a margem da página.
+  Colunas fixas (`table-layout:fixed`): alinham de um treino para o outro.
+  Se um dia a página prender a altura do `body`, o teste de várias páginas
+  avisa.
+- **No navegador**, `window.print()`, com o título da página trocado para
+  "Protocolo X" (é o nome do arquivo que o navegador propõe) e devolvido no
+  `afterprint`.
+- **No app Android, o WebView ignora `window.print()`**: quem imprime é a
+  ponte `TResults.imprimir(titulo)` (`PonteWeb` → `MainActivity.imprimir`),
+  com o `PrintManager` e `createPrintDocumentAdapter` da própria página, em
+  A4. Entrou no APK 1.6 (versionCode 7). **Com o APK antigo** (sem
+  `imprimir`), o app avisa para atualizar, em vez de o botão não fazer nada.
+- O nome digitado no título e ainda não gravado é gravado antes
+  (`salvarNomeProt`) e vai para a folha.
+- Coberto em `tests/pdf.spec.js`, que também gera o PDF de verdade
+  (`page.pdf`) e confere que um protocolo longo sai em mais de uma página.
+
 ### Editar um exercício do treino
 
 O pedido (#89): "eu devo poder editar aquele exercício pois eu posso só mudar
@@ -1577,6 +1612,7 @@ O que a casca acrescenta, e a web não alcança:
 | Alarme que sobrepõe a música | `AlarmeService` toca com `MediaPlayer` em `USAGE_ALARM` e pede foco `TRANSIENT_EXCLUSIVE` |
 | Disparo no segundo certo com o app fechado | `AlarmManager.setAlarmClock`, o único agendamento que o Android não adia |
 | Tela cheia por cima do TikTok | `setFullScreenIntent` com `CATEGORY_ALARM` |
+| Exportar em PDF (o WebView ignora `window.print()`) | `PrintManager` com `createPrintDocumentAdapter` da página, pela ponte `imprimir` (#92) |
 
 Duas coisas do perfil também vivem aqui, e por isso mudam de cara conforme o
 lugar (`tests/perfil.spec.js` cobre os dois lados):

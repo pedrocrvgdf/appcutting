@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v53";
+window.APP_RELEASE = "tresults-v54";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -1324,6 +1324,42 @@ window.APP_RELEASE = "tresults-v53";
   #view-treino{--marca:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M8 40h8v20H8zM16 34h10v32H16zM74 34h10v32H74zM84 40h8v20h-8zM26 46h48v8H26z'/%3E%3C/svg%3E")}
   #view-perfil{--marca:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none' stroke='black' stroke-width='6' stroke-linecap='round'%3E%3Ccircle cx='50' cy='30' r='16'/%3E%3Cpath d='M18 92c0-20 14-32 32-32s32 12 32 32'/%3E%3C/svg%3E")}
 
+
+  /* ---- Exportar o protocolo em PDF (#92) ----
+     A folha vive em #printArea, filho direto do body. Na tela ela não
+     aparece; na impressão, só ela aparece. As cores são fixas (tinta escura
+     no papel branco), e não os tokens: no tema escuro a folha sairia com
+     texto claro. */
+  .tp-pdf-nota{font-size:12px;color:var(--muted);margin:-4px 2px 10px;line-height:1.45}
+  #printArea{display:none}
+  @media print{
+    @page{size:A4;margin:14mm 12mm}
+    /* color-scheme claro: com o escuro, o Chrome pinta de grafite a margem da folha */
+    html{color-scheme:only light!important}
+    html,body{background:#fff!important;color:#141414!important;-webkit-user-select:text;user-select:text}
+    body>*:not(#printArea){display:none!important}
+    #printArea{display:block!important;font-family:var(--sans);font-size:10.5pt;line-height:1.4}
+    #printArea .pa-topo{border-bottom:2px solid #0f6b4f;padding-bottom:8px;margin-bottom:14px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    #printArea .pa-marca{font-size:8.5pt;font-weight:800;letter-spacing:.14em;color:#0f6b4f;text-transform:uppercase}
+    #printArea h1{font-size:19pt;font-weight:800;margin:2px 0 2px}
+    #printArea .pa-sub{font-size:9.5pt;color:#555}
+    #printArea .pa-treino{break-inside:avoid;page-break-inside:avoid;margin:0 0 16px}
+    #printArea h2{font-size:13pt;font-weight:800;margin:0 0 2px}
+    #printArea .pa-meta{font-size:9pt;color:#555;margin-bottom:6px}
+    #printArea table{width:100%;border-collapse:collapse;table-layout:fixed}   /* as colunas alinham de um treino para o outro */
+    #printArea .pa-c-ex{width:41%}
+    #printArea .pa-c-g{width:30%}
+    #printArea .pa-c-s{width:10%}
+    #printArea .pa-c-d{width:14%}
+    #printArea th{font-size:8pt;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#555;text-align:left;border-bottom:1px solid #999;padding:4px 6px}
+    #printArea td{border-bottom:1px solid #ddd;padding:6px;vertical-align:top}
+    #printArea tr{break-inside:avoid;page-break-inside:avoid}
+    #printArea .pa-n{width:5%;color:#777}
+    #printArea .pa-num{text-align:right;white-space:nowrap}
+    #printArea .pa-ex{font-weight:700}
+    #printArea .pa-tag{display:inline-block;font-size:8pt;font-weight:700;color:#0f6b4f;margin-left:6px}
+    #printArea .pa-rodape{margin-top:18px;font-size:8.5pt;color:#777}
+  }
 </style>
 </head>
 <body>
@@ -2130,6 +2166,9 @@ window.APP_RELEASE = "tresults-v53";
     <div id="tprotoList"></div>
     <button id="tpNew" class="btn secondary">＋ Novo treino</button>
     <button id="tpSugAqui" class="btn secondary" style="display:none">✨ Preencher com uma sugestão</button>
+    <!-- Exportar em PDF (#92): a folha vai para a impressão do sistema, que tem "Salvar como PDF". -->
+    <button id="tpPdf" class="btn secondary" type="button">Exportar em PDF</button>
+    <p class="tp-pdf-nota" id="tpPdfNota">Abre a impressão do celular: escolha "Salvar como PDF".</p>
     <button id="tpClose" class="btn">Concluir</button>
     <button id="tpProtDel" class="btn secondary prot-del" style="display:none">Excluir este protocolo</button>
   </div>
@@ -5158,6 +5197,7 @@ $("tpProtDel").onclick=async()=>{
 function renderTpList(){
   const list=treinosDoProt(tpProtAtual);
   $("tpSugAqui").style.display=list.length?"none":"";
+  $("tpPdf").style.display=$("tpPdfNota").style.display=list.length?"":"none";   // sem treino, não há folha
   $("tpProtDel").style.display=listaProtocolos().length>1?"":"none";
   const onde=w=>academias().length?` · ${acadsDoTreino(w).length?esc(acadsTxt(w)):"todas as academias"}`:"";
   $("tprotoList").innerHTML=list.length?list.map(w=>`<div class="proto-meal-row"><div><div class="n">${esc(w.nome)}</div><div class="m">Treino ${esc(w.cat||"")} · ${qtdTxt((w.ex||[]).length,"exercício","exercícios")} · ${qtdTxt(tpSeries(w),"série","séries")}${onde(w)}</div></div><div class="acts"><button data-ted="${w.id}">Editar</button><button class="del" data-tdl="${w.id}">Excluir</button></div></div>`).join(""):'<div class="proto-empty" style="margin-bottom:12px">Nenhum treino cadastrado ainda.</div>';
@@ -5165,6 +5205,49 @@ function renderTpList(){
   $("tprotoList").querySelectorAll("[data-tdl]").forEach(b=>b.onclick=async()=>{if(await appConfirm("Excluir este treino do protocolo?",{okText:"Excluir"})){store.tprotocol=(store.tprotocol||[]).filter(x=>x.id!==b.dataset.tdl);save();renderTpList();}});
 }
 $("tpNew").onclick=()=>{if(salvarNomeProt())openTpEditor(null);};
+/* ---- Exportar o protocolo em PDF (#92) ----
+   Pedido do dono: "Coloque a opção de exportar o protocolo em pdf". A folha
+   (#printArea) é montada aqui e vai para a impressão do sistema, que tem
+   "Salvar como PDF": no navegador, window.print(); no app Android, o WebView
+   ignora window.print(), e quem imprime é o PrintManager, pela ponte
+   (TResults.imprimir). Só o plano entra na folha: nada de peso, medida ou
+   exógeno, que são dado de saúde. */
+function folhaProtocolo(id){
+  const p=protPorId(id),ws=treinosDoProt(id),comAcad=academias().length>0;
+  const [y,m,d]=todayKey().split("-");
+  const linha=(e,i)=>{
+    const tipo=tipoDe(e),fr=tipo==="corpo"?fracaoCorpo(e.n):null;
+    const tag=tipo==="tempo"?"por tempo":fr&&fr.contra?"peso do corpo, com contrapeso":tipo==="corpo"?"peso do corpo":"";
+    const grupo=(TG[e.g]||"—")+((e.sec&&e.sec.length)?` (+${e.sec.map(k=>TG[k]||k).join(", ")})`:"");
+    return `<tr><td class="pa-n">${i+1}</td><td><span class="pa-ex">${esc(e.n)}</span>${tag?`<span class="pa-tag">${tag}</span>`:""}</td><td>${esc(grupo)}</td><td class="pa-num">${r0(e.s||0)}</td><td class="pa-num">${r0(e.rest||90)} s</td></tr>`;
+  };
+  const treino=w=>{
+    const onde=comAcad?` · ${acadsDoTreino(w).length?esc(acadsTxt(w)):"todas as academias"}`:"";
+    return `<section class="pa-treino"><h2>${esc(w.nome)}</h2><div class="pa-meta">Treino ${esc(w.cat||"")} · ${qtdTxt((w.ex||[]).length,"exercício","exercícios")} · ${qtdTxt(tpSeries(w),"série","séries")}${onde}</div>`
+      +`<table><thead><tr><th class="pa-n">#</th><th class="pa-c-ex">Exercício</th><th class="pa-c-g">Grupo</th><th class="pa-num pa-c-s">Séries</th><th class="pa-num pa-c-d">Descanso</th></tr></thead><tbody>${(w.ex||[]).map(linha).join("")}</tbody></table></section>`;
+  };
+  return `<div class="pa-topo"><div class="pa-marca">T-RESULTS</div><h1>${esc(p?p.nome:"Protocolo")}</h1><div class="pa-sub">${qtdTxt(ws.length,"treino","treinos")} · exportado em ${d}/${m}/${y}</div></div>`
+    +ws.map(treino).join("")
+    +`<div class="pa-rodape">Carga, repetições e RIR são registrados no app, durante o treino.</div>`;
+}
+function exportarProtocoloPdf(){
+  if(!salvarNomeProt())return;   // o nome digitado no título vai para a folha
+  const p=protPorId(tpProtAtual),ws=treinosDoProt(tpProtAtual);
+  if(!p||!ws.length)return appAlert("Este protocolo ainda não tem treinos para exportar.","Nada para exportar");
+  const titulo=`Protocolo ${p.nome}`;
+  /* APK de antes da 1.6: não tem a ponte, e o WebView não imprime sozinho. */
+  if(appNativo&&!(window.TResults&&typeof window.TResults.imprimir==="function"))
+    return appAlert("Para exportar em PDF no app, atualize o T-RESULTS para a versão mais nova (o Obtainium baixa sozinho). No navegador do celular já funciona.","Atualize o app");
+  $("printArea").innerHTML=folhaProtocolo(tpProtAtual);
+  rastro("exportar pdf");
+  if(appNativo){try{window.TResults.imprimir(titulo);}catch(e){}return;}
+  /* O título da página vira o nome do arquivo que o navegador propõe. */
+  const antes=document.title;document.title=titulo;
+  const voltar=()=>{document.title=antes;window.removeEventListener("afterprint",voltar);};
+  window.addEventListener("afterprint",voltar);
+  try{window.print();}catch(e){voltar();}
+}
+$("tpPdf").onclick=exportarProtocoloPdf;
 function tpSeries(w){return (w.ex||[]).reduce((a,e)=>a+(e.s||0),0);}
 function openTpEditor(id){
   tpEditId=id||null;
@@ -9832,5 +9915,8 @@ document.addEventListener("gesturechange",function(e){e.preventDefault();});
 window.addEventListener("wheel",function(e){if(e.ctrlKey)e.preventDefault();},{passive:false});
 document.addEventListener("contextmenu",function(e){if(!e.target.closest("input,textarea"))e.preventDefault();});
 </script>
+<!-- A folha que vai para o PDF (#92). Só aparece na impressão: o resto da
+     página some no @media print. Filho direto do body, de propósito. -->
+<div id="printArea" aria-hidden="true"></div>
 </body>
 </html>
