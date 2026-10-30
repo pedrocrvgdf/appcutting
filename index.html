@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v55";
+window.APP_RELEASE = "tresults-v56";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -1332,6 +1332,66 @@ window.APP_RELEASE = "tresults-v55";
      texto claro. */
   .tp-pdf-nota{font-size:12px;color:var(--muted);margin:-4px 2px 10px;line-height:1.45}
   #printArea{display:none}
+
+  /* ---- Treinador e aluno (#95) ----
+     A conta de treinador não treina: a barra fica com Alunos e Perfil, e o
+     Perfil perde o objetivo e o alarme. O resto usa as peças que já existem
+     (cartão, fio fino, o feed para as sessões do aluno). */
+  #tabbar .tab-trein{display:none}
+  body.treinador #tabbar .tab-trein{display:flex}
+  body.treinador #tabbar [data-tab="inicio"],body.treinador #tabbar [data-tab="food"],body.treinador #tabbar [data-tab="treino"],body.treinador #tabbar .fab{display:none}
+  body.treinador .pfgoal,body.treinador #pfAlarme{display:none}
+  #view-alunos::before,#view-aluno::before{
+    content:"";position:fixed;z-index:-1;pointer-events:none;
+    right:-48px;bottom:calc(72px + env(safe-area-inset-bottom));width:300px;height:300px;
+    background:var(--ink);opacity:.035;transform:rotate(-8deg);
+    -webkit-mask:var(--marca) center/contain no-repeat;mask:var(--marca) center/contain no-repeat}
+  #view-alunos,#view-aluno{--marca:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none' stroke='black' stroke-width='6' stroke-linecap='round'%3E%3Ccircle cx='36' cy='30' r='14'/%3E%3Cpath d='M8 88c0-17 12-28 28-28s28 11 28 28M66 18a14 14 0 0 1 0 26M72 62c12 3 20 12 20 26'/%3E%3C/svg%3E")}
+  .cad-papel-nota{font-size:12.5px;color:var(--muted);line-height:1.45;margin:8px 2px 0}
+  .al-rot{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  .al-txt{font-size:13.5px;color:var(--muted);line-height:1.45;margin:6px 0 10px}
+  .al-codigo{font-size:34px;font-weight:800;letter-spacing:.18em;text-align:center;color:var(--ink);padding:12px 0;border-radius:16px;background:var(--bg);box-shadow:inset 0 0 0 1px var(--line);-webkit-user-select:all;user-select:all}
+  .al-aviso{font-size:12.5px;color:var(--muted);text-align:center;margin:8px 0 10px;min-height:1px;line-height:1.4}
+  .al-aviso:empty{margin:4px 0}
+  .al-acoes{display:flex;gap:8px;margin-top:8px}
+  .al-acoes .btn{flex:1;min-width:0;padding-left:8px;padding-right:8px;font-size:14px}
+  .al-item{display:flex;align-items:center;gap:12px;width:100%;text-align:left;margin-bottom:10px}
+  .al-item .al-ini{flex:none;width:40px;height:40px;border-radius:14px;background:var(--primary-08);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px}
+  .al-item .al-meio{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .al-item .al-n{font-weight:800;font-size:15px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .al-item .al-m{font-size:12.5px;color:var(--muted);line-height:1.35}
+  .al-item .chev{flex:none;width:18px;height:18px;stroke:var(--muted);fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+  .al-sub{font-size:13px;color:var(--muted);margin:-4px 2px 16px;line-height:1.45}
+  .al-pub{font-size:11.5px;font-weight:700;letter-spacing:0;text-transform:none}
+  .al-pub.ruim{color:var(--warn)}
+  .al-prot{margin-bottom:10px}
+  .al-prot .al-pn{font-weight:800;font-size:15px;color:var(--ink)}
+  .al-prot .al-pm{font-size:12.5px;color:var(--muted);margin:2px 0 8px}
+  .al-prot .al-tw{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:13.5px}
+  .al-prot .al-tw .t{font-weight:700;color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .al-prot .al-tw .q{flex:none;color:var(--muted);font-size:12.5px}
+  .al-prot .al-bts{display:flex;gap:8px;margin-top:10px}
+  .al-prot .al-bts .btn{flex:1;min-width:0;padding-left:8px;padding-right:8px;margin:0}
+  .al-vazio{font-size:13.5px;color:var(--muted);line-height:1.45;padding:14px;border-radius:18px;box-shadow:inset 0 0 0 1px var(--line);margin-bottom:10px}
+  .al-serie{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:3px 0;color:var(--ink)}
+  .al-serie .r{flex:none;color:var(--muted);font-weight:700}
+  .al-exn{font-weight:800;font-size:13.5px;color:var(--ink);margin-top:10px}
+  .al-exn:first-child{margin-top:0}
+  #alEvoEx{margin-bottom:10px}
+  .al-evo{display:grid;grid-template-columns:auto 1fr auto;gap:6px 12px;font-size:13px;align-items:baseline}
+  .al-evo .d{color:var(--muted);font-weight:700}
+  .al-evo .s{color:var(--ink);font-weight:700}
+  .al-evo .r{color:var(--muted)}
+  .btn.al-desfazer,.al-desfazer{color:var(--warn)}
+  .pf-trein p{font-size:13.5px;color:var(--muted);line-height:1.45;margin:0 0 10px}
+  .pf-trein .pt-nome{font-weight:800;font-size:15px;color:var(--ink)}
+  .pf-trein .btn{margin-top:8px}
+  .vinc-txt{font-size:14px;color:var(--ink);line-height:1.5;margin:10px 0}
+  .vinc-cod{text-transform:uppercase;letter-spacing:.18em;font-weight:800;font-size:20px;text-align:center}
+  .vinc-lista{margin:0 0 4px 18px;padding:0;font-size:13.5px;color:var(--ink);line-height:1.5}
+  .vinc-nao{font-size:12.5px;color:var(--muted);line-height:1.45;margin:12px 2px 4px}
+  .prot-dono{font-size:12.5px;color:var(--muted);margin:8px 2px 0;line-height:1.4}
+  .tp-ro-nota{font-size:12.5px;color:var(--muted);line-height:1.45;margin:-2px 2px 10px}
   @media print{
     @page{size:A4;margin:14mm 12mm}
     /* color-scheme claro: com o escuro, o Chrome pinta de grafite a margem da folha */
@@ -1439,11 +1499,15 @@ window.APP_RELEASE = "tresults-v55";
   <div class="modal" style="max-width:440px">
     <h3 style="margin-bottom:2px">Criar sua conta</h3>
 
+    <!-- Conta de treinador (#95): só monta o treino dos alunos e acompanha as cargas deles. -->
+    <div class="seg" id="cadPapelSeg" data-v="aluno" role="group" aria-label="Tipo de conta" style="margin-top:12px"><button type="button" data-v="aluno" class="on">Vou treinar</button><button type="button" data-v="treinador">Sou treinador</button></div>
+    <p class="cad-papel-nota" id="cadPapelNota" style="display:none">Conta só de treinador: você monta o treino dos seus alunos e acompanha as cargas e o RIR deles. Para registrar o seu próprio treino, use outra conta.</p>
+
     <div class="field" style="margin-top:14px">
       <label class="lbl" for="cadNome">Nome completo</label>
       <input class="in" id="cadNome" type="text" autocomplete="name" placeholder="Como está no seu documento">
     </div>
-    <div class="field" style="margin-top:10px">
+    <div class="field" id="cadNascWrap" style="margin-top:10px">
       <div class="lbl-linha">
         <label class="lbl" for="cadNasc">Data de nascimento</label>
         <span class="cad-idade" id="cadIdade"></span>
@@ -1812,6 +1876,12 @@ window.APP_RELEASE = "tresults-v55";
       <div><span class="k">Prazo</span><span class="v" id="pfPrazo">—</span></div>
     </div>
   </div>
+  <!-- O treinador do aluno (#95): ligar com o código, o peso, desfazer. -->
+  <div id="pfTreinWrap" style="display:none">
+    <div class="sec-title">Treinador</div>
+    <div class="card pf-trein" id="pfTrein" style="margin-bottom:14px"></div>
+  </div>
+  <div id="pfAlarme">
   <div class="sec-title">Alarme do descanso</div>
   <div class="card" style="padding:4px;margin-bottom:14px">
     <button class="pf-row" id="pfSom">
@@ -1834,6 +1904,7 @@ window.APP_RELEASE = "tresults-v55";
       <span id="pfSomTesteLbl">Testar som</span>
     </button>
   </div>
+  </div>
 
   <div id="pfSegWrap" style="display:none">
     <div class="sec-title">Segurança</div>
@@ -1853,6 +1924,74 @@ window.APP_RELEASE = "tresults-v55";
   </div>
   <p class="credits">Valores por 100 g baseados na tabela TACO / referências USDA — estimativas.</p>
 </div></div>
+
+<!-- ==================== ALUNOS (conta de treinador, #95) ==================== -->
+<div class="view" id="view-alunos"><div class="wrap">
+  <div class="topbar">
+    <div class="brand"><span class="eyebrow">True Results · Treinador</span><h1>Alunos</h1></div>
+  </div>
+  <section class="card al-convite" style="margin-bottom:18px">
+    <div class="al-rot">Convidar aluno</div>
+    <p class="al-txt">O aluno baixa o T-RESULTS, cria a conta e, no Perfil, digita este código:</p>
+    <div class="al-codigo num" id="alCodigo">······</div>
+    <p class="al-aviso" id="alCodigoMsg"></p>
+    <button class="btn" id="alEnviar" type="button">Enviar convite</button>
+    <div class="al-acoes"><button class="btn secondary" id="alCopiar" type="button">Copiar código</button><button class="btn secondary" id="alTrocar" type="button">Trocar código</button></div>
+  </section>
+  <div class="sec-title">Seus alunos</div>
+  <div id="alLista"></div>
+</div></div>
+
+<!-- Um aluno: o treino que o treinador monta e o que o aluno fez com ele. -->
+<div class="view" id="view-aluno"><div class="wrap">
+  <div class="topbar">
+    <button class="volta" data-volta="alunos" aria-label="Voltar aos alunos"><svg viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg></button>
+    <div class="brand"><span class="eyebrow">Aluno</span><h1 id="alNome">—</h1></div>
+  </div>
+  <p class="al-sub" id="alSub"></p>
+  <section style="margin-bottom:18px">
+    <div class="sec-title"><span>Treino</span><span class="al-pub" id="alPub"></span></div>
+    <div id="alProts"></div>
+    <button class="btn secondary" id="alProtNovo" type="button">＋ Novo protocolo</button>
+  </section>
+  <section style="margin-bottom:18px">
+    <div class="sec-title">Treinos feitos</div>
+    <div id="alSessoes"></div>
+  </section>
+  <section style="margin-bottom:18px">
+    <div class="sec-title">Evolução por exercício</div>
+    <div class="card" id="alEvoCard"><select class="in" id="alEvoEx" aria-label="Exercício"></select><div id="alEvo"></div></div>
+  </section>
+  <section style="margin-bottom:18px">
+    <div class="sec-title">Peso corporal</div>
+    <div class="card" id="alPeso"></div>
+  </section>
+  <button class="btn secondary al-desfazer" id="alDesfazer" type="button">Desfazer a ligação</button>
+</div></div>
+
+<!-- Ligar-se a um treinador (#95). O aluno vê o que o treinador vai
+     enxergar ANTES de aceitar: é o consentimento (LGPD), e o peso é opcional. -->
+<div class="overlay" id="vincOverlay">
+  <div class="modal" style="max-width:440px">
+    <h3 id="vincTitulo">Ligar a um treinador</h3>
+    <div id="vincPasso1">
+      <p class="vinc-txt">Digite o código que o seu treinador mandou.</p>
+      <div class="field"><label class="lbl" for="vincCodigo">Código</label><input class="in vinc-cod" id="vincCodigo" type="text" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Ex.: K7P3QX" enterkeyhint="go"></div>
+    </div>
+    <div id="vincPasso2" style="display:none">
+      <p class="vinc-txt"><b id="vincNome"></b> vai poder:</p>
+      <ul class="vinc-lista">
+        <li>montar e mudar os seus protocolos de treino;</li>
+        <li>ver os treinos que você fizer: exercícios, cargas, repetições, RIR, distância do cardio, datas e duração.</li>
+      </ul>
+      <label class="exog-local vinc-peso"><input type="checkbox" id="vincPesos"><span><b>Mostrar também o meu peso corporal</b><em>Ele passa a ver as suas pesagens. Você desliga quando quiser.</em></span></label>
+      <p class="vinc-nao">Ele não vê a sua alimentação, medidas, passos nem uso de exógenos. Você desfaz a ligação quando quiser, no Perfil.</p>
+    </div>
+    <div class="auth-msg" id="vincMsg"></div>
+    <button class="btn" id="vincOk" type="button">Continuar</button>
+    <button class="btn secondary" id="vincVoltar" type="button">Voltar</button>
+  </div>
+</div>
 
 <!-- ==================== TREINO ==================== -->
 <div class="view" id="view-treino"><div class="wrap">
@@ -2162,7 +2301,9 @@ window.APP_RELEASE = "tresults-v55";
   <div class="modal">
     <label class="lbl" for="tpProtNome">Protocolo</label>
     <input class="in prot-titulo" id="tpProtNome" type="text" maxlength="40" autocomplete="off" enterkeyhint="done" aria-label="Nome do protocolo">
-    <p style="font-size:13px;color:var(--muted);margin:10px 0 14px">Cadastre os treinos deste protocolo (A, B, C…) uma vez. Depois, é um toque para registrar o treino do dia. Para trocar o nome, toque nele.</p>
+    <p id="tpAjuda" style="font-size:13px;color:var(--muted);margin:10px 0 14px">Cadastre os treinos deste protocolo (A, B, C…) uma vez. Depois, é um toque para registrar o treino do dia. Para trocar o nome, toque nele.</p>
+    <!-- Protocolo montado pelo treinador (#95): o aluno vê e treina, não edita. -->
+    <p class="tp-ro-nota" id="tpRoNota" style="display:none;margin:10px 2px 14px"></p>
     <div id="tprotoList"></div>
     <button id="tpNew" class="btn secondary">＋ Novo treino</button>
     <button id="tpSugAqui" class="btn secondary" style="display:none">✨ Preencher com uma sugestão</button>
@@ -2295,6 +2436,8 @@ window.APP_RELEASE = "tresults-v55";
   <button data-tab="food"><svg viewBox="0 0 24 24"><path d="M5 3v9a3 3 0 0 0 6 0V3M8 12v9M17 3c-1.5 2-2 4-2 6v3h4V9c0-2-.5-4-2-6zM17 12v9"/></svg>Comida</button>
   <button class="fab" id="tabAdd" aria-label="Adicionar refeição"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
   <button data-tab="treino"><svg viewBox="0 0 24 24"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/></svg>Treino</button>
+  <!-- Conta de treinador (#95): a barra fica só com Alunos e Perfil. -->
+  <button data-tab="alunos" class="tab-trein"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-5.5 6.5-5.5s6.5 2 6.5 5.5M16 4.8a3.5 3.5 0 0 1 0 6.4M18 14.8c2.2.6 3.5 2.4 3.5 5.2"/></svg>Alunos</button>
   <button data-tab="perfil"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Perfil</button>
 </nav>
 
@@ -3350,7 +3493,7 @@ const setOwner=uid=>localStorage.setItem(OWNER_KEY,uid||"");
 /* Toda gravação marca que este aparelho tem algo que a nuvem ainda não tem
    (marcarPendente, na seção da nuvem). É a marca que impede a próxima
    abertura de trocar o que foi lançado sem sinal pela versão da nuvem. */
-function save(){localStorage.setItem(KEY,JSON.stringify(store));if(!applyingRemote){marcarPendente();pushRemote(false);}}
+function save(){if(ehTreinador())carimbarAlunos();localStorage.setItem(KEY,JSON.stringify(store));if(!applyingRemote){marcarPendente();pushRemote(false);aposSalvar();}}
 function dayItems(){const k=viewKey;if(!store.days[k])store.days[k]=[];return store.days[k];}
 
 const MEALS=[["cafe","Café da manhã"],["almoco","Almoço"],["lanche","Lanche"],["jantar","Jantar"],["ceia","Ceia"],["outros","Outros"]];
@@ -3657,6 +3800,11 @@ function fecharSessao(){$("sessaoOverlay").classList.remove("open");}
 
 function showView(name){
   hideSplash();
+  /* Conta de treinador (#95): as telas de quem treina não existem para ela;
+     e a tela dos alunos não existe para quem treina. */
+  if(ehTreinador()&&["inicio","food","progresso","treino","setup"].includes(name))name="alunos";
+  if(!ehTreinador()&&["alunos","aluno"].includes(name))name="inicio";
+  if(name!=="aluno"&&alunoAberto)sairDoAluno();
   if(currentView!==name)rastro("tela "+name);
   currentView=name;
   document.querySelectorAll(".view").forEach(v=>v.classList.remove("on"));
@@ -3664,12 +3812,12 @@ function showView(name){
   closeMenu();
   const tb=$("tabbar");
   if(tb){
-    tb.classList.toggle("show",["inicio","food","progresso","treino","perfil"].includes(name));
+    tb.classList.toggle("show",["inicio","food","progresso","treino","perfil","alunos","aluno"].includes(name));
     /* Progresso saiu da barra e vive dentro do Início: enquanto ele está aberto,
        quem fica aceso é o Início, senão nenhuma aba ficaria marcada e a pessoa
        perderia a referência de onde está. */
     tb.querySelectorAll("[data-tab]").forEach(b=>b.classList.toggle("on",
-      b.dataset.tab===name||(b.dataset.tab==="inicio"&&name==="progresso")));
+      b.dataset.tab===name||(b.dataset.tab==="inicio"&&name==="progresso")||(b.dataset.tab==="alunos"&&name==="aluno")));
   }
   if(name==="inicio"){render();renderInicio();}
   /* Cada chegada à tela de entrada é uma visita nova: a digital volta a poder
@@ -3679,6 +3827,8 @@ function showView(name){
   if(name==="progresso"){renderGoals();}
   if(name==="treino"){renderTreino();setTimeout(maybeTIntro,250);}
   if(name==="perfil"){renderPerfil();}
+  if(name==="alunos"){renderAlunos();publicarPlanos();}
+  if(name==="aluno"){renderAluno();}
   window.scrollTo(0,0);
 }
 document.querySelectorAll("#tabbar [data-tab]").forEach(b=>b.onclick=()=>showView(b.dataset.tab));
@@ -4046,6 +4196,8 @@ $("taAdd").onclick=()=>{
 };
 
 function renderTreino(){
+  /* Conta de treinador (#95): não treina. Quem mudou protocolo foi a tela do aluno. */
+  if(ehTreinador()){if(currentView==="aluno")renderAluno();return;}
   if(!$("tGasto"))return;
   /* A mesma conta do Início e da Alimentação (gastoDia): esta tela já
      mostrou "GETD + treino" ignorando os passos, e os três números do app
@@ -4136,7 +4288,7 @@ const T_SUG=[
    um protocolo novo, com o nome dela. Antes, as sugestões se empilhavam todas
    num protocolo só. */
 let tSugDestino=null;
-function sugDestinoPadrao(){const a=protAbertoAqui();return treinosDoProt(a).length?null:a;}
+function sugDestinoPadrao(){const a=protAbertoAqui();return treinosDoProt(a).length||doTreinador(a)?null:a;}
 function openTSug(destino){
   tSugDestino=(destino&&protPorId(destino))?destino:null;
   const obj=(store.goals||{}).objetivo||"cutting",cutting=obj!=="bulking";
@@ -4144,6 +4296,8 @@ function openTSug(destino){
     ?'Para o seu objetivo de <b>cutting</b>: descansos de <b>60 s</b> para manter o gasto alto e preservar músculo no déficit. Busque a falha entre 6–12 reps.'
     :'Para o seu objetivo de <b>bulking</b>: descansos de <b>90 s</b> para render mais carga e maximizar o estímulo. Busque a falha entre 6–12 reps.')
     +(!tSugDestino&&(store.tprotocol||[]).length?' Cada sugestão entra como um protocolo novo, com o nome dela — dá para renomear depois.':'');
+  /* Treinador (#95): o objetivo é do aluno, que ele não vê aqui. */
+  if(ehTreinador())$("tSugSub").textContent="Treinos prontos para começar. Séries e descanso você ajusta depois, no editor.";
   const rotulo=tSugDestino?`Colocar em “${esc(protPorId(tSugDestino).nome)}”`:"Usar este protocolo";
   $("tSugList").innerHTML=T_SUG.map(p=>{
     const totEx=p.w.reduce((a,w)=>a+w.ex.length,0);
@@ -4355,6 +4509,7 @@ function copiaFontes(destino){
   academias().forEach(a=>{
     if(a.id===destino)return;
     listaProtocolos().forEach(p=>{
+      if(doTreinador(p.id))return;   // o do treinador vale em todas as academias, e só ele muda (#95)
       const ws=treinosDoProt(p.id).filter(w=>treinoNaAcad(w,a.id)&&(w.ex||[]).length);
       if(ws.length)out.push({acad:a,prot:p,ws});
     });
@@ -4515,7 +4670,7 @@ function renderTpAcads(){
 }
 /* O protocolo no editor: só aparece com dois ou mais. Escolha única. */
 function renderTpProts(){
-  const lista=listaProtocolos(),wrap=$("tpProtWrap");
+  const lista=listaProtocolos().filter(p=>!doTreinador(p.id)),wrap=$("tpProtWrap");   // treino próprio não entra no protocolo do treinador (#95)
   wrap.style.display=lista.length>1?"block":"none";
   if(lista.length<2)return;
   $("tpProts").innerHTML=lista.map(p=>`<button type="button" data-tpprot="${esc(p.id)}" class="${p.id===tpEditing.prot?"on":""}">${esc(p.nome)}</button>`).join("");
@@ -4548,6 +4703,15 @@ function protDoTreino(w){return (w&&w.prot)||PROT_PADRAO;}
 function listaProtocolos(){
   const out=[],visto=new Set(),tps=store.tprotocol||[],gu=Array.isArray(store.tprotos)?store.tprotos:[];
   const add=(id,nome)=>{if(!id||visto.has(id))return;visto.add(id);out.push({id,nome:(nome||"").trim()||"Protocolo sem nome"});};
+  /* Conta de treinador (#95): só os protocolos do aluno aberto, e sem o
+     "Meu protocolo" virtual — cada aluno tem os dele. O recém-criado, ainda
+     sem o carimbo do save(), é do aluno aberto. */
+  if(ehTreinador()){
+    const dele=x=>!!alunoAberto&&!!x&&(x.aluno||alunoAberto)===alunoAberto;
+    gu.filter(dele).forEach(p=>add(p.id,p.nome));
+    tps.filter(dele).forEach(w=>{if(w.prot)add(w.prot,w.protNome);});
+    return out;
+  }
   const nomePrincipal=()=>{const w=tps.find(x=>x.prot===PROT_PADRAO&&x.protNome);return w?w.protNome:PROT_PADRAO_NOME;};
   if(tps.some(w=>!w.prot)&&!gu.some(p=>p.id===PROT_PADRAO))add(PROT_PADRAO,nomePrincipal());
   gu.forEach(p=>add(p.id,p.nome));
@@ -4562,6 +4726,13 @@ function protMaterializado(){return Array.isArray(store.tprotos)&&store.tprotos.
     virtual e vazio fica de fora: quem cria o primeiro protocolo não ganha um
     bloco vazio de brinde. */
 function materializarProtocolos(){
+  /* Treinador: a lista vista é só a do aluno aberto, e refazê-la daqui
+     apagaria a dos outros alunos. Só acrescenta o que faltar. */
+  if(ehTreinador()){
+    store.tprotos=Array.isArray(store.tprotos)?store.tprotos:[];
+    listaProtocolos().forEach(p=>{if(!store.tprotos.some(x=>x&&x.id===p.id))store.tprotos.push({id:p.id,nome:p.nome,aluno:alunoAberto});});
+    return;
+  }
   const ant=Array.isArray(store.tprotos)?store.tprotos:[];
   store.tprotos=listaProtocolos()
     .filter(p=>!(p.id===PROT_PADRAO&&!ant.some(x=>x.id===PROT_PADRAO)&&!treinosDoProt(PROT_PADRAO).length))
@@ -4651,7 +4822,10 @@ function renderProtLista(){
     const cab=varios?`<button type="button" class="prot-cab" data-protabrir="${esc(p.id)}" aria-expanded="${ab}">${miolo}${CHEV}</button>`:`<div class="prot-cab">${miolo}</div>`;
     /* "Exportar em PDF" à vista (#93): só no pop-up, o dono não o achou. */
     const pdf=ws.length?`<button type="button" class="btn secondary prot-editar" id="tPdfProt">Exportar em PDF</button>`:"";
-    const corpo=ab?`<div class="prot-corpo"><div class="proto-cards" id="tprotoCards"></div><button class="btn secondary prot-editar" id="tOpenProtocol">${ws.length?"Editar":"＋ Montar"} <span class="prot-q">“${esc(p.nome)}”</span></button>${pdf}</div>`:"";
+    /* Montado pelo treinador (#95): o aluno vê e treina; só ele muda. */
+    const dono=doTreinador(p.id);
+    const nota=dono?`<p class="prot-dono">Montado por ${esc(dono.treinadorNome)}. Só ele muda este protocolo.</p>`:"";
+    const corpo=ab?`<div class="prot-corpo"><div class="proto-cards" id="tprotoCards"></div>${nota}<button class="btn secondary prot-editar" id="tOpenProtocol">${dono?"Ver":ws.length?"Editar":"＋ Montar"} <span class="prot-q">“${esc(p.nome)}”</span></button>${pdf}</div>`:"";
     return `<div class="prot-bloco${ab?" aberto":""}" data-prot="${esc(p.id)}">${cab}${corpo}</div>`;
   }).join("");
   el.querySelectorAll("[data-protabrir]").forEach(b=>b.onclick=()=>{
@@ -4665,6 +4839,8 @@ function renderProtLista(){
   /* Os cartões do protocolo aberto, só os da academia aberta. O filtro de
      cima garante que o aberto tem algum aqui, ou nenhum treino. */
   const list=treinosDoProt(aberto).filter(w=>treinoNaAcad(w,sel));
+  const donoAb=doTreinador(aberto);
+  if(!list.length&&donoAb){$("tprotoCards").innerHTML=`<div class="proto-empty">${esc(donoAb.treinadorNome)} ainda não colocou treinos neste protocolo.</div>`;return;}
   $("tprotoCards").innerHTML=list.length?list.map(w=>`<button class="proto-card" data-tw="${w.id}"><div><div class="pccat">Treino ${esc(w.cat||"")}</div><div class="pcname">${esc(w.nome)}</div><div class="pcmac">${qtdTxt((w.ex||[]).length,"exercício","exercícios")} · ${qtdTxt(tpSeries(w),"série","séries")}</div>${pcFalta(w,sel)}</div><span class="pckcal">▶ Iniciar</span></button>`).join("")
     :(store.tprotocol||[]).length
       ?'<div class="proto-empty">Você ainda não montou este protocolo. Toque abaixo para cadastrar os treinos (ex.: Treino A, B, C) — depois é um toque para iniciar o do dia.</div>'
@@ -5198,12 +5374,19 @@ $("tpProtDel").onclick=async()=>{
   save();tprotoOverlay.classList.remove("open");renderTreino();
 };
 function renderTpList(){
-  const list=treinosDoProt(tpProtAtual);
-  $("tpSugAqui").style.display=list.length?"none":"";
+  const list=treinosDoProt(tpProtAtual),dono=doTreinador(tpProtAtual);
+  $("tpSugAqui").style.display=list.length||dono?"none":"";
   $("tpPdf").style.display=$("tpPdfNota").style.display=list.length?"":"none";   // sem treino, não há folha
-  $("tpProtDel").style.display=listaProtocolos().length>1?"":"none";
+  $("tpProtDel").style.display=!dono&&(listaProtocolos().length>1||ehTreinador())?"":"none";   // o aluno pode ficar sem nenhum
+  /* Protocolo do treinador (#95): só leitura. Nem nome, nem treino novo,
+     nem editar ou excluir treino: a próxima mudança dele desfaria. */
+  $("tpNew").style.display=dono?"none":"";
+  $("tpAjuda").style.display=dono?"none":"";
+  $("tpRoNota").style.display=dono?"":"none";
+  if(dono)$("tpRoNota").textContent=`Montado por ${dono.treinadorNome}. Você treina com ele; só o treinador muda os treinos e o nome.`;
+  $("tpProtNome").readOnly=!!dono;
   const onde=w=>academias().length?` · ${acadsDoTreino(w).length?esc(acadsTxt(w)):"todas as academias"}`:"";
-  $("tprotoList").innerHTML=list.length?list.map(w=>`<div class="proto-meal-row"><div><div class="n">${esc(w.nome)}</div><div class="m">Treino ${esc(w.cat||"")} · ${qtdTxt((w.ex||[]).length,"exercício","exercícios")} · ${qtdTxt(tpSeries(w),"série","séries")}${onde(w)}</div></div><div class="acts"><button data-ted="${w.id}">Editar</button><button class="del" data-tdl="${w.id}">Excluir</button></div></div>`).join(""):'<div class="proto-empty" style="margin-bottom:12px">Nenhum treino cadastrado ainda.</div>';
+  $("tprotoList").innerHTML=list.length?list.map(w=>`<div class="proto-meal-row"><div><div class="n">${esc(w.nome)}</div><div class="m">Treino ${esc(w.cat||"")} · ${qtdTxt((w.ex||[]).length,"exercício","exercícios")} · ${qtdTxt(tpSeries(w),"série","séries")}${onde(w)}</div></div>${dono?"":`<div class="acts"><button data-ted="${w.id}">Editar</button><button class="del" data-tdl="${w.id}">Excluir</button></div>`}</div>`).join(""):'<div class="proto-empty" style="margin-bottom:12px">Nenhum treino cadastrado ainda.</div>';
   $("tprotoList").querySelectorAll("[data-ted]").forEach(b=>b.onclick=()=>{if(salvarNomeProt())openTpEditor(b.dataset.ted);});
   $("tprotoList").querySelectorAll("[data-tdl]").forEach(b=>b.onclick=async()=>{if(await appConfirm("Excluir este treino do protocolo?",{okText:"Excluir"})){store.tprotocol=(store.tprotocol||[]).filter(x=>x.id!==b.dataset.tdl);save();renderTpList();}});
 }
@@ -7334,6 +7517,7 @@ function renderPerfil(){
   const n=userName()||"";
   if($("perfilEmail"))$("perfilEmail").textContent=(user&&user.email)||n||"Modo local";
   const av=$("pfAvatar");if(av)av.textContent=((n||(user&&user.email)||"•").slice(0,1)).toUpperCase();
+  renderPerfilTreinador();   // o treinador do aluno (#95)
   const g=store.goals||{},t=goalTargets();
   if($("pfObjTitle")){
     if(t.configured){
@@ -7518,7 +7702,10 @@ async function resetData(){
   const comConta=!!(cloudEnabled&&user&&user.email);
   const r=await askDanger({
     ico:"⚠️",title:"Excluir dados",
-    msg:"Você está prestes a <b>excluir os dados da sua conta</b>: dieta, protocolos, treinos, academias, pesos e objetivo. Você vai <b>perder todo o seu progresso</b> e o app voltará ao primeiro acesso (sua conta e login continuam existindo).<br><br>Isso apaga também a cópia salva na nuvem, e <b>não dá para desfazer</b>.<br><br><b>Tem certeza de que deseja continuar?</b>",
+    msg:ehTreinador()
+      /* Treinador (#95): o que some é o treino dos alunos, e eles sentem. */
+      ?"Você está prestes a <b>excluir os dados da sua conta</b>: os protocolos que você montou para os seus alunos. <b>Eles deixam de ter esses treinos no app.</b> A ligação com os alunos continua, e o histórico de treinos deles é deles.<br><br>Isso apaga também a cópia salva na nuvem, e <b>não dá para desfazer</b>.<br><br><b>Tem certeza de que deseja continuar?</b>"
+      :"Você está prestes a <b>excluir os dados da sua conta</b>: dieta, protocolos, treinos, academias, pesos e objetivo. Você vai <b>perder todo o seu progresso</b> e o app voltará ao primeiro acesso (sua conta e login continuam existindo).<br><br>Isso apaga também a cópia salva na nuvem, e <b>não dá para desfazer</b>.<br><br><b>Tem certeza de que deseja continuar?</b>",
     confirm:"Sim, excluir tudo",
     pw:comConta
   });
@@ -7534,8 +7721,11 @@ async function resetData(){
       return;
     }
   }
+  /* A conta de treinador continua de treinador, com o mesmo código (#95). */
+  const manter=ehTreinador()?{papel:store.papel,convite:store.convite}:null;
   trDiscardRun();
   store=blankStore();
+  if(manter)Object.keys(manter).forEach(k=>{if(manter[k])store[k]=manter[k];});
   setAcadSel("");setProtAberto("");   // as escolhas eram do que acabou de ser apagado
   localStorage.setItem(KEY,JSON.stringify(store));
   $("getdInput").value="";
@@ -7544,6 +7734,7 @@ async function resetData(){
      outro aparelho gravou depois da última leitura daqui sobreviveria. */
   marcarPendente(true);
   save();render();
+  depoisDeApagar();   // aluno com treinador: o treino montado por ele volta
   showView("welcome");
 }
 
@@ -7561,7 +7752,7 @@ let syncBase=null,pendN=0,enviando=null,maisUma=false,retryT=null,retryMs=0,avis
 if(cloudEnabled){
   const [{initializeApp},
     {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,sendPasswordResetEmail,EmailAuthProvider,reauthenticateWithCredential,deleteUser},
-    {getFirestore,doc,getDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp,runTransaction},
+    {getFirestore,doc,getDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp,runTransaction,collection,query,where,getDocs,updateDoc},
     {getFunctions,httpsCallable}]=await Promise.all([
     import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"),
     import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"),
@@ -7570,7 +7761,7 @@ if(cloudEnabled){
   const app=initializeApp(firebaseConfig);
   auth=getAuth(app); db=getFirestore(app);
   try{ fns=getFunctions(app,"southamerica-east1"); window.__fnCall=httpsCallable; }catch(e){}
-  window.__fb={signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,sendPasswordResetEmail,EmailAuthProvider,reauthenticateWithCredential,deleteUser,doc,getDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp,runTransaction};
+  window.__fb={signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,sendPasswordResetEmail,EmailAuthProvider,reauthenticateWithCredential,deleteUser,doc,getDoc,setDoc,deleteDoc,onSnapshot,serverTimestamp,runTransaction,collection,query,where,getDocs,updateDoc};
   onAuthStateChanged(auth,u=>{
     user=u;
     if(u){
@@ -7594,6 +7785,13 @@ function routeAfterLogin(){
   // decide onboarding vs normal, once per login
   if(!user&&cloudEnabled)return;
   fillUser();
+  aplicarPapel();
+  /* Conta de treinador (#95): abre direto nos alunos; não tem objetivo nem treino. */
+  if(ehTreinador()){
+    if(["alunos","aluno","perfil"].includes(currentView))return;
+    if(!userName()){showView("welcome");return;}
+    mostrarImersao();showView("alunos");return;
+  }
   if(userName()&&trRestore())return; // treino em andamento volta exatamente de onde parou
   if(["inicio","food","treino"].includes(currentView))return; // já está dentro do app
   if(!userName()){ showView("welcome"); return; }
@@ -7604,6 +7802,7 @@ $("welcomeGo").onclick=()=>{
   const n=$("welcomeName").value.trim();
   if(!n){$("welcomeMsg").textContent="Escreva um nome ou apelido.";$("welcomeMsg").className="auth-msg err";return;}
   store.goals=store.goals||{};store.goals.nome=n;save();fillUser();
+  if(ehTreinador()){showView("alunos");return;}   // o treinador não tem objetivo nem dieta (#95)
   onboarding=true;promptedSetup=true;
   showView("setup");
   setTimeout(openGoals,260);
@@ -7631,10 +7830,15 @@ async function startSync(){
     }
     else {
       if(getOwner()!==user.uid){ trDiscardRun(); store=blankStore(); setAcadSel(""); setProtAberto(""); limparSync(); localStorage.setItem(KEY,JSON.stringify(store)); $("getdInput").value=""; render(); }
+      /* Conta acabada de criar: o que foi digitado no cadastro (nome, data,
+         treinador ou não) volta para o store novo. Sem isto, o store vazio
+         acima o apagava, e a tela pedia o nome de novo. */
+      if(cadPend){aplicarCadastro(cadPend);cadPend=null;localStorage.setItem(KEY,JSON.stringify(store));}
       setOwner(user.uid);
       await pushRemote(true);
     }
     routeAfterLogin();
+    iniciarPapel();   // treinador: os alunos e o código; aluno: o vínculo e o plano (#95)
     unsub=onSnapshot(ref,d=>{
       if(!d.exists())return;
       const data=d.data();
@@ -7650,7 +7854,7 @@ async function startSync(){
     if(!pendente())setSyncDot("ok","Sincronizado");
   }catch(e){ setSyncDot("err","Erro ao carregar"); }
 }
-function stopSync(){ if(unsub){unsub();unsub=null;} }
+function stopSync(){ if(unsub){unsub();unsub=null;} pararPapel(); }
 /* O uso de exógenos é dado de saúde sensível (LGPD, art. 5º e 11), e pode
    sugerir conduta ilícita. Por padrão ele fica só no aparelho: a nuvem recebe o
    objetivo sem esses campos, e o que volta da nuvem não os apaga daqui. Quem
@@ -7664,7 +7868,7 @@ function goalsParaNuvem(g){
    disso foi gravado por uma versão mais nova do app: fica guardado em
    store._nuvem e volta na próxima gravação, em vez de ser apagado — o
    documento é gravado inteiro, sem merge. Precisa ser JSON simples. */
-const CAMPOS_NUVEM=["getd","days","custom","goals","liquids","protocol","weights","tprotocol","tdays","passos","academias","liqLog","tprotos","getdHist","pausas","writer","updatedAt"];
+const CAMPOS_NUVEM=["getd","days","custom","goals","liquids","protocol","weights","tprotocol","tdays","passos","academias","liqLog","tprotos","getdHist","pausas","papel","convite","writer","updatedAt"];
 /* ---- Nada do que foi lançado sem sinal se perde ----
    O documento da nuvem é gravado inteiro. Antes, a abertura trocava o
    aparelho inteiro pela nuvem, e o que tinha sido lançado sem sinal (um
@@ -7728,6 +7932,9 @@ function paraNuvem(s){
   if(Array.isArray(s.tprotos))d.tprotos=s.tprotos;
   if(Array.isArray(s.getdHist))d.getdHist=s.getdHist;
   if(Array.isArray(s.pausas))d.pausas=s.pausas;
+  /* Conta de treinador e o código de convite dela (#95). */
+  if(s.papel)d.papel=s.papel;
+  if(s.convite)d.convite=s.convite;
   return d;
 }
 
@@ -7861,6 +8068,8 @@ function mesclar(B,L,R){
   campo("tprotos",lista(porId));
   campo("getdHist",lista(x=>"d:"+(x&&x.desde)));
   campo("pausas",lista(porId));
+  campo("papel",escolhe);
+  campo("convite",escolhe);
   /* O objetivo junta chave por chave, menos o peso, que anda em pares:
      o peso de partida (pesoAtual + pesoDesde) e o peso da conta (pesoConta
      + "Manter"). Cada par vem inteiro do lado que o mudou (os dois mudaram:
@@ -7974,6 +8183,12 @@ function aplicarNuvem(data,manterDia){
      fica com o daqui. */
   const pausasNuvem=Array.isArray(data.pausas)?data.pausas:(local?local.pausas:undefined);
   if(pausasNuvem)store.pausas=pausasNuvem;
+  /* O papel da conta (#95): ausente é conta comum, ou versão anterior —
+     e só o dono do aparelho fica com o daqui. */
+  const papel=data.papel||(local?local.papel:undefined);
+  if(papel)store.papel=papel;
+  const conv=data.convite||(local?local.convite:undefined);
+  if(conv)store.convite=conv;
   if(Object.keys(extra).length)store._nuvem=extra;
   if(meu)Object.assign(store.goals,meu);
   if(!manterDia){viewKey=todayKey();realToday=todayKey();}
@@ -7993,6 +8208,8 @@ function aplicarNuvem(data,manterDia){
     }
   }
   if(trS)pintarFalta();   // inventário mudou em outro aparelho; nunca renderTr, que mataria o descanso
+  aplicarPapel();
+  if(currentView==="alunos")renderAlunos(true);   // protocolos mudados em outro aparelho do treinador
   applyingRemote=false;
 }
 function pushRemote(immediate){
@@ -8121,6 +8338,571 @@ async function entrarComDigital(){
 }
 $("btnDigital").onclick=()=>entrarComDigital();
 $("email").addEventListener("input",renderDigitalLogin);
+/* ============================================================
+   TREINADOR E ALUNO (#95)
+
+   O pedido: "quero que o app tenha a visão TREINADOR e ALUNO. Quero poder
+   passar o treino para um aluno que vai baixar o app e editar o treino
+   dele(a) e ver as cargas e as RIR e afins". Decisões do dono:
+   - a conta de treinador é só de treinador: não treina e abre em Alunos;
+   - o aluno se liga por um código de convite, e vê o que o treinador vai
+     enxergar ANTES de aceitar (é o consentimento);
+   - só o treinador edita o treino; o aluno treina, e troca exercício só
+     na sessão, como sempre;
+   - o treinador vê os treinos; o peso corporal, só se o aluno permitir.
+
+   O treinador NUNCA escreve no documento do aluno: o celular do aluno grava
+   users/{uid} inteiro, sem merge, e apagaria o que ele escrevesse. Por isso
+   há coleções próprias, com as regras em firestore.rules:
+   - convites/{codigo}: o código do treinador;
+   - vinculos/{aluno}: criado pelo aluno ao aceitar; um treinador por aluno;
+   - planos/{aluno}: o treino montado, escrito só pelo treinador;
+   - diarios/{aluno}: os treinos feitos, escritos só pelo aluno.
+   Os protocolos que o treinador monta vivem no documento DELE, cada um com
+   `aluno`; o plano publicado é uma projeção deles, refeita a cada mudança e
+   reenviada até a nuvem confirmar. No aluno, o plano vira protocolos com
+   `treinador`, só de leitura.
+
+   `var` e `function`, e não `let`/`const`: listaProtocolos e save() rodam
+   antes desta linha na abertura, e uma variável ainda não declarada
+   derrubaria o app.
+   ============================================================ */
+var alunoAberto=null;        // conta de treinador: o aluno cuja tela está aberta
+var alunosLista=null;        // [{uid,nome,desde,pesos}]; null = a consulta ainda não chegou
+var alunosUnsub=null,alunosErro=false,diarios={},diarioUnsub=null,alSessN=10;
+var conviteEnviando=false,planosT=null,publicando=false,publicarDeNovo=false,pubErro={};
+var vinc=null,vincUnsub=null,planoUnsub=null,ultimoPlano=null,vincPrimeira=true,diarioT=null;
+var vincConvite=null,vincEtapa=1;
+const APP_URL="https://pedrocrvgdf.github.io/appcutting/";
+/* Sem 0/O e 1/I: o código é ditado e copiado à mão. As regras conferem o formato. */
+const COD_ALFA="ABCDEFGHJKLMNPQRSTUVWXYZ23456789",COD_RE=/^[A-HJ-NP-Z2-9]{6}$/;
+const DIARIO_DIAS=365,DIARIO_MAX=400;
+
+function ehTreinador(){return !!store&&store.papel==="treinador";}
+function aplicarPapel(){document.body.classList.toggle("treinador",ehTreinador());}
+function dataDeMs(ms){if(!ms)return "—";const d=new Date(ms);return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();}
+function diaMenos(n){const d=new Date(todayKey()+"T12:00:00");d.setDate(d.getDate()-n);return d.toISOString().slice(0,10);}
+/** O protocolo do treinador, no aluno (só leitura), ou null. */
+function doTreinador(id){const p=(store.tprotos||[]).find(x=>x&&x.id===id);return p&&p.treinador?p:null;}
+
+/* Conta de treinador: protocolo ou treino criado com um aluno aberto é
+   daquele aluno. Um carimbo só, no save(), cobre criar, sugestão, renomear
+   e salvar treino, em vez de um remendo em cada caminho. */
+function carimbarAlunos(){
+  if(!alunoAberto)return;
+  (store.tprotos||[]).forEach(p=>{if(p&&!p.aluno)p.aluno=alunoAberto;});
+  (store.tprotocol||[]).forEach(w=>{
+    if(!w||w.aluno)return;
+    const p=(store.tprotos||[]).find(x=>x&&x.id===w.prot);
+    w.aluno=(p&&p.aluno)||alunoAberto;
+  });
+}
+/* Ao gravar: o treinador publica os planos; o aluno, o diário. */
+function aposSalvar(){if(ehTreinador())agendarPlanos();else agendarDiario();}
+
+/* ---- Abertura e saída da conta ---- */
+function iniciarPapel(){
+  aplicarPapel();
+  if(!cloudEnabled||!user)return;
+  if(ehTreinador()){ouvirAlunos();garantirConvite();}
+  else ouvirVinculo();
+}
+function pararPapel(){
+  [alunosUnsub,diarioUnsub,vincUnsub,planoUnsub].forEach(f=>{try{if(f)f();}catch(e){}});
+  alunosUnsub=diarioUnsub=vincUnsub=planoUnsub=null;
+  alunosLista=null;alunosErro=false;diarios={};alunoAberto=null;
+  vinc=null;ultimoPlano=null;vincPrimeira=true;pubErro={};
+  clearTimeout(planosT);clearTimeout(diarioT);
+}
+/* Convite que chegou por link (?convite=K7P3QX): fica guardado até a
+   pessoa entrar na conta, e então abre o pedido já preenchido. */
+(function(){
+  try{
+    const c=new URLSearchParams(location.search).get("convite");
+    if(c){localStorage.setItem("tresults.conviteLink",c.toUpperCase().slice(0,6));history.replaceState(null,"",location.pathname+location.hash);}
+  }catch(e){}
+})();
+
+/* ============ LADO DO TREINADOR ============ */
+
+function alunosCache(){try{const c=JSON.parse(localStorage.getItem("tresults.alunos")||"null");return c&&user&&c.uid===user.uid?c.lista:null;}catch(e){return null;}}
+function ouvirAlunos(){
+  if(!cloudEnabled||!user||!ehTreinador()||alunosUnsub)return;
+  const {collection,query,where,onSnapshot}=window.__fb;
+  alunosUnsub=onSnapshot(query(collection(db,"vinculos"),where("treinador","==",user.uid)),snap=>{
+    alunosErro=false;
+    alunosLista=snap.docs.map(d=>{const v=d.data()||{};return {uid:d.id,nome:v.alunoNome||"Aluno",desde:v.desde||0,pesos:!!v.pesos};})
+      .sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
+    try{localStorage.setItem("tresults.alunos",JSON.stringify({uid:user.uid,lista:alunosLista}));}catch(e){}
+    /* Quem saiu da lista teve o plano apagado: se voltar, o plano sobe de novo. */
+    const f=publicados(),fora=Object.keys(f).filter(k=>!alunosLista.some(a=>a.uid===k));
+    if(fora.length){fora.forEach(k=>delete f[k]);try{localStorage.setItem("tresults.publicado",JSON.stringify({uid:user.uid,m:f}));}catch(e){}}
+    if(currentView==="alunos")renderAlunos();
+    if(currentView==="aluno"){
+      if(alunosLista.some(a=>a.uid===alunoAberto))renderAluno();
+      else{const n=($("alNome").textContent||"O aluno");showView("alunos");appAlert(`${n} desfez a ligação. Os treinos dele continuam com ele.`,"Aluno");}
+    }
+    publicarPlanos();
+  },()=>{alunosErro=true;if(currentView==="alunos")renderAlunos();});
+}
+function alunoPorUid(id){return (alunosLista||alunosCache()||[]).find(a=>a.uid===id)||null;}
+
+function novoCodigo(){
+  const r=new Uint32Array(6);crypto.getRandomValues(r);
+  return Array.from(r,x=>COD_ALFA[x%COD_ALFA.length]).join("");
+}
+/** O código do treinador. `trocar`: um novo, e o antigo deixa de valer
+    para alunos novos (quem já é aluno continua). */
+async function garantirConvite(trocar){
+  if(!cloudEnabled||!user||!ehTreinador()||conviteEnviando)return;
+  if(store.convite&&!trocar)return renderConvite();
+  conviteEnviando=true;renderConvite();
+  const {doc,setDoc,deleteDoc}=window.__fb,antigo=store.convite;
+  let ok=false,msg="";
+  try{
+    /* Código já usado por outro treinador: as regras recusam a troca de
+       dono, e sorteia-se outro. */
+    for(let i=0;i<5&&!ok;i++){
+      const c=novoCodigo();
+      try{await setDoc(doc(db,"convites",c),{treinador:user.uid,nome:(userName()||"Treinador").slice(0,80),criado:Date.now()});}
+      catch(e){if(e&&e.code==="permission-denied")continue;throw e;}
+      store.convite=c;save();ok=true;
+      if(antigo&&antigo!==c){try{await deleteDoc(doc(db,"convites",antigo));}catch(e){}}
+    }
+    if(!ok)msg="Não deu para criar o código agora. Tente de novo em instantes.";
+  }catch(e){msg="Sem sinal: o código aparece quando a internet voltar.";}
+  conviteEnviando=false;renderConvite(msg);
+}
+function renderConvite(msg){
+  if(!$("alCodigo"))return;
+  const c=store.convite||"";
+  $("alCodigo").textContent=c||"······";
+  if(msg!==undefined)$("alCodigoMsg").textContent=msg;
+  else if(conviteEnviando)$("alCodigoMsg").textContent="Criando o seu código…";
+  else if(c)$("alCodigoMsg").textContent="";
+  ["alEnviar","alCopiar","alTrocar"].forEach(id=>$(id).disabled=!c||conviteEnviando);
+}
+function textoConvite(){
+  const c=store.convite;
+  return `Oi! Sou ${userName()||"seu treinador"} e vou montar o seu treino no T-RESULTS.\n\n`
+    +`1. Abra ${APP_URL}?convite=${c} e crie a sua conta.\n`
+    +`2. No Perfil, toque em "Ligar a um treinador" e confira o código ${c}.`;
+}
+async function enviarConvite(){
+  if(!store.convite)return;
+  const txt=textoConvite();
+  if(navigator.share){
+    try{await navigator.share({text:txt});return;}
+    catch(e){if(e&&e.name==="AbortError")return;}   // desistiu: não abre outra coisa
+  }
+  const wa="https://wa.me/?text="+encodeURIComponent(txt);
+  if(appNativo){location.href=wa;return;}   // a casca do Android abre o WhatsApp
+  window.open(wa,"_blank","noopener");
+}
+async function copiarCodigo(){
+  if(!store.convite)return;
+  try{await navigator.clipboard.writeText(store.convite);$("alCodigoMsg").textContent="Código copiado.";}
+  catch(e){$("alCodigoMsg").textContent="Toque e segure o código para copiar.";}
+}
+$("alEnviar").onclick=enviarConvite;
+$("alCopiar").onclick=copiarCodigo;
+$("alTrocar").onclick=async()=>{
+  if(!await appConfirm("Trocar o código? O código atual deixa de valer para alunos novos. Quem já é seu aluno continua.",{okText:"Trocar"}))return;
+  garantirConvite(true);
+};
+
+function inicialDe(nome){return ((nome||"?").trim()[0]||"?").toUpperCase();}
+function ultimoTreinoTxt(a){
+  const d=diarios[a.uid];
+  if(!d)return "";
+  const s=(d.sessoes||[]).reduce((m,x)=>x&&x.d>m?x.d:m,"");
+  if(!s)return "ainda não treinou pelo app";
+  const r=fdRotuloDia(s);
+  return "último treino: "+(r==="Hoje"||r==="Ontem"?r.toLowerCase():r);
+}
+async function carregarDiarios(lista){
+  if(!cloudEnabled||!user)return;
+  const {doc,getDoc}=window.__fb;
+  let veio=false;
+  await Promise.all(lista.filter(a=>!diarios[a.uid]).map(async a=>{
+    try{const s=await getDoc(doc(db,"diarios",a.uid));diarios[a.uid]=s.exists()?s.data():{sessoes:[]};veio=true;}catch(e){}
+  }));
+  if(veio&&currentView==="alunos")renderAlunos(true);
+}
+function renderAlunos(semCarregar){
+  renderConvite();
+  if(!semCarregar)garantirConvite();
+  const el=$("alLista"),lista=alunosLista||alunosCache();
+  if(!lista){el.innerHTML=`<div class="al-vazio">${alunosErro?"Não deu para buscar os seus alunos agora. Confira a internet.":"Buscando os seus alunos…"}</div>`;return;}
+  if(!lista.length){el.innerHTML='<div class="al-vazio">Nenhum aluno ainda. Mande o convite acima: quando o aluno aceitar, ele aparece aqui.</div>';return;}
+  el.innerHTML=lista.map(a=>{
+    const ps=(store.tprotos||[]).filter(p=>p&&p.aluno===a.uid).length;
+    const meta=[ps?qtdTxt(ps,"protocolo","protocolos"):"sem treino montado",ultimoTreinoTxt(a)].filter(Boolean).join(" · ");
+    return `<button type="button" class="card al-item" data-aluno="${esc(a.uid)}"><span class="al-ini">${esc(inicialDe(a.nome))}</span><span class="al-meio"><span class="al-n">${esc(a.nome)}</span><span class="al-m">${esc(meta)}</span></span>${CHEV}</button>`;
+  }).join("");
+  el.querySelectorAll("[data-aluno]").forEach(b=>b.onclick=()=>abrirAluno(b.dataset.aluno));
+  if(!semCarregar)carregarDiarios(lista);
+}
+
+function abrirAluno(id){
+  alunoAberto=id;alSessN=10;
+  showView("aluno");
+  ouvirDiario(id);
+}
+function sairDoAluno(){
+  alunoAberto=null;
+  if(diarioUnsub){try{diarioUnsub();}catch(e){}diarioUnsub=null;}
+}
+function ouvirDiario(id){
+  if(diarioUnsub){try{diarioUnsub();}catch(e){}diarioUnsub=null;}
+  if(!cloudEnabled||!user)return;
+  const {doc,onSnapshot}=window.__fb;
+  diarioUnsub=onSnapshot(doc(db,"diarios",id),s=>{
+    diarios[id]=s.exists()?s.data():{sessoes:[]};
+    if(currentView==="aluno"&&alunoAberto===id)renderDiarioAluno();
+  },()=>{});
+}
+function renderAluno(){
+  const a=alunoPorUid(alunoAberto);
+  if(!a){if(currentView==="aluno")showView("alunos");return;}
+  $("alNome").textContent=a.nome;
+  $("alSub").textContent=`Seu aluno desde ${dataDeMs(a.desde)} · ${a.pesos?"compartilha o peso":"não compartilha o peso"}`;
+  const ps=listaProtocolos();
+  $("alProts").innerHTML=ps.length?ps.map(p=>{
+    const ws=treinosDoProt(p.id);
+    return `<div class="card al-prot"><div class="al-pn">${esc(p.nome)}</div><div class="al-pm">${ws.length?qtdTxt(ws.length,"treino","treinos"):"nenhum treino ainda"}</div>`
+      +ws.map(w=>`<div class="al-tw"><span class="t">${esc(w.cat?`${w.cat} · `:"")}${esc(w.nome)}</span><span class="q">${qtdTxt((w.ex||[]).length,"exercício","exercícios")} · ${qtdTxt(tpSeries(w),"série","séries")}</span></div>`).join("")
+      +`<div class="al-bts"><button type="button" class="btn secondary" data-alprot="${esc(p.id)}">${ws.length?"Editar":"＋ Montar"}</button>${ws.length?`<button type="button" class="btn secondary" data-alpdf="${esc(p.id)}">Exportar em PDF</button>`:""}</div></div>`;
+  }).join(""):'<div class="al-vazio">Nenhum protocolo ainda. Monte o primeiro: o aluno recebe sozinho, no celular dele.</div>';
+  $("alProts").querySelectorAll("[data-alprot]").forEach(b=>b.onclick=()=>openTProtocol(b.dataset.alprot));
+  $("alProts").querySelectorAll("[data-alpdf]").forEach(b=>b.onclick=()=>exportarProtocoloPdf(b.dataset.alpdf));
+  pintarPublicacao();
+  renderDiarioAluno();
+}
+$("alProtNovo").onclick=()=>abrirProtNovo();
+$("alDesfazer").onclick=async()=>{
+  const a=alunoPorUid(alunoAberto);if(!a)return;
+  if(!await appConfirm(`Desfazer a ligação com ${a.nome}? Você deixa de ver os treinos dele, e ele deixa de receber as suas mudanças. O treino que você montou continua com ele.`,{okText:"Desfazer"}))return;
+  const {doc,deleteDoc}=window.__fb;
+  try{
+    await deleteDoc(doc(db,"planos",a.uid));   // antes do vínculo: sem ele, as regras não deixam mais
+    await deleteDoc(doc(db,"vinculos",a.uid));
+  }catch(e){return appAlert("Sem sinal. A ligação continua; tente de novo quando a internet voltar.");}
+  const f=publicados();delete f[a.uid];
+  try{localStorage.setItem("tresults.publicado",JSON.stringify({uid:user.uid,m:f}));}catch(e){}
+  showView("alunos");
+};
+
+/* ---- O plano: a projeção do que o treinador montou para cada aluno ---- */
+function planoDe(id){
+  const ps=(store.tprotos||[]).filter(p=>p&&p.aluno===id).map(p=>({id:p.id,nome:p.nome}));
+  const ids=new Set(ps.map(p=>p.id));
+  const ws=(store.tprotocol||[]).filter(w=>w&&w.aluno===id&&ids.has(w.prot)).map(w=>{const c=copia(w);delete c.aluno;delete c.acads;return c;});
+  return {tprotos:ps,tprotocol:ws};
+}
+function publicados(){try{const p=JSON.parse(localStorage.getItem("tresults.publicado")||"null");return p&&user&&p.uid===user.uid?p.m:{};}catch(e){return {};}}
+function agendarPlanos(){clearTimeout(planosT);planosT=setTimeout(publicarPlanos,1200);}
+/* Publica o plano de cada aluno que mudou desde o último envio confirmado.
+   Sem sinal, nada se perde: a fonte é o documento do treinador, e o envio
+   sai de novo na próxima gravação, ao voltar o sinal ou ao abrir a tela. */
+async function publicarPlanos(){
+  if(!cloudEnabled||!user||!ehTreinador()||!alunosLista)return;
+  if(publicando){publicarDeNovo=true;return;}
+  publicando=true;
+  const {doc,setDoc}=window.__fb,feitos=publicados();
+  try{
+    for(const a of alunosLista){
+      const p=planoDe(a.uid),j=JSON.stringify(p);
+      if(feitos[a.uid]===j||(!feitos[a.uid]&&!p.tprotos.length))continue;
+      try{
+        await setDoc(doc(db,"planos",a.uid),Object.assign({treinador:user.uid,treinadorNome:(userName()||"Treinador").slice(0,80),atualizado:Date.now()},p));
+        feitos[a.uid]=j;delete pubErro[a.uid];
+        try{localStorage.setItem("tresults.publicado",JSON.stringify({uid:user.uid,m:feitos}));}catch(e){}
+      }catch(e){pubErro[a.uid]=true;}
+    }
+  }finally{
+    publicando=false;
+    if(currentView==="aluno")pintarPublicacao();
+    if(publicarDeNovo){publicarDeNovo=false;publicarPlanos();}
+  }
+}
+function pintarPublicacao(){
+  const el=$("alPub");if(!el||!alunoAberto)return;
+  const p=planoDe(alunoAberto),feito=publicados()[alunoAberto];
+  let t="",ruim=false;
+  if(!p.tprotos.length&&!feito)t="";
+  else if(feito===JSON.stringify(p))t="Enviado ao aluno";
+  else if(pubErro[alunoAberto]){t="Sem sinal: vai quando a internet voltar";ruim=true;}
+  else t="Enviando ao aluno…";
+  el.textContent=t;el.classList.toggle("ruim",ruim);
+}
+window.addEventListener("online",()=>{if(ehTreinador())publicarPlanos();else publicarDiario();});
+
+/* ---- O diário do aluno, como o treinador vê ---- */
+function sessoesDoAluno(){const d=diarios[alunoAberto];return d&&Array.isArray(d.sessoes)?d.sessoes.slice().sort((a,b)=>a.d<b.d?1:a.d>b.d?-1:0):null;}
+function renderDiarioAluno(){renderSessoesAluno();renderEvoAluno();renderPesoAluno();}
+function serieAlunoTxt(x,e){return serieTxt(x,e.tipo==="corpo"&&!e.contra,!!e.contra);}
+function renderSessoesAluno(){
+  const el=$("alSessoes"),ss=sessoesDoAluno();
+  if(!ss){el.innerHTML='<div class="al-vazio">Buscando os treinos do aluno…</div>';return;}
+  if(!ss.length){el.innerHTML='<div class="al-vazio">O aluno ainda não registrou treino. Quando ele finalizar um, aparece aqui com as cargas e o RIR de cada série.</div>';return;}
+  el.innerHTML=ss.slice(0,alSessN).map(w=>{
+    const forca=!!(w.ex&&w.ex.length),series=forca?w.ex.reduce((a,e)=>a+(e.sets||[]).length,0):0;
+    const h=[fdRotuloDia(w.d),forca?qtdTxt(w.ex.length,"exercício","exercícios"):"",forca?qtdTxt(series,"série","séries"):(w.km?`${kgTxt(w.km)} km`:"")].filter(Boolean).join(" · ");
+    const det=forca?w.ex.map(e=>`<div class="al-exn">${esc(e.n)}</div>`+(e.sets||[]).map((x,i)=>`<div class="al-serie"><span>Série ${i+1}: ${esc(serieAlunoTxt(x,e))}</span><span class="r">${x.rir!=null?`RIR ${esc(String(x.rir))}`:""}</span></div>`).join("")).join("")
+      :`<div class="fd-ex"><span class="en">${esc(w.intens||"Treino avulso, sem séries.")}</span></div>`;
+    return `<div class="fd-card" data-alss="${esc(w.id)}"><button type="button" class="fd-top" data-altog><span class="fd-ico">${forca?FD_ICO_FORCA:FD_ICO_CARDIO}</span><span class="fd-nome"><span class="n">${esc(w.name||"Treino")}</span><span class="h">${esc(h)}</span></span><svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>`
+      +`<div class="fd-stats"><div class="fd-stat"><div class="k">Duração (min)</div><div class="v">${r0(w.min||0)}</div></div><div class="fd-stat"><div class="k">RIR médio</div><div class="v">${w.rir!=null?kgTxt(w.rir):"—"}</div></div><div class="fd-stat"><div class="k">${forca?"Séries":"Distância (km)"}</div><div class="v">${forca?series:(w.km?kgTxt(w.km):"—")}</div></div></div>`
+      +`<div class="fd-mais">${det}</div></div>`;
+  }).join("")+(ss.length>alSessN?'<button type="button" class="btn secondary" id="alMais">Ver mais treinos</button>':"");
+  el.querySelectorAll("[data-altog]").forEach(b=>b.onclick=()=>b.closest(".fd-card").classList.toggle("aberto"));
+  if($("alMais"))$("alMais").onclick=()=>{alSessN+=20;renderSessoesAluno();};
+}
+function renderEvoAluno(){
+  const ss=sessoesDoAluno()||[],sel=$("alEvoEx");
+  const nomes=[];ss.forEach(w=>(w.ex||[]).forEach(e=>{if(e&&e.n&&!nomes.includes(e.n))nomes.push(e.n);}));
+  if(!nomes.length){$("alEvoCard").style.display="none";return;}
+  $("alEvoCard").style.display="";
+  const atual=nomes.includes(sel.value)?sel.value:nomes[0];
+  sel.innerHTML=nomes.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join("");
+  sel.value=atual;
+  const linhas=[];
+  ss.forEach(w=>(w.ex||[]).forEach(e=>{
+    if(e.n!==atual||!(e.sets||[]).length)return;
+    const m=melhorDe(e.sets,!!e.contra),mais=e.tipo==="corpo"&&!e.contra;
+    const melhor=e.sets.find(x=>m.un==="kg"?(x.kg||0)===m.v:m.un==="s"?(x.seg||0)===m.v:(x.rep||0)===m.v)||e.sets[0];
+    linhas.push(`<span class="d">${esc(fdRotuloDia(w.d))}</span><span class="s">${esc(serieAlunoTxt(melhor,e))}</span><span class="r">${melhor.rir!=null?`RIR ${esc(String(melhor.rir))}`:""}</span>`);
+  }));
+  $("alEvo").innerHTML=`<div class="al-evo">${linhas.slice(0,15).join("")}</div>`;
+}
+$("alEvoEx").onchange=renderEvoAluno;
+function renderPesoAluno(){
+  const a=alunoPorUid(alunoAberto),d=diarios[alunoAberto],el=$("alPeso");
+  if(!a||!a.pesos){el.innerHTML='<div class="al-txt" style="margin:0">O aluno não compartilha o peso. Só ele liga isso, no Perfil dele.</div>';return;}
+  const ps=(d&&Array.isArray(d.pesos)?d.pesos:[]).slice().sort((x,y)=>x.d<y.d?1:-1);
+  if(!ps.length){el.innerHTML='<div class="al-txt" style="margin:0">Nenhuma pesagem ainda.</div>';return;}
+  el.innerHTML=`<div class="al-evo">${ps.slice(0,12).map((p,i)=>{
+    const ant=ps[i+1],dif=ant?Math.round((p.w-ant.w)*10)/10:null;
+    return `<span class="d">${esc(fdRotuloDia(p.d))}</span><span class="s">${kgTxt(p.w)} kg</span><span class="r">${dif===null?"":(dif>0?"+":dif<0?"−":"")+(dif?kgTxt(Math.abs(dif))+" kg":"igual")}</span>`;
+  }).join("")}</div>`;
+}
+
+/* ============ LADO DO ALUNO ============ */
+
+function vincCache(){try{const v=JSON.parse(localStorage.getItem("tresults.vinculo")||"null");return v&&user&&v.uid===user.uid?v.v:null;}catch(e){return null;}}
+function guardarVinc(v){vinc=v;try{if(v)localStorage.setItem("tresults.vinculo",JSON.stringify({uid:user.uid,v}));else localStorage.removeItem("tresults.vinculo");}catch(e){}}
+function ouvirVinculo(){
+  if(!cloudEnabled||!user||ehTreinador()||vincUnsub)return;
+  vinc=vincCache();vincPrimeira=true;
+  renderPerfilTreinador();
+  const {doc,onSnapshot}=window.__fb;
+  vincUnsub=onSnapshot(doc(db,"vinculos",user.uid),s=>{
+    const antes=vinc;
+    if(s.exists()){
+      const d=s.data()||{};
+      guardarVinc({treinador:d.treinador,treinadorNome:d.treinadorNome||"Treinador",desde:d.desde||0,pesos:!!d.pesos});
+      ouvirPlano();agendarDiario();
+    }else{
+      guardarVinc(null);pararPlano();
+      /* O treinador desfez (ou desfez enquanto o celular estava sem sinal). */
+      if(antes){soltarTreinos();apagarDiarioPub();appAlert(`${antes.treinadorNome} desfez a ligação. Os protocolos que ele montou continuam com você, e agora você pode editá-los.`,"Treinador");}
+    }
+    if(vincPrimeira){vincPrimeira=false;abrirConviteDoLink();}
+    renderPerfilTreinador();
+  },()=>{});
+}
+function abrirConviteDoLink(){
+  let c="";try{c=localStorage.getItem("tresults.conviteLink")||"";localStorage.removeItem("tresults.conviteLink");}catch(e){}
+  if(c&&!vinc&&!ehTreinador())setTimeout(()=>abrirVinc(c),500);
+}
+function ouvirPlano(){
+  if(planoUnsub||!vinc||!cloudEnabled||!user)return;
+  const {doc,onSnapshot}=window.__fb;
+  planoUnsub=onSnapshot(doc(db,"planos",user.uid),s=>{
+    if(!s.exists()||!vinc)return;
+    const p=s.data()||{};
+    if(p.treinador!==vinc.treinador)return;   // plano de um treinador anterior
+    ultimoPlano=p;aplicarPlano(p);
+  },()=>{});
+}
+function pararPlano(){if(planoUnsub){try{planoUnsub();}catch(e){}planoUnsub=null;}ultimoPlano=null;}
+/* O plano vira protocolos do aluno, marcados com `treinador`: os de antes
+   saem e os de agora entram, com os mesmos ids (as sessões e a progressão
+   seguem o treino). Os protocolos do próprio aluno ficam. */
+function aplicarPlano(p){
+  const t=p.treinador,tn=(p.treinadorNome||"Treinador").slice(0,80);
+  /* Id que já é de um protocolo ou treino do próprio aluno não entra: os
+     dois se misturariam, e o do aluno viraria só de leitura. */
+  const meusP=new Set(listaProtocolos().filter(x=>!doTreinador(x.id)).map(x=>x.id).concat(PROT_PADRAO));
+  const meusW=new Set((store.tprotocol||[]).filter(w=>w&&!w.treinador).map(w=>w.id));
+  const novosP=(Array.isArray(p.tprotos)?p.tprotos:[]).filter(x=>x&&x.id&&!meusP.has(x.id)).map(x=>({id:x.id,nome:String(x.nome||"Protocolo").slice(0,PROT_NOME_MAX),treinador:t,treinadorNome:tn}));
+  const ids=new Set(novosP.map(x=>x.id));
+  const novosW=(Array.isArray(p.tprotocol)?p.tprotocol:[]).filter(w=>w&&w.id&&ids.has(w.prot)&&!meusW.has(w.id)).map(w=>Object.assign({},w,{treinador:t,protNome:(novosP.find(x=>x.id===w.prot)||{}).nome||w.protNome}));
+  const primeira=!(store.tprotos||[]).some(x=>x&&x.treinador)&&novosP.length>0;
+  if(!novosP.length&&!(store.tprotos||[]).some(x=>x&&x.treinador))return;
+  materializarProtocolos();   // o "Meu protocolo" de quem já usava o app continua na lista
+  const P=[...novosP,...store.tprotos.filter(x=>x&&!x.treinador)];
+  const W=[...(store.tprotocol||[]).filter(w=>w&&!w.treinador),...novosW];
+  if(igual(P,store.tprotos)&&igual(W,store.tprotocol))return;
+  store.tprotos=P;store.tprotocol=W;
+  if(primeira)setProtAberto(novosP[0].id);
+  save();renderTreino();
+  if(tprotoOverlay.classList.contains("open")){
+    if(!protPorId(tpProtAtual)){tprotoOverlay.classList.remove("open");}
+    else renderTpList();
+  }
+}
+/* A ligação acabou: os protocolos montados pelo treinador ficam com o
+   aluno, e passam a ser dele para editar. */
+function soltarTreinos(){
+  let mudou=false;
+  (store.tprotos||[]).forEach(p=>{if(p&&p.treinador){delete p.treinador;delete p.treinadorNome;mudou=true;}});
+  (store.tprotocol||[]).forEach(w=>{if(w&&w.treinador){delete w.treinador;mudou=true;}});
+  if(mudou){save();renderTreino();}
+}
+/* Excluir dados apaga o store inteiro. O treino que o treinador montou
+   continua sendo dele: volta logo em seguida, e o diário sobe vazio. */
+function depoisDeApagar(){if(vinc&&ultimoPlano)aplicarPlano(ultimoPlano);agendarDiario();}
+
+/* ---- O diário: o que o treinador vê ----
+   Só o que o aluno aceitou mostrar: exercícios, cargas, repetições, RIR,
+   distância do cardio, datas e duração. Sem a permissão do peso, nada que
+   o revele: nem o peso do dia, nem o corpo que contou na carga, nem as
+   calorias e o volume, que saem dele. Nem a academia. */
+function sessoesParaTreinador(comPeso){
+  const lim=diaMenos(DIARIO_DIAS),tds=store.tdays||{},out=[];
+  Object.keys(tds).filter(d=>d>=lim).sort().reverse().forEach(d=>(tds[d]||[]).forEach(w=>{
+    if(!w||!w.id)return;
+    const s={id:w.id,d,name:(w.name||"Treino").slice(0,80),min:w.min||0};
+    ["rir","intens","km","inc","ganho","tid","prot","protNome"].forEach(k=>{if(w[k]!=null&&w[k]!=="")s[k]=w[k];});
+    if(Array.isArray(w.ex)&&w.ex.length)s.ex=w.ex.map(e=>{
+      const x={n:e.n,g:e.g||"outros",tipo:tipoGravado(e,w),sets:(e.sets||[]).map(z=>{const o={kg:z.kg||0,rep:z.rep||0};if(z.rir!=null)o.rir=z.rir;if(z.seg)o.seg=z.seg;return o;})};
+      if(contraGravado(e,w))x.contra=true;
+      if(comPeso&&e.corpoKg)x.corpoKg=e.corpoKg;
+      return x;
+    });
+    if(comPeso){if(w.kcal)s.kcal=w.kcal;if(s.ex)s.vol=Math.round(volDe(w));if(w.pesoDia)s.pesoDia=w.pesoDia;}
+    out.push(s);
+  }));
+  return out.slice(0,DIARIO_MAX);
+}
+function diarioPub(){try{const p=JSON.parse(localStorage.getItem("tresults.diarioPub")||"null");return p&&user&&p.uid===user.uid?p.j:"";}catch(e){return "";}}
+function apagarDiarioPub(){try{localStorage.removeItem("tresults.diarioPub");}catch(e){}}
+function agendarDiario(){if(!vinc||!cloudEnabled||!user||ehTreinador())return;clearTimeout(diarioT);diarioT=setTimeout(publicarDiario,1500);}
+async function publicarDiario(forcar){
+  if(!vinc||!cloudEnabled||!user||ehTreinador())return;
+  const comPeso=!!vinc.pesos,lim=diaMenos(DIARIO_DIAS);
+  const corpo={aluno:user.uid,sessoes:sessoesParaTreinador(comPeso)};
+  if(comPeso)corpo.pesos=(store.weights||[]).filter(x=>x&&x.d>=lim).map(x=>({d:x.d,w:x.w}));
+  const j=JSON.stringify(corpo);
+  if(!forcar&&diarioPub()===j)return;
+  const {doc,setDoc}=window.__fb;
+  try{
+    await setDoc(doc(db,"diarios",user.uid),Object.assign({atualizado:Date.now()},corpo));
+    try{localStorage.setItem("tresults.diarioPub",JSON.stringify({uid:user.uid,j}));}catch(e){}
+  }catch(e){}
+}
+
+/* ---- Ligar-se a um treinador ---- */
+function vincMsg(m,ok){$("vincMsg").textContent=m||"";$("vincMsg").className="auth-msg"+(m?(ok?" ok":" err"):"");}
+function pintarVinc(){
+  $("vincPasso1").style.display=vincEtapa===1?"":"none";
+  $("vincPasso2").style.display=vincEtapa===2?"":"none";
+  $("vincTitulo").textContent=vincEtapa===1?"Ligar a um treinador":"Conferir antes de aceitar";
+  $("vincOk").textContent=vincEtapa===1?"Continuar":"Aceitar";
+}
+function abrirVinc(cod){
+  if(vinc||ehTreinador())return;
+  vincEtapa=1;vincConvite=null;
+  $("vincCodigo").value=(cod||"").toUpperCase();
+  $("vincPesos").checked=false;
+  vincMsg("");pintarVinc();
+  $("vincOverlay").classList.add("open");
+  if(cod)vincContinuar();
+  else setTimeout(()=>{try{$("vincCodigo").focus();}catch(e){}},220);
+}
+function fecharVinc(){$("vincOverlay").classList.remove("open");vincConvite=null;}
+async function vincContinuar(){
+  const c=$("vincCodigo").value.toUpperCase().replace(/[^A-Z0-9]/g,"");
+  $("vincCodigo").value=c;
+  if(!COD_RE.test(c))return vincMsg("O código tem 6 letras e números. Confira com o seu treinador.");
+  if(!cloudEnabled||!user)return vincMsg("Entre na sua conta para se ligar a um treinador.");
+  $("vincOk").disabled=true;
+  try{
+    const {doc,getDoc}=window.__fb;
+    const s=await getDoc(doc(db,"convites",c));
+    if(!s.exists())return vincMsg("Não achei esse código. Confira com o seu treinador: ele pode ter trocado o código.");
+    const d=s.data()||{};
+    if(d.treinador===user.uid)return vincMsg("Esse é o seu próprio código.");
+    vincConvite={codigo:c,treinador:d.treinador,nome:(d.nome||"Seu treinador").slice(0,80)};
+    $("vincNome").textContent=vincConvite.nome;
+    vincEtapa=2;vincMsg("");pintarVinc();
+  }catch(e){vincMsg("Sem sinal. Tente de novo quando a internet voltar.");}
+  finally{$("vincOk").disabled=false;}
+}
+async function vincAceitar(){
+  const v=vincConvite;if(!v)return;
+  const pesos=$("vincPesos").checked,desde=Date.now();
+  $("vincOk").disabled=true;
+  try{
+    const {doc,setDoc}=window.__fb;
+    await setDoc(doc(db,"vinculos",user.uid),{treinador:v.treinador,treinadorNome:v.nome,aluno:user.uid,alunoNome:(userName()||"Aluno").slice(0,80),codigo:v.codigo,desde,pesos});
+    guardarVinc({treinador:v.treinador,treinadorNome:v.nome,desde,pesos});
+    fecharVinc();renderPerfilTreinador();
+    ouvirPlano();publicarDiario(true);
+    appAlert(`Pronto. ${v.nome} já pode montar o seu treino: ele aparece na aba Treino.`,"Ligado ao treinador");
+  }catch(e){
+    vincMsg(e&&e.code==="permission-denied"?"O código mudou ou você já tem um treinador. Peça o código novo.":"Sem sinal. Tente de novo quando a internet voltar.");
+  }finally{$("vincOk").disabled=false;}
+}
+$("vincOk").onclick=()=>vincEtapa===1?vincContinuar():vincAceitar();
+$("vincVoltar").onclick=()=>{if(vincEtapa===2){vincEtapa=1;vincConvite=null;vincMsg("");pintarVinc();}else fecharVinc();};
+$("vincCodigo").addEventListener("keydown",e=>{if(e.key==="Enter")vincContinuar();});
+$("vincOverlay").onclick=e=>{if(e.target===$("vincOverlay"))fecharVinc();};
+
+async function mudarPesoVinc(on){
+  if(!vinc)return;
+  const {doc,updateDoc}=window.__fb;
+  try{
+    /* O vínculo antes do diário: as regras só aceitam o peso no diário
+       com a permissão já gravada; e, ao desligar, o diário sobe sem ele. */
+    await updateDoc(doc(db,"vinculos",user.uid),{pesos:on});
+    guardarVinc(Object.assign({},vinc,{pesos:on}));
+    publicarDiario(true);
+  }catch(e){appAlert("Sem sinal. Tente de novo quando a internet voltar.");}
+  renderPerfilTreinador();
+}
+async function desfazerVinculo(){
+  const v=vinc;if(!v)return;
+  if(!await appConfirm(`Desfazer a ligação com ${v.treinadorNome}? Ele deixa de ver os seus treinos. Os protocolos que ele montou continuam com você, e passam a ser seus para editar.`,{okText:"Desfazer"}))return;
+  const {doc,deleteDoc}=window.__fb;
+  try{
+    await deleteDoc(doc(db,"diarios",user.uid));
+    await deleteDoc(doc(db,"planos",user.uid));
+    guardarVinc(null);   // antes do vínculo sumir: o aviso de "ele desfez" não é para este caso
+    await deleteDoc(doc(db,"vinculos",user.uid));
+  }catch(e){if(!vinc)guardarVinc(v);return appAlert("Sem sinal. A ligação continua; tente de novo quando a internet voltar.");}
+  pararPlano();soltarTreinos();apagarDiarioPub();
+  renderPerfilTreinador();
+}
+function renderPerfilTreinador(){
+  const w=$("pfTreinWrap");if(!w)return;
+  const mostra=cloudEnabled&&!!user&&!ehTreinador();
+  w.style.display=mostra?"":"none";
+  if(!mostra)return;
+  const el=$("pfTrein");
+  if(!vinc){
+    el.innerHTML='<p>Treina com um treinador? Com o código que ele mandar, ele monta o seu treino aqui no app e acompanha as suas cargas.</p><button class="btn secondary" id="pfTreinLigar" type="button">Ligar a um treinador</button>';
+    $("pfTreinLigar").onclick=()=>abrirVinc("");
+    return;
+  }
+  el.innerHTML=`<div class="pt-nome">${esc(vinc.treinadorNome)}</div><p>Seu treinador desde ${dataDeMs(vinc.desde)}. Ele monta os seus protocolos e vê os treinos que você faz.</p>`
+    +`<label class="exog-local"><input type="checkbox" id="pfTreinPeso"${vinc.pesos?" checked":""}><span><b>Mostrar o meu peso corporal</b><em>${vinc.pesos?"Ele vê as suas pesagens.":"Ele não vê as suas pesagens."}</em></span></label>`
+    +'<button class="btn secondary al-desfazer" id="pfTreinSair" type="button">Desfazer a ligação</button>';
+  $("pfTreinPeso").onchange=e=>mudarPesoVinc(e.target.checked);
+  $("pfTreinSair").onclick=desfazerVinculo;
+}
+
 /* ---- Criar conta ----
 
    O cadastro é um pedido próprio, e não os mesmos campos do "Entrar" com outro
@@ -8140,7 +8922,26 @@ function cadRenderIdade(){
   el.className="cad-idade on"+((a<10||a>100)?" ruim":"");
 }
 
+/* Treinador ou não (#95). A conta de treinador não precisa da data de
+   nascimento: ela só serve para a conta de calorias de quem treina. */
+var cadPapel="aluno",cadPend=null;
+function pintarCadPapel(){
+  $("cadPapelSeg").querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.v===cadPapel));
+  $("cadPapelSeg").dataset.v=cadPapel;
+  $("cadPapelNota").style.display=cadPapel==="treinador"?"":"none";
+  $("cadNascWrap").style.display=cadPapel==="treinador"?"none":"";
+}
+$("cadPapelSeg").querySelectorAll("button").forEach(b=>b.onclick=()=>{cadPapel=b.dataset.v;pintarCadPapel();});
+/** O que foi digitado no cadastro, no store da conta nova. */
+function aplicarCadastro(c){
+  store.goals=store.goals||{};
+  store.goals.nome=c.nome;
+  if(c.nasc){store.goals.nasc=c.nasc;store.goals.idade=idadeDe(c.nasc);}   // a idade acompanha a data; recalculada a cada leitura
+  if(c.papel==="treinador")store.papel="treinador";
+  aplicarPapel();
+}
 function abrirCadastro(){
+  cadPapel="aluno";pintarCadPapel();
   $("cadNome").value="";$("cadNasc").value="";
   $("cadEmail").value=email();      // aproveita o que já foi escrito na entrada
   $("cadSenha").value="";
@@ -8159,29 +8960,31 @@ async function criarConta(){
   const mail=$("cadEmail").value.trim();
   const senha=$("cadSenha").value;
 
+  const trein=cadPapel==="treinador";
   if(!nome)return cadErro("Escreva seu nome completo.");
-  if(!nasc)return cadErro("Informe sua data de nascimento.");
-  const anos=idadeDe(nasc);
+  if(!trein&&!nasc)return cadErro("Informe sua data de nascimento.");
+  const anos=trein?0:idadeDe(nasc);
   /* Fora dessa faixa é quase sempre ano digitado errado, e a conta de calorias
      sairia torta sem ninguém perceber. */
-  if(anos<10||anos>100)return cadErro("Confira a data de nascimento: deu "+anos+" anos.");
+  if(!trein&&(anos<10||anos>100))return cadErro("Confira a data de nascimento: deu "+anos+" anos.");
   if(!mail)return cadErro("Informe seu e-mail.");
   if((senha||"").length<6)return cadErro("A senha precisa ter pelo menos 6 caracteres.");
 
   $("cadCriar").disabled=true;
+  /* Guardado ANTES de criar: o onAuthStateChanged da conta nova pode chegar
+     à nuvem antes da linha seguinte, e é de lá (startSync) que o cadastro
+     volta para o store novo. */
+  const pedido={nome,nasc:trein?"":nasc,papel:trein?"treinador":"aluno"};
+  cadPend=pedido;
   try{
     await window.__fb.createUserWithEmailAndPassword(auth,mail,senha);
-    /* Grava antes de a navegação acontecer: o onAuthStateChanged dispara em
-       seguida e já precisa encontrar o nome, senão manda para a tela que
-       pergunta o nome de novo. */
-    store.goals=store.goals||{};
-    store.goals.nome=nome;
-    store.goals.nasc=nasc;
-    store.goals.idade=anos;   // acompanha a data; recalculado a cada leitura
+    aplicarCadastro(pedido);
     save();fillUser();
     fecharCadastro();
     authMsg("Conta criada!",true);
+    if(trein&&user)routeAfterLogin();
   }catch(e){
+    cadPend=null;
     cadErro(mapErr(e&&e.code));
   }finally{
     $("cadCriar").disabled=false;

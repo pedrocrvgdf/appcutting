@@ -15,6 +15,7 @@ usado no celular, principalmente dentro da academia.
 |---|---|
 | Arquivos do app | `index.html` (app inteiro), `sw.js`, `manifest.json`, ícones PNG, `privacidade.html` (política de privacidade), `diag.html` (diagnóstico) |
 | Servidor | `functions/` — só o aviso de descanso por push; o app funciona sem |
+| Regras da nuvem | `firestore.rules` — o dono publica no console do Firebase; testadas no emulador por `tests-regras/` |
 | Dados importados | `dados/` (planilha oficial da TACO) e `tools/importar_taco.py`, que gera o bloco no `index.html` |
 | Build | **Não existe.** O app não é empacotado nem transpilado |
 | Publicação | GitHub Pages, a partir da branch `main` |
@@ -202,6 +203,14 @@ data de nascimento, e-mail e senha.
   perceber. A idade aparece embaixo do campo enquanto se digita.
 - O formato que o campo de data **mostra** vem do idioma do aparelho, não do
   `lang` da página; o valor é sempre ISO. Não tente "consertar" isso.
+- **O que foi digitado vai em `cadPend` antes de criar a conta**, e
+  `startSync` o devolve ao store da conta nova (`aplicarCadastro`). A conta
+  nova não tem documento na nuvem, e `startSync` troca o store por um vazio
+  quando o aparelho era de outra conta: o nome sumia, e a tela pedia de novo.
+  Os testes não pegavam porque o login falso nunca trocava de conta; hoje
+  `window.__novaConta` troca (`tests/treinador.spec.js`).
+- **"Vou treinar" / "Sou treinador"** (`#cadPapelSeg`, #95): a conta de
+  treinador não pede data de nascimento. Veja "Treinador e aluno".
 - Coberto em `tests/cadastro.spec.js`.
 
 ### Uso de exógenos: quem usa clembuterol gasta mais em repouso
@@ -647,6 +656,14 @@ sessão), aponte para ele em vez de baixar outro:
 CHROMIUM_PATH=/opt/pw-browsers/chromium npm test
 ```
 
+As regras do Firestore (`firestore.rules`) têm testes próprios, no emulador,
+com pacote separado (precisa de Java; o `firebase-tools` baixa o emulador na
+primeira vez). O CI roda os dois, no job "Regras do Firestore":
+
+```bash
+cd tests-regras && npm install && npm test
+```
+
 **Sempre rode a suíte antes de entregar.** Se você mexeu em algo que ela não
 cobre, **acrescente um teste** — foi assim que ela cresceu.
 
@@ -684,7 +701,9 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 | `tests/exogenos.spec.js` | Uso de exógenos: pop-up de riscos, clembuterol escalando pela dose com teto, efedrina, anabolizante só informação, o "+" do Início; consentimento com data, dado que não sobe para a nuvem por padrão, página de privacidade |
 | `tests/app-nativo.spec.js` | Caminho web desligado quando o app Android está presente |
 | `tests/service-worker.spec.js` | Cache do app, versão, e a página de diagnóstico |
-| `tests/app.js` | Utilitários: Firebase falso, estado inicial, atalhos de navegação |
+| `tests/treinador.spec.js` | Treinador e aluno: conta de treinador (abas, cadastro sem data, código), protocolo só do aluno aberto e plano sem a marca interna, sem sinal e a volta, séries com carga e RIR, evolução, peso só com permissão, desfazer dos dois lados, trocar e enviar o código; aluno: código e consentimento, treino só de leitura, mudança que chega, plano de outro treinador ignorado, diário sem o que não foi aceito, ligar o peso, link do convite, outra conta no celular, excluir dados; conta nova que não perde o nome; 320/390px |
+| `tests-regras/regras.test.js` | As regras do Firestore no emulador: cada conta só no próprio documento; convite com formato e dono; vínculo só pelo aluno e com convite de verdade; plano só pelo treinador ligado; diário só pelo aluno, peso só com permissão; desfeita a ligação, o acesso acaba |
+| `tests/app.js` | Utilitários: Firebase falso (com `__docs` para as coleções do treinador e do aluno), estado inicial, atalhos de navegação |
 
 Os testes carregam uma **cópia instrumentada** do `index.html` (gerada em
 `.test-app.html`, ignorada pelo git) com uma ponte `window.__t` para o escopo
@@ -711,6 +730,12 @@ Chaves usadas no armazenamento local, úteis para montar cenários:
 | `tresults.theme` | `light` / `dark` |
 | `tresults.acad` | Academia aberta neste aparelho (vazia ou excluída = a do último treino, senão a primeira) |
 | `tresults.prot` | Protocolo aberto na aba Treino neste aparelho |
+| `tresults.vinculo` | `{uid, v}`: o treinador do aluno, para abrir sem sinal (a nuvem manda) |
+| `tresults.alunos` | `{uid, lista}`: os alunos do treinador, para abrir sem sinal |
+| `tresults.publicado` | `{uid, m}`: o plano de cada aluno que a nuvem já confirmou |
+| `tresults.diarioPub` | `{uid, j}`: o diário que a nuvem já confirmou |
+| `tresults.conviteLink` | Código que chegou por link (`?convite=`), até a pessoa entrar |
+| `__docs` (testes) | Nuvem falsa dos outros caminhos: `{"vinculos/a1": {...}}` |
 
 ---
 
@@ -1398,6 +1423,110 @@ corporal."
   prescrito (`origPesoCorpo`) e o "Desfazer" a devolve.
 - **O recorde do aviso da pausa (#81) continua sendo o acrescentado.**
 - Coberto em `tests/corpo-carga.spec.js`.
+
+### Treinador e aluno (#95)
+
+O pedido: "quero que o app tenha a visão TREINADOR e ALUNO. Quero poder
+passar o treino para um aluno que vai baixar o app e editar o treino
+dele(a) e ver as cargas e as RIR e afins". Decisões do dono:
+
+- **A conta de treinador é só de treinador** (`store.papel="treinador"`,
+  escolhida no cadastro). Ela não treina: a barra fica com Alunos e Perfil
+  (`body.treinador`), o Perfil perde o objetivo e o alarme, e `showView`
+  manda para Alunos qualquer tela de quem treina. Para treinar, o
+  treinador usa outra conta.
+- **O aluno se liga por código** (6 letras e números, sem 0/O/1/I,
+  `COD_RE`), digitado no Perfil ou vindo no link `?convite=` (guardado em
+  `tresults.conviteLink` até a pessoa entrar). **Antes de aceitar, ele vê o
+  que o treinador vai ver** (`#vincOverlay`, passo 2): é o consentimento.
+- **Só o treinador edita o treino.** O aluno vê e treina, e troca exercício
+  só na sessão, como sempre.
+- **O treinador vê os treinos; o peso, só se o aluno ligar**
+  ("Mostrar também o meu peso corporal" começa **desligado**).
+
+**O treinador NUNCA escreve no documento do aluno.** O celular do aluno grava
+`users/{uid}` inteiro, sem merge, e apagaria o que ele escrevesse. Por isso há
+coleções próprias, com as regras em `firestore.rules`:
+
+| Coleção | Quem escreve | Quem lê |
+|---|---|---|
+| `convites/{codigo}` | o treinador, com o próprio uid | qualquer conta que tenha o código (ninguém lista) |
+| `vinculos/{aluno}` | o aluno cria (com convite de verdade daquele treinador) e muda só `pesos`/`alunoNome`; os dois apagam | o aluno e o treinador dele; o treinador lista os dele |
+| `planos/{aluno}` | só o treinador ligado | o aluno e o treinador |
+| `diarios/{aluno}` | só o aluno; com `pesos` só se o vínculo permite | o aluno e o treinador |
+
+**As regras são publicadas pelo dono, no console** (Firestore → Regras:
+copiar `firestore.rules` inteiro). Sem elas, a nuvem recusa tudo isso e o
+treinador vê "Não deu para criar o código agora". Elas são testadas no
+emulador (`tests-regras/`), com teste para cada coisa que precisa falhar:
+treinador lendo aluno de outro, aluno escrevendo o próprio plano, peso sem
+permissão, vínculo com convite falso. Cada afrouxamento proposital de uma
+regra derrubou um teste.
+
+**Lado do treinador:**
+
+- Os protocolos que ele monta vivem no documento **dele**, cada um com
+  `aluno` (e cada treino também). Com um aluno aberto (`alunoAberto`),
+  `listaProtocolos` mostra **só os dele**, sem o "Meu protocolo" virtual, e
+  `materializarProtocolos` só acrescenta (refazer a lista apagaria a dos
+  outros alunos). Assim o pop-up do protocolo, o editor, as sugestões, o
+  nome repetido e o PDF funcionam como sempre, um aluno por vez.
+- **Um carimbo só, no `save()`** (`carimbarAlunos`): protocolo ou treino
+  criado com um aluno aberto ganha o `aluno` dele. Cobre criar, sugestão,
+  renomear e salvar treino sem remendo em cada caminho.
+- **O plano é uma projeção** (`planoDe`), publicada em `planos/{aluno}`
+  quando muda (`publicarPlanos`, 1,2 s depois de gravar), sem `aluno` nem
+  `acads`. O que a nuvem confirmou fica em `tresults.publicado`; sem sinal,
+  sai de novo na próxima gravação, ao voltar o sinal (`online`) ou ao abrir
+  Alunos, e a tela diz "Sem sinal: vai quando a internet voltar". Aluno que
+  sai da lista tem o registro apagado: se voltar, o plano sobe de novo.
+- A tela do aluno (`#view-aluno`) mostra o treino montado, os treinos
+  feitos (o feed, com cada série, carga e RIR), a evolução por exercício (a
+  melhor série de cada vez) e o peso, se ele compartilha.
+- "Desfazer a ligação" apaga o plano **antes** do vínculo: sem o vínculo, as
+  regras não deixam mais.
+- "Excluir dados" do treinador mantém `papel` e `convite`, e avisa que os
+  alunos deixam de ter os treinos.
+
+**Lado do aluno:**
+
+- O plano chega por `onSnapshot` e vira protocolos com `treinador`
+  (`aplicarPlano`): os de antes saem, os de agora entram **com os mesmos
+  ids** (sessão, selo e progressão seguem o treino), na frente dos do aluno,
+  e o primeiro plano abre na aba Treino. Plano de outro treinador (o de
+  antes) é ignorado. Id que colide com protocolo ou treino do próprio aluno
+  (`principal`, por exemplo) não entra: os dois se misturariam.
+- **Só leitura** (`doTreinador`): na aba, "Ver" no lugar de "Editar" e "Montado
+  por X"; no pop-up, sem treino novo, editar, excluir, sugestão nem nome. O
+  protocolo do treinador não entra na cópia entre academias nem no "mover
+  treino", e a sugestão não o preenche.
+- **O diário** (`publicarDiario`, 1,5 s depois de gravar) leva o último ano
+  (`DIARIO_DIAS`, até `DIARIO_MAX` sessões): exercícios, séries (kg, reps,
+  segundos, RIR), tipo, distância do cardio, datas e duração. **Sem a
+  permissão do peso, nada que o revele**: nem `pesoDia`, nem `corpoKg`, nem
+  calorias e volume (saem do peso). **A academia nunca vai.** Existe teste
+  para cada campo. Ligar o peso grava o vínculo **antes** do diário (as
+  regras exigem).
+- Desfazer (qualquer um dos dois): os protocolos do treinador **ficam com o
+  aluno**, sem a marca, e passam a ser dele para editar. Quem desfez foi o
+  treinador: o aluno recebe um aviso.
+- "Excluir dados" do aluno: o treino do treinador volta logo (`ultimoPlano`).
+- O vínculo em cache (`tresults.vinculo`) é por conta: outra conta no
+  celular não herda o treinador da anterior.
+
+**Nomes vêm de outra pessoa** (o nome do convite, o do aluno): tudo passa por
+`esc()` ou `textContent`. Os diálogos internos usam `textContent`.
+
+`var` e `function` no bloco, e não `let`/`const`: `listaProtocolos` e
+`save()` rodam antes dele na abertura.
+
+**Nos testes, semeie antes do app** (o `abrirApp` de `treinador.spec.js`,
+como o de `sem-sinal.spec.js`). O `abrirApp` de sempre abre a página vazia,
+semeia e recarrega; a página vazia, ouvindo o vínculo, lia o `__docs`
+recém-semeado, aplicava o plano e gravava o store vazio dela por cima do
+semeado. Falhava uma vez em seis. No app de verdade essa página não existe.
+
+- Coberto em `tests/treinador.spec.js` e `tests-regras/regras.test.js`.
 
 ### Exportar o protocolo em PDF (#92)
 

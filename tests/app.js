@@ -30,6 +30,8 @@ window.__t={
   exTipo, evoData, propostaGetd, gastoBase, pesoConta, pesoNoDia, computeGETD, macroTargets, mesesTxt,
   listaProtocolos, protDoTreino, protPorId, protAberto, protAbertoAqui, protNomeDe, mesmoTreino, treinosDoProt, PROT_PADRAO, T_SUG,
   carimbarTid, raizTreino, acadsExcluidas, fracaoCorpo, tipoDe, corpoKgDe, corpoKgSessao, medidasSessao, PC_SEG,
+  publicarPlanos:()=>publicarPlanos(), publicarDiario:f=>publicarDiario(f), sessoesParaTreinador, planoDe,
+  get vinc(){return vinc}, get alunoAberto(){return alunoAberto}, ehTreinador:()=>ehTreinador(),
   appAlert, appConfirm, pausas:()=>pausas(), diasEntre, ultimoTreino, retornoDe, prDe, pausaAberta, PAUSA_AVISO_DIAS, PAUSA_QUEDA_DIAS, get trRecorde(){return trRecorde},
   EQUIP, EQUIP_ID, EX_EQUIP, EX_POR_GRUPO_: EX_POR_GRUPO, exEquip, equipFalta, equipFaltam,
   /* Trocar quem está logado, para alcançar o modo local — onde não há conta e
@@ -89,7 +91,7 @@ export function getAuth(){return {};}
 let aoMudar=null;
 export function onAuthStateChanged(a,fn){
   aoMudar=fn;
-  setTimeout(()=>fn(window.__semLogin?null:{uid:"u1",email:"teste@t-results.app"}),20);
+  setTimeout(()=>fn(window.__semLogin?null:{uid:window.__uid||"u1",email:"teste@t-results.app"}),20);
 }
 export function signInWithEmailAndPassword(a,email,senha){
   window.__logins=window.__logins||[];
@@ -102,7 +104,13 @@ export function signInWithEmailAndPassword(a,email,senha){
   if(aoMudar)setTimeout(()=>aoMudar({uid:"u1",email:email||"teste@t-results.app"}),5);
   return Promise.resolve();
 }
-export function createUserWithEmailAndPassword(){return Promise.resolve();}
+/* window.__novaConta (um uid): criar a conta entra nela, como o Firebase de
+   verdade — e a nuvem dessa conta nova não tem documento ainda. */
+export function createUserWithEmailAndPassword(a,email){
+  if(window.__contas)window.__contas.push(email);
+  if(window.__novaConta&&aoMudar){const u={uid:window.__novaConta,email};setTimeout(()=>aoMudar(u),5);}
+  return Promise.resolve();
+}
 export function signOut(){return Promise.resolve();}
 export function sendPasswordResetEmail(){return Promise.resolve();}
 export const EmailAuthProvider={credential:(email,senha)=>({email,senha})};
@@ -145,9 +153,42 @@ const temNuvem=()=>localStorage.getItem("__nuvem")!==null;
 const semRede=()=>localStorage.getItem("__semRede")==="1";
 const offline=()=>Promise.reject(Object.assign(new Error("offline"),{code:"unavailable"}));
 export function getFirestore(){return {};}
-export function doc(){return {};}
+/* O documento da conta (users/...) é o "__nuvem" de sempre. Os outros
+   caminhos (convites, vínculos, planos, diários, #95) vivem em "__docs",
+   um mapa caminho → documento, que também sobrevive a recarregar a página.
+   Os testes mexem nele direto ("o outro aparelho") e chamam
+   window.__notificar() para os ouvintes saberem. */
+export function doc(db,...partes){return {path:partes.join("/")};}
+const ehConta=r=>!r||!r.path||r.path.startsWith("users/");
+const docs=()=>JSON.parse(localStorage.getItem("__docs")||"{}");
+const gravarDocs=m=>localStorage.setItem("__docs",JSON.stringify(m));
+const snapDoc=(path,d)=>({id:path.split("/").pop(),exists:()=>d!=null,data:()=>d==null?undefined:JSON.parse(JSON.stringify(d))});
+export function collection(db,col){return {col};}
+export function where(campo,op,valor){return {campo,op,valor};}
+export function query(c,...ws){return {col:c.col,ws};}
+function consulta(q){
+  const m=docs(),out=[];
+  for(const p of Object.keys(m).sort()){
+    const [col,id,...resto]=p.split("/");
+    if(col!==q.col||resto.length)continue;
+    if((q.ws||[]).every(w=>w.op==="=="&&m[p]&&m[p][w.campo]===w.valor))out.push(snapDoc(p,m[p]));
+  }
+  return {docs:out,empty:!out.length,size:out.length,forEach:f=>out.forEach(f)};
+}
+export async function getDocs(q){if(semRede())return offline();return consulta(q);}
+let ouvintes=[];
+function avisar(){
+  ouvintes.forEach(o=>{try{o.cb(o.ref.col?consulta(o.ref):snapDoc(o.ref.path,docs()[o.ref.path]));}catch(e){}});
+}
+window.__notificar=()=>avisar();
+window.__ouvintesN=()=>ouvintes.length;
 let leituras=0;
-export async function getDoc(){
+export async function getDoc(r){
+  if(!ehConta(r)){
+    if(semRede())return offline();
+    window.__lidos=window.__lidos||[];window.__lidos.push(r.path);
+    return snapDoc(r.path,docs()[r.path]);
+  }
   if(!temNuvem())return {exists:()=>false};
   /* O documento é o do momento do pedido, como num servidor de verdade: a
      resposta que demora traz a versão de quando foi pedida. */
@@ -160,17 +201,49 @@ export async function getDoc(){
   if(semRede())return offline();
   return d?{exists:()=>true,data:()=>JSON.parse(JSON.stringify(d))}:{exists:()=>false};
 }
-export function setDoc(r,d){
+export function setDoc(r,d,op){
+  if(!ehConta(r)){
+    if(semRede())return offline();
+    const m=docs();
+    m[r.path]=op&&op.merge&&m[r.path]?Object.assign({},m[r.path],JSON.parse(JSON.stringify(d))):JSON.parse(JSON.stringify(d));
+    gravarDocs(m);
+    window.__escritos=window.__escritos||[];window.__escritos.push(r.path);
+    setTimeout(avisar,0);
+    return Promise.resolve();
+  }
   if(!temNuvem())return Promise.resolve();
   if(semRede())return offline();
   localStorage.setItem("__nuvem",JSON.stringify(d));
   localStorage.setItem("__gravacoes",String(+(localStorage.getItem("__gravacoes")||0)+1));
   return Promise.resolve();
 }
-export function deleteDoc(){return Promise.resolve();}
-/* O aviso de mudança fica em window.__aviso, para o teste disparar quando
-   quiser — inclusive atrasado. */
-export function onSnapshot(r,cb){window.__aviso=cb;return ()=>{};}
+export function updateDoc(r,parcial){
+  if(semRede())return offline();
+  const m=docs();
+  if(!m[r.path])return Promise.reject(Object.assign(new Error("não existe"),{code:"not-found"}));
+  m[r.path]=Object.assign({},m[r.path],JSON.parse(JSON.stringify(parcial)));
+  gravarDocs(m);setTimeout(avisar,0);
+  return Promise.resolve();
+}
+export function deleteDoc(r){
+  if(ehConta(r))return Promise.resolve();
+  if(semRede())return offline();
+  const m=docs();delete m[r.path];gravarDocs(m);
+  window.__apagados=window.__apagados||[];window.__apagados.push(r.path);
+  setTimeout(avisar,0);
+  return Promise.resolve();
+}
+/* O aviso de mudança do documento da conta fica em window.__aviso, para o
+   teste disparar quando quiser — inclusive atrasado. Os outros caminhos e as
+   consultas avisam sozinhos ao serem gravados daqui, e com
+   window.__notificar() quando o teste mexe em "__docs" direto. Como no
+   Firestore, o ouvinte recebe o estado atual logo ao se inscrever. */
+export function onSnapshot(r,cb){
+  if(ehConta(r)&&!r.col){window.__aviso=cb;return ()=>{};}
+  const o={ref:r,cb};ouvintes.push(o);
+  setTimeout(()=>{if(ouvintes.includes(o))try{cb(r.col?consulta(r):snapDoc(r.path,docs()[r.path]));}catch(e){}},0);
+  return ()=>{ouvintes=ouvintes.filter(x=>x!==o);};
+}
 export function serverTimestamp(){return 0;}
 /* A transação lê e grava pelo que estiver em window.__fb na hora: assim os
    testes que trocam getDoc/setDoc para simular a nuvem valem também para
