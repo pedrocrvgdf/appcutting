@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v56";
+window.APP_RELEASE = "tresults-v57";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -1932,7 +1932,7 @@ window.APP_RELEASE = "tresults-v56";
   </div>
   <section class="card al-convite" style="margin-bottom:18px">
     <div class="al-rot">Convidar aluno</div>
-    <p class="al-txt">O aluno baixa o T-RESULTS, cria a conta e, no Perfil, digita este código:</p>
+    <p class="al-txt">O convite ensina o aluno a instalar o T-RESULTS e o Obtainium, que mantém o app atualizado. Depois, no Perfil, ele digita este código:</p>
     <div class="al-codigo num" id="alCodigo">······</div>
     <p class="al-aviso" id="alCodigoMsg"></p>
     <button class="btn" id="alEnviar" type="button">Enviar convite</button>
@@ -8484,9 +8484,11 @@ function renderConvite(msg){
 }
 function textoConvite(){
   const c=store.convite;
+  /* O link leva à página do convite (#97): instalar o Obtainium, o app por
+     ele, e então o código. Quem já tem o app só precisa do código. */
   return `Oi! Sou ${userName()||"seu treinador"} e vou montar o seu treino no T-RESULTS.\n\n`
-    +`1. Abra ${APP_URL}?convite=${c} e crie a sua conta.\n`
-    +`2. No Perfil, toque em "Ligar a um treinador" e confira o código ${c}.`;
+    +`Toque no link para instalar o app e se ligar a mim:\n${APP_URL}convite.html?c=${c}\n\n`
+    +`Seu código: ${c}`;
 }
 async function enviarConvite(){
   if(!store.convite)return;

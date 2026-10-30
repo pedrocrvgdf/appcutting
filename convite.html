@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Convite · T-RESULTS</title>
+<meta name="theme-color" content="#0E7C6B">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+<!-- O convite do treinador (#97). O pedido do dono: "o link/código que eu
+     enviar deve levar o usuário a baixar o app e o Obtainium para atualizar
+     o app". Quem recebe ainda não tem nada instalado: a página põe os passos
+     em ordem, com o código à vista. No iPhone não existe APK, e o caminho é o
+     navegador, pelo ?convite= que o app já entende. -->
+<style>
+  :root{--bg:#F6F5F1;--surface:#FFFFFF;--ink:#15201D;--muted:#6B7570;--line:#E4E3DD;--primary:#0E7C6B;--primary-08:rgba(14,124,107,.10);--acao:linear-gradient(135deg,#5EE3C0,#0E7C6B)}
+  @media (prefers-color-scheme:dark){:root{--bg:#121715;--surface:#1A211E;--ink:#E9EFEC;--muted:#8FA39A;--line:#29332F;--primary:#2FB39A;--primary-08:rgba(47,179,154,.16)}}
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:Sora,system-ui,sans-serif;font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:520px;margin:0 auto;padding:22px 16px calc(32px + env(safe-area-inset-bottom))}
+  .marca{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .marca img{width:40px;height:40px;border-radius:12px}
+  .eyebrow{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--primary)}
+  h1{font-size:24px;line-height:1.25;margin:0 0 6px;font-weight:800}
+  .sub{color:var(--muted);margin:0 0 18px}
+  .card{background:var(--surface);border-radius:22px;padding:18px;box-shadow:0 0 0 1px var(--line);margin-bottom:14px}
+  .rot{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  .codigo{font-size:34px;font-weight:800;letter-spacing:.18em;text-align:center;padding:12px 0;margin:8px 0 10px;border-radius:16px;background:var(--bg);box-shadow:inset 0 0 0 1px var(--line);-webkit-user-select:all;user-select:all}
+  h2{font-size:17px;margin:0 0 10px;font-weight:800}
+  ol{margin:0;padding:0;list-style:none;counter-reset:passo}
+  li{position:relative;padding:0 0 16px 40px;counter-increment:passo}
+  li:last-child{padding-bottom:0}
+  li::before{content:counter(passo);position:absolute;left:0;top:0;width:28px;height:28px;border-radius:10px;background:var(--primary-08);color:var(--primary);font-weight:800;display:flex;align-items:center;justify-content:center;font-size:14px}
+  li b{display:block;margin-bottom:2px}
+  .nota{display:block;color:var(--muted);font-size:13px;margin-top:8px}
+  .btn,.sec{display:flex;align-items:center;justify-content:center;text-align:center;width:100%;min-height:48px;margin-top:10px;padding:10px 14px;border:0;border-radius:16px;font:inherit;font-weight:700;font-size:15px;text-decoration:none;cursor:pointer;transition:transform .08s ease}
+  .btn{background:var(--acao);color:#fff}
+  .sec{background:var(--surface);color:var(--ink);box-shadow:0 0 0 1px var(--line)}
+  .btn:active,.sec:active{transform:scale(.97)}
+  code{font-family:ui-monospace,"SF Mono","Roboto Mono",Menlo,monospace;font-size:12.5px;background:var(--bg);padding:3px 7px;border-radius:8px;overflow-wrap:anywhere}
+  .end{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-top:6px}
+  .nw{white-space:nowrap}
+  .link{border:0;background:none;color:var(--primary);font:inherit;font-weight:700;font-size:13px;padding:0 0 0 4px;cursor:pointer;text-decoration:underline}
+  .aviso{background:var(--primary-08);border-radius:16px;padding:12px 14px;font-weight:600;color:var(--primary);margin-bottom:14px}
+  .rodape{color:var(--muted);font-size:13px;margin:6px 2px 0}
+  a{color:var(--primary)}
+  @media (prefers-reduced-motion:reduce){.btn,.sec{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="marca"><img src="icon-192.png" alt=""><span class="eyebrow">True Results</span></div>
+  <h1>Seu treinador montou um lugar para o seu treino</h1>
+  <p class="sub">Instale o T-RESULTS e ligue a sua conta ao treinador. Ele monta o seu treino no app, e você treina com ele no celular.</p>
+
+  <div class="card" id="codigoCard">
+    <div class="rot">Seu código</div>
+    <div class="codigo" id="codigo">······</div>
+    <button class="sec" id="copiar" type="button">Copiar o código</button>
+    <span class="nota" id="copiado" aria-live="polite"></span>
+  </div>
+  <div class="aviso" id="semCodigo" hidden>Peça o código ao seu treinador: ele aparece na tela "Alunos" do app dele.</div>
+
+  <section class="card" id="android">
+    <h2>No Android</h2>
+    <ol>
+      <li><b>Instale o Obtainium.</b>É ele que instala o T-RESULTS e o mantém atualizado, sem passar pela loja.
+        <a class="sec" id="baixarObtainium" href="https://github.com/ImranR98/Obtainium/releases/latest">Baixar o Obtainium</a>
+        <span class="nota">Na página, baixe o arquivo .apk com "arm64" no nome (serve para quase todo celular) e abra para instalar. Se o Android pedir, permita instalar apps do navegador.</span></li>
+      <li><b>Adicione o T-RESULTS no Obtainium.</b>
+        <a class="btn" id="obtainium" href="obtainium://add/https://github.com/pedrocrvgdf/appcutting">Adicionar no Obtainium</a>
+        <span class="nota">Toque em "Adicionar" e depois em "Instalar". Se ele perguntar qual pacote, escolha <b class="nw" style="display:inline">app-release.apk</b>.</span>
+        <span class="nota">O botão não abriu o Obtainium? Abra-o, toque em "+" e cole o endereço:
+          <span class="end"><code id="endereco">github.com/pedrocrvgdf/appcutting</code><button class="link" id="copiarEnd" type="button">copiar</button></span></span></li>
+      <li><b>Abra o T-RESULTS e crie a sua conta.</b>Depois, no <b style="display:inline">Perfil</b>, toque em "Ligar a um treinador" e digite o código.</li>
+    </ol>
+  </section>
+
+  <section class="card" id="iphone">
+    <h2 id="iphoneTit">No iPhone, ou sem instalar nada</h2>
+    <p style="margin:0">O app para Android não existe no iPhone: use pelo navegador. Abra o link, crie a sua conta, e o pedido de ligação ao treinador já vem com o código. Para ter o ícone na tela, toque em Compartilhar e em "Adicionar à Tela de Início".</p>
+    <a class="btn" id="web" href="./">Abrir no navegador</a>
+  </section>
+
+  <p class="rodape">O treinador vê os treinos que você fizer, e o seu peso só se você deixar. Saiba mais em <a href="privacidade.html">Privacidade e seus dados</a>.</p>
+</div>
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id);};
+  /* O mesmo formato que o app e as regras da nuvem aceitam: 6 letras e
+     números, sem 0/O/1/I. Outra coisa no link não aparece na tela. */
+  var c="";
+  try{c=(new URLSearchParams(location.search).get("c")||"").toUpperCase().replace(/[^A-Z0-9]/g,"");}catch(e){}
+  if(/^[A-HJ-NP-Z2-9]{6}$/.test(c)){
+    $("codigo").textContent=c;
+    $("web").href="./?convite="+c;
+  }else{
+    $("codigoCard").hidden=true;
+    $("semCodigo").hidden=false;
+  }
+  /* No iPhone, o caminho do navegador vem primeiro. */
+  var ios=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+  if(ios){var a=$("android");a.parentNode.insertBefore($("iphone"),a);$("iphoneTit").textContent="No iPhone";}
+  function copiar(txt,onde,ok){
+    var falhou=function(){onde.textContent="Toque e segure para copiar.";};
+    try{navigator.clipboard.writeText(txt).then(function(){onde.textContent=ok;},falhou);}catch(e){falhou();}
+  }
+  $("copiar").onclick=function(){copiar(c,$("copiado"),"Código copiado.");};
+  $("copiarEnd").onclick=function(){copiar("https://github.com/pedrocrvgdf/appcutting",$("copiarEnd"),"copiado");};
+})();
+</script>
+</body>
+</html>

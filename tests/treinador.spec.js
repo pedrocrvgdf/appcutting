@@ -276,7 +276,8 @@ test.describe('Treinador', () => {
     await clicar(page, '#alEnviar');
     await page.waitForTimeout(100);
     const t = await page.evaluate(() => window.__compartilhado.text);
-    expect(t).toContain('https://pedrocrvgdf.github.io/appcutting/?convite=ABC234');
+    expect(t, 'o link leva à página que ensina a instalar o app e o Obtainium (#97)').toContain('https://pedrocrvgdf.github.io/appcutting/convite.html?c=ABC234');
+    expect(t).toContain('Seu código: ABC234');
     expect(t).toContain('Carla');
   });
 
