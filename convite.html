@@ -71,9 +71,10 @@
         <span class="nota">Na página, baixe o arquivo .apk com "arm64" no nome (serve para quase todo celular) e abra para instalar. Se o Android pedir, permita instalar apps do navegador.</span></li>
       <li><b>Adicione o T-RESULTS no Obtainium.</b>
         <a class="btn" id="obtainium" href="obtainium://add/https://github.com/pedrocrvgdf/appcutting">Adicionar no Obtainium</a>
-        <span class="nota">Toque em "Adicionar" e depois em "Instalar". Se ele perguntar qual pacote, escolha <b class="nw" style="display:inline">app-release.apk</b>.</span>
+        <span class="nota">O Obtainium pede para confirmar o T-RESULTS: confirme e, na tela dele, toque em "Instalar". Ele já vem configurado para se atualizar sozinho.</span>
         <span class="nota">O botão não abriu o Obtainium? Abra-o, toque em "+" e cole o endereço:
-          <span class="end"><code id="endereco">github.com/pedrocrvgdf/appcutting</code><button class="link" id="copiarEnd" type="button">copiar</button></span></span></li>
+          <span class="end"><code id="endereco">github.com/pedrocrvgdf/appcutting</code><button class="link" id="copiarEnd" type="button">copiar</button></span>
+          Por esse caminho, se ele perguntar qual pacote, escolha <b class="nw" style="display:inline">app-release.apk</b>.</span></li>
       <li><b>Abra o T-RESULTS e crie a sua conta.</b>Depois, no <b style="display:inline">Perfil</b>, toque em "Ligar a um treinador" e digite o código.</li>
     </ol>
   </section>
@@ -100,6 +101,20 @@
     $("codigoCard").hidden=true;
     $("semCodigo").hidden=false;
   }
+  /* Adicionar no Obtainium já configurado (#100), no formato do catálogo
+     oficial dele (apps.obtainium.imranr.dev; a wiki, em "Deep Links").
+     O filtro deixa só o app-release.apk: a versão publicada traz também o
+     código-fonte (.zip e .tar.gz), e com mais de um candidato o Obtainium
+     pergunta qual instalar e, pela wiki ("App Sources"), não atualiza
+     sozinho em segundo plano. O id é o pacote do APK, para ele reconhecer
+     o app instalado. Sem JavaScript, fica o obtainium://add/ do HTML. */
+  var cfg={id:"com.pedrocrvgdf.tresults",url:"https://github.com/pedrocrvgdf/appcutting",author:"pedrocrvgdf",name:"T-RESULTS",preferredApkIndex:0,
+    additionalSettings:JSON.stringify({includePrereleases:false,fallbackToOlderReleases:true,filterReleaseTitlesByRegEx:"",filterReleaseNotesByRegEx:"",
+      verifyLatestTag:false,dontSortReleasesList:false,useLatestAssetDateAsReleaseDate:false,trackOnly:false,versionExtractionRegEx:"",matchGroupToUse:"",
+      versionDetection:false,releaseDateAsVersion:false,useVersionCodeAsOSVersion:false,apkFilterRegEx:"app-release\\.apk$",invertAPKFilter:false,
+      autoApkFilterByArch:true,appName:"T-RESULTS",exemptFromBackgroundUpdates:false,skipUpdateNotifications:false,
+      about:"Dieta e treino. O treino pode vir montado pelo seu treinador.",appAuthor:"pedrocrvgdf"})};
+  $("obtainium").href="obtainium://app/"+encodeURIComponent(JSON.stringify(cfg));
   /* No iPhone, o caminho do navegador vem primeiro. */
   var ios=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
   if(ios){var a=$("android");a.parentNode.insertBefore($("iphone"),a);$("iphoneTit").textContent="No iPhone";}
