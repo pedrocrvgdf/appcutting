@@ -639,6 +639,42 @@ horário, embaixo do anel de água (`renderLiqHist`).
   mesmo defeito ao contrário. Se você tirar o esmaecido, tire também a rolagem,
   ou ninguém descobre que há mais.
 
+### A sequência: "5 de 7 dias na meta" (#85)
+
+Antes, a sequência era de dias seguidos com déficit de 90% do planejado, sem
+limite de cima: comer 500 kcal num dia de cutting contava como meta batida, e
+um dia sem lançamento zerava semanas de esforço.
+
+- **A conta é por semana do calendário**, de segunda a domingo (a mesma do
+  "Déficit da semana"): ela conta com `SEQ_DIAS` (5) dias na meta, e a
+  sequência é de semanas seguidas (`sequencia`, `semanaSeq`). Os 5 de 7 são
+  **regra do app, não ciência**. A semana de agora entra quando fecha os 5,
+  e enquanto não fecha não quebra nada.
+- **No cutting, dia com menos que o piso lançado não conta** (`diaSeq` →
+  `"abaixo"`): 1.200 kcal para mulheres e 1.500 para homens (e sem sexo
+  informado), o mínimo seguro que a prévia do objetivo já usa (`pisoKcal`).
+  Vale sempre, mesmo quando a meta do dia fica abaixo dele (plano agressivo,
+  GETD baixo digitado à mão), e a tela explica. O texto é um fato, "menos de
+  1.500 kcal lançadas": quase sempre é registro incompleto, não fome.
+- **Hoje nunca é falha**: o dia ainda está correndo (`"hoje"`). Isso também
+  corrige o bulking, que zerava a sequência durante o dia.
+- O lado de cima continua o de antes (até a meta + 10% do déficit
+  planejado), e **o bulking continua sem teto**: comer 6.000 kcal conta.
+  Fica anotado; mudar é decisão do dono.
+- **Só a sequência muda.** "Déficit da semana" e "Acúmulo do mês" são balanço
+  de energia, e o déficit daquele dia aconteceu: o dia abaixo do piso só é
+  marcado nas barras (cor de alerta, e uma linha embaixo) e no Histórico.
+  Existe teste que confere a soma.
+- **Onde aparece:** na Alimentação (`#streakLine`: "3 de 7 nesta semana", um
+  ponto por dia e as semanas seguidas embaixo) e no Início (`#fdSeq`, antes
+  dos atalhos, em duas linhas, com o toque abrindo o Progresso). Em 320 px,
+  numa linha só, o texto saía cortado no meio de "meta".
+- **Mudar o prazo, o alvo ou o objetivo rejulga os dias que passaram**: o
+  déficit planejado não é guardado por dia (o `getdHist` guarda o GETD e a
+  base). As barras e o mês já se comportam assim. Guardar seria mexer no
+  formato do histórico, na mescla e nos aparelhos com versão anterior.
+- Coberto em `tests/sequencia.spec.js` (com o relógio fixo num sábado).
+
 ### A aba Início e o feed
 
 O Início é a tela de entrada (`showView("inicio")`). Ele reúne três coisas:
@@ -730,6 +766,7 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 | `tests/alarme.spec.js` | Volume e ausência de distorção do alarme de descanso |
 | `tests/sentry.spec.js` | Configuração do monitoramento, limpeza de dados pessoais, app abrindo sem a Sentry |
 | `tests/alarme-descanso.spec.js` | Tela do alarme, interrupção da música, insistência, permissão |
+| `tests/sequencia.spec.js` | Sequência por semana: 5 de 7, dia vazio que não zera, piso de 1.500/1.200 no cutting, hoje nunca é falha, semana atual, bulking sem piso nem teto; Alimentação, Início abrindo o Progresso, nota da meta abaixo do piso, marca nas barras e no Histórico com a soma igual; 320/390px |
 | `tests/tendencia.spec.js` | Tendência do peso: conta com o intervalo descontado, recomeço no peso de partida; "No ritmo" para quem está no plano apesar do atraso, "Atrasado"/"Adiantado", dia inchado, sem veredito com menos de 3 em 14 dias; "desde o início do plano", prazo e previsão; vírgula; 320/390px; o cartão "Atualizar/Manter" pela tendência |
 | `tests/descanso.spec.js` | Descanso da sessão: continua ao avançar, voltar, trocar e desfazer, com o nome do exercício; "−15 s"/"+30 s" sem redesenhar, pular no fim, teto de 1 h, só este descanso; push do último toque e em fila; Android reagendado e cancelado ao finalizar; app descartado; sugestões em 90 s; 320/390px |
 | `tests/abertura.spec.js` | Splash, avisos de espera, instalação como app |

@@ -619,12 +619,30 @@ window.APP_RELEASE = "tresults-v58";
   .macroleg b{color:var(--ink);font-family:var(--mono);font-weight:700}
   .macroleg s{margin-left:auto;text-decoration:none;font-family:var(--mono)}
   #streakLine{margin:0 2px 10px}
-  .streak-pill{display:inline-flex;align-items:center;gap:7px;background:var(--surface);border:0;border-radius:999px;padding:6px 14px 6px 10px;box-shadow:var(--sombra-sm)}
-  .streak-pill .sn{color:var(--primary)}
-  .streak-pill svg{width:16px;height:19px;flex:none}
-  .streak-pill .sn{font-family:var(--mono);font-weight:800;font-size:14px;color:var(--ink)}
-  .streak-pill .st{font-size:12px;font-weight:700;color:var(--muted)}
-  .streak-pill.cold .sn{color:var(--muted)}
+  /* Sequência por semana (#85): o número, "de 7 nesta semana" e um ponto por
+     dia, de segunda a domingo. */
+  .seq-pill{display:inline-flex;align-items:center;gap:7px;max-width:100%;background:var(--surface);border:0;border-radius:999px;padding:6px 14px 6px 10px;box-shadow:var(--sombra-sm)}
+  .seq-pill svg{width:16px;height:19px;flex:none}
+  .seq-pill .sn{font-family:var(--mono);font-weight:800;font-size:14px;color:var(--ink)}
+  .seq-pill .st{font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap}
+  .seq-pill.cold .sn{color:var(--muted)}
+  .wk-abaixo{display:block;margin-top:6px;color:var(--warn);font-weight:700}
+  .h-abaixo{color:var(--warn);font-weight:700}
+  .seq-sub{font-size:11.5px;font-weight:600;color:var(--muted);margin:5px 4px 0;line-height:1.45}
+  .seq-dots{display:inline-flex;gap:3px;flex:none;margin-left:2px}
+  .seq-dots i{width:8px;height:8px;border-radius:50%;background:var(--line);display:block}
+  .seq-dots i.sq-meta{background:var(--primary)}
+  .seq-dots i.sq-abaixo{background:transparent;box-shadow:inset 0 0 0 2px var(--warn)}
+  .seq-dots i.sq-hoje{background:transparent;box-shadow:inset 0 0 0 2px var(--primary)}
+  .seq-dots i.sq-futuro{opacity:.45}
+  .fd-seq{height:auto;min-height:46px;padding-top:8px;padding-bottom:8px}
+  .fd-seq .fd-seq-ico{flex:none;display:flex}
+  .fd-seq .fd-seq-ico svg{width:16px;height:19px;stroke:none}
+  .fd-seq .fd-seq-txt{display:flex;flex-direction:column;gap:3px;white-space:normal;overflow:visible}
+  .fd-seq .fd-seq-txt>span{flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .fd-seq .fd-seq-l2{display:flex;align-items:center;gap:8px}
+  .fd-seq #fdSeqPts,.fd-seq #fdSeqSub{flex:none}
+  .fd-seq #fdSeqSub{font-size:12px;font-weight:600;color:var(--muted)}
   .ins-svg{width:100%;height:auto;display:block;overflow:visible}
   .cap-label{font-size:10px;fill:var(--muted);font-weight:700}
   .wt-pt{font-size:9.5px;font-weight:800;fill:var(--ink);font-family:var(--mono)}
@@ -1653,6 +1671,12 @@ window.APP_RELEASE = "tresults-v58";
        parada; tocar abre a pausa, com "Voltei a treinar hoje". -->
   <div id="fdPausas"></div>
   <div class="ajuste-meta" id="fdAjuste" hidden></div>
+  <!-- Sequência da semana (#85): "5 de 7 dias na meta". Abre o Progresso. -->
+  <button class="fd-passos fd-seq" id="fdSeq" type="button" hidden>
+    <span class="fd-seq-ico" id="fdSeqIco" aria-hidden="true"></span>
+    <span class="fd-seq-txt"><span id="fdSeqTx"></span><span class="fd-seq-l2"><span id="fdSeqPts"></span><span id="fdSeqSub"></span></span></span>
+    <svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
+  </button>
 
   <div class="fd-atalhos">
     <button class="fd-atalho" id="fdIrProgresso">
@@ -3707,6 +3731,7 @@ function renderInicio(){
 
   renderFdPassos();
   renderFdPeso();
+  renderFdSeq(t);
   renderFdPausa();
 
   /* --- feed --- */
@@ -3857,6 +3882,10 @@ document.querySelectorAll("[data-volta]").forEach(b=>b.onclick=()=>showView(b.da
    tinha ficado aberto lá. */
 if($("fdDia"))$("fdDia").onclick=()=>{viewKey=todayKey();showView("food");};
 if($("fdIrProgresso"))$("fdIrProgresso").onclick=()=>showView("progresso");
+if($("fdSeq"))$("fdSeq").onclick=()=>{
+  showView("progresso");
+  const w=$("weekBars");if(w)setTimeout(()=>{try{w.closest(".ins-card").scrollIntoView({block:"center",behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});}catch(e){}},60);
+};
 if($("fdIrTreino"))$("fdIrTreino").onclick=()=>showView("treino");
 if($("ssFechar"))$("ssFechar").onclick=fecharSessao;
 /* Uma série em texto: carga × reps, só reps (peso do corpo) ou segundos.
@@ -9810,18 +9839,101 @@ function renderMacros(){
       <div><i style="background:var(--mg)"></i>Gordura <b>${kgTxt(m.g)}g</b> <s>${Math.round(pg)}%</s></div>
     </div>`;
 }
+/* ---- Sequência (#85) ----
+   Antes: dias seguidos com déficit de 90% do planejado, sem limite de cima.
+   Comer 500 kcal num dia de cutting contava como meta batida, e um dia sem
+   lançamento zerava semanas de esforço.
+
+   Agora a conta é por SEMANA do calendário (segunda a domingo, a mesma do
+   "Déficit da semana"): ela conta com SEQ_DIAS (5) dias na meta, e a
+   sequência é de semanas seguidas. Os 5 de 7 são regra do app, não ciência.
+   - No cutting, dia com menos que o piso lançado não conta: 1.200 kcal para
+     mulheres e 1.500 para homens (e sem sexo informado), o mesmo mínimo
+     seguro que a prévia do objetivo já usa. Vale sempre, mesmo quando a
+     meta do dia fica abaixo dele, e a tela explica. O texto é um fato
+     ("menos de 1.500 kcal lançadas"), porque quase sempre é registro
+     incompleto, não fome.
+   - Hoje nunca é falha: o dia ainda está correndo.
+   - O lado de cima continua o de antes (até a meta + 10% do déficit), e o
+     bulking continua sem teto.
+   - Só a sequência muda. "Déficit da semana" e "Acúmulo do mês" são balanço
+     de energia, e o déficit daquele dia aconteceu: o dia abaixo do piso só
+     é marcado lá.
+   - Mudar o prazo, o alvo ou o objetivo rejulga os dias que passaram (o
+     déficit planejado não é guardado por dia), como as barras e o mês. */
+const SEQ_DIAS=5,PISO_F=1200,PISO_M=1500;
+function pisoKcal(){return (store.goals||{}).sexo==="F"?PISO_F:PISO_M;}
+function diaSeq(t,dk){
+  const hoje=todayKey();
+  if(dk>hoje)return "futuro";
+  const log=hasLog(dk);
+  const naMeta=log&&t.daily>0&&Math.min(dayMetric(t,dk),t.daily)/t.daily>=0.9;
+  const abaixo=t.mode!=="bulking"&&log&&consumedKcal(dk)<pisoKcal();
+  if(naMeta&&!abaixo)return "meta";
+  if(dk===hoje)return "hoje";
+  if(abaixo)return "abaixo";
+  return log?"fora":"vazio";
+}
+function semanaSeq(t,mon){
+  const dias=[];
+  for(let i=0;i<7;i++){const dk=keyOf(addDays(mon,i));dias.push({dk,s:diaSeq(t,dk)});}
+  return {dias,n:dias.filter(x=>x.s==="meta").length};
+}
+/* A semana de agora conta na sequência quando já fechou os 5; enquanto não
+   fecha, ela não quebra nada: ainda há dias pela frente. */
+function sequencia(t){
+  const mon=weekStartMon(new Date()),atual=semanaSeq(t,mon);
+  let seguidas=atual.n>=SEQ_DIAS?1:0;
+  for(let w=1;w<520;w++){if(semanaSeq(t,addDays(mon,-7*w)).n>=SEQ_DIAS)seguidas++;else break;}
+  return {atual,seguidas};
+}
+const SEQ_DIA_PT=["seg","ter","qua","qui","sex","sáb","dom"];
+function seqDiaTxt(s){
+  return s==="meta"?"na meta":s==="abaixo"?`menos de ${nPt(pisoKcal())} kcal lançadas`:s==="hoje"?"hoje, ainda contando":s==="futuro"?"ainda não chegou":s==="fora"?"fora da meta":"sem lançamento";
+}
+function seqPontos(sem){
+  return `<span class="seq-dots" aria-hidden="true">${sem.dias.map((x,i)=>`<i class="sq-${x.s}" title="${SEQ_DIA_PT[i]}: ${seqDiaTxt(x.s)}"></i>`).join("")}</span>`;
+}
+function seqChama(hot){
+  return hot
+    ?`<svg viewBox="0 0 100 110"><defs><linearGradient id="fg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFB300"/><stop offset=".55" stop-color="#F97316"/><stop offset="1" stop-color="#EA3D0C"/></linearGradient></defs><path fill="url(#fg2)" d="M50 4c3 16 15 23 22 38 8 16 6 36-6 49-9 10-24 13-35 6C18 89 13 74 18 58c4-12 12-18 17-28 3 8 8 11 12 12-3-14 0-28 3-38z"/><path fill="#FFD54F" d="M50 58c7 8 12 14 12 24 0 11-6 19-12 19s-12-8-12-19c0-10 5-16 12-24z"/></svg>`
+    :`<svg viewBox="0 0 100 110"><path fill="#C9D0CC" d="M50 4c3 16 15 23 22 38 8 16 6 36-6 49-9 10-24 13-35 6C18 89 13 74 18 58c4-12 12-18 17-28 3 8 8 11 12 12-3-14 0-28 3-38z"/><path fill="#E4E9E6" d="M50 58c7 8 12 14 12 24 0 11-6 19-12 19s-12-8-12-19c0-10 5-16 12-24z"/></svg>`;
+}
+/* O que a sequência diz, em texto: o mesmo na Alimentação e no Início. */
+function seqResumo(t){
+  const q=sequencia(t),n=q.atual.n,y=q.seguidas;
+  const semTxt=y>0?`${y} ${y===1?"semana seguida":"semanas seguidas"}`:`a semana conta com ${SEQ_DIAS} dias na meta`;
+  /* O piso vale mesmo quando a meta fica abaixo dele: a tela explica. */
+  let nota="";
+  if(t.mode!=="bulking"){
+    const meta=goalMeta(t,todayKey()),piso=pisoKcal();
+    if(meta>0&&meta<piso)nota=`Sua meta de hoje (${nPt(meta)}) fica abaixo do mínimo que o app usa (${nPt(piso)}): dia com menos de ${nPt(piso)} kcal lançadas não conta na sequência.`;
+  }
+  return {q,n,y,semTxt,nota,hot:n>0||y>0,
+    aria:`${n} de 7 dias na meta nesta semana; ${semTxt}. `+q.atual.dias.map((x,i)=>`${SEQ_DIA_PT[i]}: ${seqDiaTxt(x.s)}`).join(", ")};
+}
 function renderStreak(t){
   const el=$("streakLine");if(!el)return;
   if(!t||!t.configured||store.getd<=0){el.innerHTML="";return;}
-  const onTarget=dk=>hasLog(dk)&&t.daily>0&&Math.min(dayMetric(t,dk),t.daily)/t.daily>=0.9;
-  let streak=0,d=new Date();
-  if(!hasLog(keyOf(d)))d=addDays(d,-1);
-  for(let i=0;i<400;i++){const dk=keyOf(d);if(onTarget(dk)){streak++;d=addDays(d,-1);}else break;}
-  const hot=streak>0;
-  const flame=hot
-    ?`<svg viewBox="0 0 100 110"><defs><linearGradient id="fg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFB300"/><stop offset=".55" stop-color="#F97316"/><stop offset="1" stop-color="#EA3D0C"/></linearGradient></defs><path fill="url(#fg2)" d="M50 4c3 16 15 23 22 38 8 16 6 36-6 49-9 10-24 13-35 6C18 89 13 74 18 58c4-12 12-18 17-28 3 8 8 11 12 12-3-14 0-28 3-38z"/><path fill="#FFD54F" d="M50 58c7 8 12 14 12 24 0 11-6 19-12 19s-12-8-12-19c0-10 5-16 12-24z"/></svg>`
-    :`<svg viewBox="0 0 100 110"><path fill="#C9D0CC" d="M50 4c3 16 15 23 22 38 8 16 6 36-6 49-9 10-24 13-35 6C18 89 13 74 18 58c4-12 12-18 17-28 3 8 8 11 12 12-3-14 0-28 3-38z"/><path fill="#E4E9E6" d="M50 58c7 8 12 14 12 24 0 11-6 19-12 19s-12-8-12-19c0-10 5-16 12-24z"/></svg>`;
-  el.innerHTML=`<span class="streak-pill${hot?"":" cold"}" title="Dias seguidos batendo a meta">${flame}<span class="sn">${streak}</span><span class="st">${streak===1?"dia":"dias"} de sequência</span></span>`;
+  const r=seqResumo(t);
+  el.innerHTML=`<div class="seq-pill${r.hot?"":" cold"}" role="img" aria-label="${esc(r.aria)}">${seqChama(r.hot)}<span class="sn">${r.n}</span><span class="st">de 7 nesta semana</span>${seqPontos(r.q.atual)}</div>`
+    +`<div class="seq-sub">${r.semTxt}${r.nota?`<br>${r.nota}`:""}</div>`;
+}
+/* No Início, uma linha como a dos passos e a do peso; o toque abre o
+   Progresso, onde estão as barras da mesma semana. */
+function renderFdSeq(t){
+  const el=$("fdSeq");if(!el)return;
+  if(!t||!t.configured||store.getd<=0){el.hidden=true;return;}
+  const r=seqResumo(t);
+  el.hidden=false;
+  el.setAttribute("aria-label",r.aria+". Toque para ver a semana no Progresso.");
+  /* Duas linhas: em 320 px, "3 de 7 dias na meta nesta semana · 2 semanas
+     seguidas" numa linha só saía cortado no meio de "meta". Os sete pontos,
+     de segunda a domingo, já dizem que é a semana. */
+  $("fdSeqTx").innerHTML=`<b>${r.n} de 7</b> dias na meta`;
+  $("fdSeqPts").innerHTML=seqPontos(r.q.atual);
+  $("fdSeqSub").textContent=r.y>0?r.semTxt:`a semana fecha com ${SEQ_DIAS}`;
+  $("fdSeqIco").innerHTML=seqChama(r.hot);
 }
 let wtView="30";
 function renderWeight(){
@@ -10019,7 +10131,7 @@ function renderGoals(){
     const mon=weekStartMon(dateFromKey(viewKey));let wd=0;
     const diasPt=["seg","ter","qua","qui","sex","sáb","dom"];
     const todayK=todayKey();const now=new Date();now.setHours(23,59,59,0);
-    let barsHtml="",daysLeft=0;
+    let barsHtml="",daysLeft=0;const abaixoN=[];
     for(let i=0;i<7;i++){
       const dk=keyOf(addDays(mon,i));
       const logged=hasLog(dk);
@@ -10028,8 +10140,11 @@ function renderGoals(){
       const pct=t.daily>0?Math.min(100,v/t.daily*100):0;
       const isToday=dk===todayK;
       if(isToday||dateFromKey(dk)>now)daysLeft++;
-      const col=isToday?"var(--primary);opacity:.55":(logged?"var(--primary)":"var(--line)");
-      barsHtml+='<div class="wb"><div class="wbcol"><span style="height:'+(logged?Math.max(8,pct):8)+'%;background:'+col+'"></span></div><div class="wbl'+(isToday?" on":"")+'">'+diasPt[i]+"</div></div>";
+      /* Dia com menos que o piso lançado (#85): marcado, mas a soma não muda
+         — o déficit daquele dia aconteceu. Só a sequência não o conta. */
+      const abaixo=diaSeq(t,dk)==="abaixo";if(abaixo)abaixoN.push(diasPt[i]);
+      const col=isToday?"var(--primary);opacity:.55":abaixo?"var(--warn);opacity:.6":(logged?"var(--primary)":"var(--line)");
+      barsHtml+='<div class="wb'+(abaixo?" abaixo":"")+'"'+(abaixo?' title="menos de '+nPt(pisoKcal())+' kcal lançadas"':"")+'><div class="wbcol"><span style="height:'+(logged?Math.max(8,pct):8)+'%;background:'+col+'"></span></div><div class="wbl'+(isToday?" on":"")+'">'+diasPt[i]+"</div></div>";
     }
     if($("weekBars"))$("weekBars").innerHTML=barsHtml;
     $("weekDefVal").textContent=r0(wd)+" / "+r0(t.weekly)+" kcal";
@@ -10038,6 +10153,7 @@ function renderGoals(){
       if(restW<=0)$("weekHint").innerHTML="Meta da semana batida! 🎉";
       else if(daysLeft>0)$("weekHint").innerHTML="Faltam <b>"+r0(restW)+" kcal</b> de "+(bulking?"superávit":"déficit")+" até domingo — ≈ <b>"+r0(restW/daysLeft)+"</b>/dia nos próximos "+daysLeft+(daysLeft===1?" dia.":" dias.");
       else $("weekHint").innerHTML="Semana encerrada — "+(bulking?"superávit":"déficit")+" acumulado de <b>"+r0(wd)+" kcal</b>.";
+      if(abaixoN.length)$("weekHint").innerHTML+=`<span class="wk-abaixo">${listaTxt(abaixoN)}: menos de ${nPt(pisoKcal())} kcal lançadas. Entra no déficit, mas não conta na sequência.</span>`;
     }
     const ym=viewKey.slice(0,7);let md=0;
     Object.keys(store.days).forEach(dk=>{if(dk.slice(0,7)===ym&&hasLog(dk))md+=dcap(dk);});
@@ -10896,7 +11012,8 @@ function openHist(){
     const kc=consumedKcal(k),d=dateFromKey(k);
     const lbl=dias[d.getDay()]+" "+String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0");
     let sub=`${(store.days[k]||[]).filter(i=>i.status==="consumido").length} itens`;
-    if(store.getd>0&&t.configured){const m=Math.min(dayMetric(t,k),t.daily);sub+=` · ${t.mode==="bulking"?"superávit":"déficit"} ${r0(m)} kcal`;}
+    if(store.getd>0&&t.configured){const m=Math.min(dayMetric(t,k),t.daily);sub+=` · ${t.mode==="bulking"?"superávit":"déficit"} ${r0(m)} kcal`;
+      if(diaSeq(t,k)==="abaixo")sub+=` · <span class="h-abaixo">menos de ${nPt(pisoKcal())} kcal lançadas</span>`;}
     return `<button class="hist-row" data-k="${k}"><div><div class="hn">${lbl}${k===todayKey()?" · hoje":""}</div><div class="hs">${sub}</div></div><span class="hk">${r0(kc)} kcal</span></button>`;
   }).join(""):'<div class="proto-empty" style="margin-bottom:12px">Nenhum dia registrado ainda.</div>';
   $("histList").querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{viewKey=b.dataset.k;histOverlay.classList.remove("open");afterDayChange();});
