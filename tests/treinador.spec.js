@@ -30,11 +30,12 @@ async function abrirApp(page, storage) {
   await isolarRede(page.context());
   const erros = coletarErros(page);
   await page.addInitScript(s => {
-    if (sessionStorage.getItem('__semeado') || window.name === '__semeado') return;
+    /* A marca de "já semeado" mora no armazenamento local, junto com o
+       estado semeado (veja sem-sinal.spec.js, #98). */
+    if (localStorage.getItem('__semeado')) return;
     localStorage.clear();
     for (const k in s) localStorage.setItem(k, s[k]);
-    sessionStorage.setItem('__semeado', '1');
-    window.name = '__semeado';
+    localStorage.setItem('__semeado', '1');
   }, storage);
   await page.goto(urlApp());
   await page.waitForFunction(() => !!window.__t, null, { timeout: 15000 });

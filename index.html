@@ -653,6 +653,7 @@ window.APP_RELEASE = "tresults-v58";
   .wt-pace{font-size:12.5px;font-weight:700;margin:-2px 0 8px;line-height:1.45}
   /* Embaixo dos números da curva (#84): a legenda, a última pesagem e a
      previsão pela tendência. */
+  .pf-espaco{margin:0 4px 12px;padding:10px 12px;border-radius:16px;background:var(--surface);box-shadow:0 0 0 1px var(--line);font-size:12.5px;line-height:1.5;color:var(--warn)}
   .wt-nota{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:8px;font-size:12px;color:var(--muted);line-height:1.45}
   .wt-nota b{color:var(--ink)}
   .wt-leg{display:inline-flex;align-items:center;gap:5px;font-weight:700}
@@ -1959,6 +1960,7 @@ window.APP_RELEASE = "tresults-v58";
     </div>
   </div>
 
+  <p class="pf-espaco" id="pfEspaco" hidden></p>
   <div class="card" style="padding:4px">
     <button class="pf-row" id="pfTheme"><svg id="themeMoon2" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg><span id="themeLbl2">Modo escuro</span></button>
     <a class="pf-row" id="pfPriv" href="privacidade.html"><svg viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/></svg><span>Privacidade e seus dados</span><svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></a>
@@ -3537,7 +3539,85 @@ const setOwner=uid=>localStorage.setItem(OWNER_KEY,uid||"");
 /* Toda gravação marca que este aparelho tem algo que a nuvem ainda não tem
    (marcarPendente, na seção da nuvem). É a marca que impede a próxima
    abertura de trocar o que foi lançado sem sinal pela versão da nuvem. */
-function save(){if(ehTreinador())carimbarAlunos();localStorage.setItem(KEY,JSON.stringify(store));if(!applyingRemote){marcarPendente();pushRemote(false);aposSalvar();}}
+function save(){if(ehTreinador())carimbarAlunos();guardarLocal();if(!applyingRemote){marcarPendente();pushRemote(false);aposSalvar();}}
+/* ---- Armazenamento cheio (#87) ----
+   Sem espaço no aparelho, o setItem lança erro, e o save() parava no meio:
+   quem o chamou não terminava (o treino finalizado não redesenhava, a nuvem
+   não recebia). Agora o lançamento continua na memória e sobe para a nuvem;
+   só que, se o app fechar sem sinal, ele se perde, e a pessoa precisa saber:
+   um aviso por abertura e a linha no Perfil. Antes de desistir, o app solta
+   o que é só cópia: a base da mescla (sem ela, a mescla junta tudo, que é o
+   lado seguro) e o rastro do diagnóstico. */
+let semEspaco=false,avisouEspaco=false;
+function guardarLocal(){
+  const txt=JSON.stringify(store);
+  try{localStorage.setItem(KEY,txt);}
+  catch(e){
+    try{localStorage.removeItem("cutting.base");localStorage.removeItem("tresults.rastro");localStorage.setItem(KEY,txt);}
+    catch(_){
+      semEspaco=true;pintarEspaco();
+      if(!avisouEspaco){avisouEspaco=true;
+        appAlert(cloudEnabled&&user
+          ?"O espaço do app neste celular acabou, e o que você lançou não ficou guardado no aparelho. Com sinal, ele sobe para a sua conta. Sem sinal, se o app fechar, ele se perde."
+          :"O espaço do app neste celular acabou, e o que você lançou não ficou guardado no aparelho. Sem conta, se o app fechar, ele se perde.",
+          "Sem espaço no aparelho");}
+      return false;
+    }
+  }
+  if(semEspaco){semEspaco=false;pintarEspaco();}
+  return true;
+}
+/* ---- O tamanho do documento na nuvem (#87) ----
+   O Firestore recusa documento acima de 1 MiB, e o app grava tudo num
+   documento só: a falha seria calada, e o que fosse lançado depois nunca
+   subiria. O app mede o documento a cada gravação, pelas regras de tamanho
+   da documentação do Firestore (texto: bytes em UTF-8 + 1; número e data:
+   8; verdadeiro/falso e nulo: 1; lista e mapa: a soma, com o nome de cada
+   campo como texto; documento: o nome + 32). A página oficial não abre
+   desta sessão; as regras foram conferidas no README do pacote
+   firestore-size, que as transcreve. A partir de NUVEM_AVISO, uma linha no
+   Perfil diz quanto falta, e o Sentry recebe só a faixa, uma vez por
+   abertura. Sem pop-up: a pessoa não tem o que fazer; quem tem é o dono do
+   app, dividindo o documento. */
+const NUVEM_MAX=1048576,NUVEM_AVISO=700*1024;
+let nuvemBytes=0,avisouTamanho=false;
+function bytesUtf8(t){let n=0;for(let i=0;i<t.length;i++){const c=t.charCodeAt(i);if(c<0x80)n++;else if(c<0x800)n+=2;else if(c>=0xD800&&c<0xDC00){n+=4;i++;}else n+=3;}return n;}
+function tamanhoFs(v){
+  if(v===null||v===undefined)return 1;
+  if(typeof v==="string")return bytesUtf8(v)+1;
+  if(typeof v==="number")return 8;
+  if(typeof v==="boolean")return 1;
+  if(Array.isArray(v)){let t=0;for(const x of v)t+=tamanhoFs(x);return t;}
+  if(typeof v==="object"){
+    if(typeof v.toMillis==="function")return 8;   // Timestamp
+    let t=0;for(const k in v){if(v[k]===undefined)continue;t+=bytesUtf8(k)+1+tamanhoFs(v[k]);}
+    return t;
+  }
+  return 0;
+}
+/* users/{uid}: "users" e o uid, +1 cada, +16; mais os 32 do documento e as
+   marcas de quem gravou e quando. */
+function tamanhoDoc(uid,M){return (6+bytesUtf8(uid||"")+1+16)+32+tamanhoFs(Object.assign({},M,{writer:DEVICE}))+("updatedAt".length+1+8);}
+function medirNuvem(uid,M){
+  nuvemBytes=tamanhoDoc(uid,M);
+  if(nuvemBytes>=NUVEM_AVISO&&!avisouTamanho){
+    avisouTamanho=true;
+    const faixa=Math.floor(nuvemBytes/1024/100)*100;
+    try{if(window.Sentry&&Sentry.captureMessage)Sentry.captureMessage(`Documento na nuvem: ${faixa}–${faixa+100} KB`);}catch(_){}
+  }
+  pintarEspaco();
+}
+function pintarEspaco(){
+  const el=$("pfEspaco");if(!el)return;
+  const kb=Math.round(nuvemBytes/1024);
+  const linhas=[];
+  if(semEspaco)linhas.push(`<b>Sem espaço neste aparelho.</b> O que você lança só fica salvo depois de subir para a nuvem${cloudEnabled&&user?"":", e sem conta não sobe"}.`);
+  if(nuvemBytes>=NUVEM_AVISO)linhas.push(nuvemBytes>NUVEM_MAX
+    ?`<b>Seus dados na nuvem: ${nPt(kb)} KB de ${nPt(NUVEM_MAX/1024)} KB.</b> Passou do limite: o que for lançado agora fica só neste aparelho.`
+    :`<b>Seus dados na nuvem: ${nPt(kb)} KB de ${nPt(NUVEM_MAX/1024)} KB.</b> Perto do limite.`);
+  el.hidden=!linhas.length;
+  el.innerHTML=linhas.join("<br>");
+}
 function dayItems(){const k=viewKey;if(!store.days[k])store.days[k]=[];return store.days[k];}
 
 const MEALS=[["cafe","Café da manhã"],["almoco","Almoço"],["lanche","Lanche"],["jantar","Jantar"],["ceia","Ceia"],["outros","Outros"]];
@@ -7998,8 +8078,18 @@ async function startSync(){
       sincronizar();
     },()=>setSyncDot("err","Erro de conexão"));
     if(!pendente())setSyncDot("ok","Sincronizado");
-  }catch(e){ setSyncDot("err","Erro ao carregar"); }
+  }catch(e){
+    setSyncDot("err","Erro ao carregar");
+    /* A nuvem recusou a LEITURA, e não por falta de sinal: quase sempre é a
+       regra do Firestore (permission-denied). A pessoa fica na abertura
+       com "Conexão lenta", e nada chegava ao dono. O Sentry recebe só o
+       código, uma vez por abertura, como a recusa de gravação. */
+    const code=(e&&e.code)||"";
+    const semSinal=navigator.onLine===false||code==="unavailable"||code==="deadline-exceeded";
+    if(!semSinal&&!avisouLeitura){avisouLeitura=true;try{if(window.Sentry&&Sentry.captureMessage)Sentry.captureMessage("Nuvem recusou a leitura: "+(code||"sem código"));}catch(_){}}
+  }
 }
+var avisouLeitura=false;   // var: startSync pode rodar antes desta linha
 function stopSync(){ if(unsub){unsub();unsub=null;} pararPapel(); }
 /* O uso de exógenos é dado de saúde sensível (LGPD, art. 5º e 11), e pode
    sugerir conduta ilícita. Por padrão ele fica só no aparelho: a nuvem recebe o
@@ -8387,6 +8477,7 @@ async function sincronizarAgora(uid){
       const snap=await tx.get(ref);
       const R=snap.exists()?semMeta(snap.data()):null;
       M=(!R||(pend&&p.substituir))?L:(pend?mesclar(B,L,R):R);
+      medirNuvem(uid,M);   // medido antes de gravar: a recusa por tamanho não fica calada
       gravou=!R||!igual(M,R);
       if(gravou)tx.set(ref,Object.assign({},M,{writer:DEVICE,updatedAt:serverTimestamp()}));
     });
@@ -9320,8 +9411,10 @@ function renderDrop(){
   clearTimeout(offAutoT);
   if(!q){closeDrop();return;}
   currentResults=buscaAlimentos(raw,localList(),8);hlIndex=-1;offResults=[];
+  /* A Open Food Facts pede para não buscar a cada tecla (#87): a busca
+     sozinha espera OFF_ESPERA depois da última, e o Enter busca na hora. */
   if(currentResults.length<OFF_MIN&&raw.length>=3){
-    offAutoT=setTimeout(()=>{ if(search.value.trim()===raw&&!manualMode&&!picked)offSearch(raw); },700);
+    offAutoT=setTimeout(()=>{ if(search.value.trim()===raw&&!manualMode&&!picked)offSearch(raw,true); },OFF_ESPERA);
   }
   pintarDrop(raw.length>=2?linhaOff(raw):"");
 }
@@ -9387,55 +9480,73 @@ function fetchJSONone(u,ms){
   });
 }
 const offCache=new Map();
-async function offFetch(q){
+/* ---- Quantos pedidos vão à Open Food Facts (#87) ----
+   O serviço limita as buscas por minuto e pede para não buscar a cada
+   tecla. Antes, cada frase disparava dois pedidos em paralelo e, sem
+   resposta, mais dois de reserva, um deles por um proxy de terceiro
+   (api.allorigins.win) que a política de privacidade não citava e que
+   estava fora do ar. Agora:
+   - um corredor por vez, em CASCATA: o cgi primeiro (o único com CORS
+     aberto quando responde), o search-a-licious se ele falhar. O que falha
+     fica de fora por OFF_FORA_MS (10 min), e o regime normal é 1 pedido
+     por frase;
+   - o mundo só entra se o Brasil respondeu, e respondeu vazio;
+   - no máximo OFF_POR_MIN (8) pedidos por minuto, abaixo dos 10 por IP da
+     documentação deles. A busca sozinha para em silêncio quando estoura; o
+     toque explica quanto falta;
+   - o proxy saiu.
+   Cada pedido deixa no rastro do diag.html o corredor e o resultado (nunca
+   o que a pessoa digitou): é por ele que se vê, no celular, se a busca chega. */
+const OFF_ESPERA=1200,OFF_POR_MIN=8,OFF_FORA_MS=10*60*1000,OFF_TIMEOUT=7000;
+let offPedidos=[];
+const offFora={};
+function offLivre(){const ag=Date.now();offPedidos=offPedidos.filter(t=>ag-t<60000);return offPedidos.length<OFF_POR_MIN;}
+function offEsperaS(){return offPedidos.length?Math.max(1,Math.ceil((offPedidos[0]+60000-Date.now())/1000)):0;}
+async function offFetch(q,forcar){
   if(offCache.has(q))return offCache.get(q);
   const enc=encodeURIComponent(q);
   const FIELDS="product_name,product_name_pt,brands,quantity,nutriments,countries_tags";
-  /* Corrida em paralelo: responde quem chegar primeiro com resultados. Os dois
-     corredores pedem produto do BRASIL: sem o filtro, "picanha" devolvia
-     hambúrguer importado e "salmão" um produto só; com ele, picanha de
-     verdade e 30 coxinhas em vez de 9. A busca mundial (A) virou reserva,
-     junto com o proxy: só entra se o Brasil não responder nada. */
-  const ABr=`https://search.openfoodfacts.org/search?q=${encodeURIComponent(q+' countries_tags:"en:brazil"')}&langs=pt,main&page_size=50&fields=${FIELDS}`;
-  const A=`https://search.openfoodfacts.org/search?q=${enc}&langs=pt,main&page_size=40&fields=${FIELDS}`;
-  const B=`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${enc}&search_simple=1&action=process&json=1&page_size=24&cc=br&lc=pt&fields=${FIELDS}`;
-  const C="https://api.allorigins.win/raw?url="+encodeURIComponent(B);
+  /* Os dois pedem produto do BRASIL primeiro: sem o filtro, "picanha"
+     devolvia hambúrguer importado e "salmão" um produto só. */
+  const CORREDORES=[
+    {id:"cgi",
+     br:`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${enc}&search_simple=1&action=process&json=1&page_size=24&cc=br&lc=pt&fields=${FIELDS}`,
+     mundo:`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${enc}&search_simple=1&action=process&json=1&page_size=24&lc=pt&fields=${FIELDS}`},
+    {id:"sal",
+     br:`https://search.openfoodfacts.org/search?q=${encodeURIComponent(q+' countries_tags:"en:brazil"')}&langs=pt,main&page_size=50&fields=${FIELDS}`,
+     mundo:`https://search.openfoodfacts.org/search?q=${enc}&langs=pt,main&page_size=40&fields=${FIELDS}`},
+  ];
   const hitsOf=d=>(d&&(d.hits||d.products))||[];
-  const hits=await new Promise((resolve,reject)=>{
-    let feito=false,pend=0,vazio=false,reservaTentada=false;
-    const fim=h=>{if(!feito){feito=true;resolve(h);}};
-    /* A reserva (mundo + proxy) não corre junto: entra se os diretos demoram
-       3,5 s ou assim que os dois terminam sem nada — sem esperar o relógio
-       com a pessoa olhando "Buscando…". O proxy, em especial, não entra se já
-       houve resposta: seria mandar o que a pessoa digitou a um terceiro sem
-       necessidade. */
-    const abrirReserva=()=>{if(feito||reservaTentada)return;reservaTentada=true;vazio=false;acompanhar(fetchJSONone(A,9000));acompanhar(fetchJSONone(C,9000));};
-    function acompanhar(p){
-      pend++;
-      p.then(d=>{
-        const h=hitsOf(d);
-        if(h.length)return fim(h);
-        vazio=true;
-        if(--pend!==0)return;
-        if(!reservaTentada)return abrirReserva();   // Brasil vazio: tenta o mundo
-        fim([]);
-      }).catch(()=>{
-        if(--pend!==0)return;
-        if(!reservaTentada)return abrirReserva();
-        vazio?fim([]):(feito||reject(new Error("all failed")));
-      });
+  for(const fase of ["br","mundo"]){
+    let resp=null;
+    for(const c of CORREDORES){
+      /* O toque da pessoa tenta também o que estava de fora: a rede pode ter
+         voltado. A busca sozinha respeita os 10 minutos. */
+      if(!forcar&&(offFora[c.id]||0)>Date.now())continue;
+      if(!offLivre()){const e=new Error("limite");e.limite=true;throw e;}
+      offPedidos.push(Date.now());
+      try{
+        resp=hitsOf(await fetchJSONone(c[fase],OFF_TIMEOUT));
+        delete offFora[c.id];
+        rastro(`internet: ${c.id} ${fase} ok, ${resp.length}`);
+        break;
+      }catch(e){
+        offFora[c.id]=Date.now()+OFF_FORA_MS;
+        rastro(`internet: ${c.id} ${fase} falhou (${String((e&&e.message)||e).slice(0,24)})`);
+      }
     }
-    acompanhar(fetchJSONone(ABr,9000));
-    acompanhar(fetchJSONone(B,9000));
-    setTimeout(abrirReserva,3500);
-  });
-  if(hits.length)offCache.set(q,hits);
-  return hits;
+    if(resp===null)throw new Error("all failed");   // nenhum corredor respondeu
+    if(resp.length){offCache.set(q,resp);return resp;}
+  }
+  return [];
 }
-async function offSearch(q){
+async function offSearch(q,sozinha){
+  /* A busca sozinha que estoura o limite some em silêncio: a linha de
+     buscar continua ali, e o toque explica quanto falta. */
+  if(sozinha&&!offLivre()&&!offCache.has(q)){rastro("internet: limite por minuto");return;}
   pintarDrop(`<div class="opt empty">Buscando "${esc(q)}" na internet…</div>`);
   try{
-    const hits=await offFetch(q);
+    const hits=await offFetch(q,!sozinha);
     if(search.value.trim()!==q)return;          // a pessoa já digitou outra coisa
     const locais=new Set(currentResults.map(f=>norm(f.n)));
     offResults=ordenarOff(hits,q).filter(f=>!locais.has(norm(f.n))).slice(0,15);
@@ -9445,6 +9556,12 @@ async function offSearch(q){
     }
     pintarDrop(offResults.map((f,idx)=>`<div class="opt" data-offidx="${idx}"><span class="n">${esc(f.n)}</span><span class="m">${f.k} kcal · P${f.p} C${f.c} G${f.g} /100g 🌐</span></div>`).join(""));
   }catch(e){
+    if(search.value.trim()!==q)return;
+    if(e&&e.limite){
+      if(sozinha){pintarDrop(linhaOff(q));return;}
+      pintarDrop(`<div class="opt empty">Muitas buscas na internet em pouco tempo. Tente de novo em ${offEsperaS()} s.</div>`);
+      return;
+    }
     pintarDrop(`<div class="opt empty">Não consegui buscar online agora (sem conexão ou serviço indisponível). Tente de novo em instantes.</div>`);
   }
 }
@@ -9459,6 +9576,8 @@ search.addEventListener("keydown",e=>{
   if(e.key==="ArrowDown"){e.preventDefault();hlIndex=Math.min(opts.length-1,hlIndex+1);paint(opts);}
   else if(e.key==="ArrowUp"){e.preventDefault();hlIndex=Math.max(0,hlIndex-1);paint(opts);}
   else if(e.key==="Enter"&&hlIndex>-1){e.preventDefault();selectFood(currentResults[hlIndex]);}
+  /* Enter sem nada escolhido busca na internet na hora, sem esperar. */
+  else if(e.key==="Enter"&&search.value.trim().length>=2&&!manualMode&&!picked){e.preventDefault();clearTimeout(offAutoT);offSearch(search.value.trim());}
 });
 function paint(opts){opts.forEach((o,i)=>o.classList.toggle("hl",i===hlIndex));}
 function closeDrop(){drop.classList.remove("open");drop.innerHTML="";}

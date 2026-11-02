@@ -28,16 +28,16 @@ async function abrir(page, { aparelho, nuvem, base, pendente, extra = {} }) {
   await page.addInitScript(s => {
     /* O sinal volta só na página NOVA: a velha, ao sair, tenta enviar e
        falha, como acontece com a página que o Android descarta sem sinal. */
-    if (sessionStorage.getItem('__ligarRede')) { localStorage.removeItem('__semRede'); sessionStorage.removeItem('__ligarRede'); }
-    /* Semeado uma vez só. A marca fica em dois lugares: numa rodada da suíte
-       com a máquina cheia, a reabertura chegou a semear de novo (o aparelho
-       voltou ao estado inicial, sem o lançado sem sinal nem o que veio da
-       nuvem), o que só pode ser o semeador. window.name sobrevive ao reload. */
-    if (sessionStorage.getItem('__semeado') || window.name === '__semeado') return;
+    if (localStorage.getItem('__ligarNaProxima')) { localStorage.removeItem('__semRede'); localStorage.removeItem('__ligarNaProxima'); }
+    /* Semeado uma vez só. As duas marcas vivem no armazenamento local, junto
+       com o estado que o teste semeou: elas existem exatamente enquanto ele
+       existe. Antes viviam no sessionStorage (e no window.name), e numa
+       rodada com a máquina cheia a página recarregada não as via: a
+       reabertura semeava de novo, ou o sinal não voltava (#98). */
+    if (localStorage.getItem('__semeado')) return;
     localStorage.clear();
     for (const k in s) localStorage.setItem(k, s[k]);
-    sessionStorage.setItem('__semeado', '1');
-    window.name = '__semeado';
+    localStorage.setItem('__semeado', '1');
   }, s);
   await page.goto(urlApp());
   await page.waitForFunction(() => !!window.__t, null, { timeout: 15000 });
@@ -52,7 +52,7 @@ const reabrir = async page => {
 /** Sem sinal, o Android descarta a página; depois o app abre com sinal. */
 const reabrirComSinal = async page => {
   expect(await page.evaluate(() => localStorage.getItem('__semRede')), 'o cenário começa sem sinal').toBe('1');
-  await page.evaluate(() => sessionStorage.setItem('__ligarRede', '1'));
+  await page.evaluate(() => localStorage.setItem('__ligarNaProxima', '1'));
   await reabrir(page);
   expect(await page.evaluate(() => localStorage.getItem('__semRede'))).toBeNull();
 };

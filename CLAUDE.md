@@ -481,8 +481,8 @@ causas, e nenhuma era o tamanho do banco.
   duas cópias do `includes`; consertar uma e esquecer a outra é como o defeito
   volta.
 - **A internet entra sozinha quando o banco responde pouco** (menos de
-  `OFF_MIN` nomes, hoje 3), 700 ms depois de a pessoa parar de digitar
-  (`offAutoT`). "Linguiça" tinha um nome só no banco e o dono concluía que o
+  `OFF_MIN` nomes, hoje 3), `OFF_ESPERA` (1,2 s) depois de a pessoa parar
+  de digitar (`offAutoT`); o Enter busca na hora. "Linguiça" tinha um nome só no banco e o dono concluía que o
   app "não acha linguiça". O que vem de fora entra **embaixo** do que é local
   (`pintarDrop` redesenha os dois), sem repetir nome; com o banco vazio a
   lista vira só internet. Com resposta farta a internet **não** é consultada
@@ -494,16 +494,34 @@ causas, e nenhuma era o tamanho do banco.
   justamente os rótulos brasileiros. **Os dois corredores pedem produto do
   Brasil** (`countries_tags:"en:brazil"` no search-a-licious, `cc=br` no
   cgi): sem o filtro, "picanha" devolvia hambúrguer importado e "salmão" um
-  produto só; com ele, 30 coxinhas em vez de 9. A busca mundial é
-  **reserva**, junto com o proxy (`api.allorigins.win`): entram se os
-  diretos demoram 3,5 s ou assim que os dois terminam sem nada. O proxy não
-  entra se já houve resposta — seria mandar o que a pessoa digitou a um
-  terceiro sem necessidade. Produto do Brasil vem antes (`ordenarOff`), e **o
+  produto só; com ele, 30 coxinhas em vez de 9. Produto do Brasil vem antes (`ordenarOff`), e **o
   que não tem nenhuma palavra da pergunta no nome nem na marca sai da lista**
   (o serviço casa por ingrediente: "banana" trazia barra de proteína), desde
   que sobre alguma coisa que tenha. **Cuidado nos testes:** a lista de
   campos da URL também contém `countries_tags`; quem distingue o pedido do
   Brasil é o trecho com o valor.
+- **Um pedido por vez, e poucos** (#87). O serviço limita as buscas por
+  minuto e pede para não buscar a cada tecla, e cada frase disparava até
+  quatro pedidos (dois em paralelo e dois de reserva). Hoje (`offFetch`):
+  - **cascata**, um corredor por vez: o cgi primeiro (o único com CORS
+    aberto quando responde), o search-a-licious se ele falhar. **O que falha
+    fica de fora por `OFF_FORA_MS` (10 min)**; o toque da pessoa tenta de
+    novo mesmo assim, porque a rede pode ter voltado. O regime normal é **1
+    pedido por frase**;
+  - **o mundo só entra se o Brasil respondeu, e respondeu vazio**;
+  - no máximo **`OFF_POR_MIN` (8) pedidos por minuto**, abaixo dos 10 por
+    IP da documentação deles. A busca sozinha que estoura **some calada**
+    (a linha de buscar continua ali), também no meio da cascata; o toque
+    diz quanto falta ("Tente de novo em 23 s");
+  - **o proxy `api.allorigins.win` saiu**: mandava o que a pessoa digita a
+    um terceiro que a política de privacidade não citava, e estava fora do
+    ar. A política agora diz que o texto da busca vai à Open Food Facts.
+  - **Cada pedido deixa no rastro** o corredor, a fase e o resultado
+    ("internet: cgi br ok, 12", "internet: cgi br falhou (HTTP 503)"),
+    nunca o que foi digitado. É o caminho A combinado com o dono: medir pelo
+    `diag.html`, no celular, se a busca chega, antes de decidir levá-la para
+    uma função em `functions/` (caminho B). O dono também preenche o
+    formulário de uso da API da Open Food Facts.
 - **A TACO está no banco local** (`const TACO`, 591 alimentos, por 100 g):
   Tabela Brasileira de Composição de Alimentos, 4ª edição, NEPA/UNICAMP,
   2011. É ela que cobre a comida genérica e o prato pronto que a internet
@@ -767,6 +785,7 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 | `tests/sentry.spec.js` | Configuração do monitoramento, limpeza de dados pessoais, app abrindo sem a Sentry |
 | `tests/alarme-descanso.spec.js` | Tela do alarme, interrupção da música, insistência, permissão |
 | `tests/sequencia.spec.js` | Sequência por semana: 5 de 7, dia vazio que não zera, piso de 1.500/1.200 no cutting, hoje nunca é falha, semana atual, bulking sem piso nem teto; Alimentação, Início abrindo o Progresso, nota da meta abaixo do piso, marca nas barras e no Histórico com a soma igual; 320/390px |
+| `tests/bastidor.spec.js` | Open Food Facts: um pedido por frase, sem o proxy; 1,2 s de espera e o Enter na hora; mesma frase sem pedido; o mundo só com o Brasil vazio; corredor caído fora por 10 min; 8 por minuto, calado na busca sozinha e explicado no toque; rastro sem o texto; política de privacidade. Nuvem: regras de tamanho, aviso no Perfil acima de 700 KB e a faixa no Sentry uma vez. Aparelho sem espaço: o lançamento segue, um aviso, a linha no Perfil, e solta a cópia antes. Leitura recusada na abertura: o código ao Sentry, e nada sem sinal |
 | `tests/tendencia.spec.js` | Tendência do peso: conta com o intervalo descontado, recomeço no peso de partida; "No ritmo" para quem está no plano apesar do atraso, "Atrasado"/"Adiantado", dia inchado, sem veredito com menos de 3 em 14 dias; "desde o início do plano", prazo e previsão; vírgula; 320/390px; o cartão "Atualizar/Manter" pela tendência |
 | `tests/descanso.spec.js` | Descanso da sessão: continua ao avançar, voltar, trocar e desfazer, com o nome do exercício; "−15 s"/"+30 s" sem redesenhar, pular no fim, teto de 1 h, só este descanso; push do último toque e em fila; Android reagendado e cancelado ao finalizar; app descartado; sugestões em 90 s; 320/390px |
 | `tests/abertura.spec.js` | Splash, avisos de espera, instalação como app |
@@ -1243,6 +1262,32 @@ grava por cima às cegas. Três regras saem disso, e cada uma tem teste em
 - **O histórico de líquidos (`liqLog`) sobe.** Antes ele ficava só no
   aparelho, e o `store` remontado pela nuvem o apagava a cada abertura do app.
 
+### O tamanho do documento, e o aparelho sem espaço (#87)
+
+- **O Firestore recusa documento acima de 1 MiB** (`NUVEM_MAX`), e o app
+  grava tudo num documento só: a recusa seria calada, e o que fosse lançado
+  depois nunca subiria. **A transação mede o documento antes de gravar**
+  (`medirNuvem`, `tamanhoDoc`, `tamanhoFs`), pelas regras de tamanho da
+  documentação do Firestore: texto, bytes em UTF-8 + 1; número e data, 8;
+  verdadeiro/falso e nulo, 1; lista e mapa, a soma, com o nome de cada campo
+  contado como texto; documento, o nome + 32. A página oficial não abre da
+  sessão: as regras foram conferidas no README do pacote `firestore-size`,
+  que as transcreve. Confira lá quando puder.
+- A partir de `NUVEM_AVISO` (700 KB), **uma linha no Perfil** (`#pfEspaco`):
+  "Seus dados na nuvem: 712 KB de 1.024 KB. Perto do limite." **Sem pop-up**:
+  a pessoa não tem o que fazer. O **Sentry recebe só a faixa** ("700–800
+  KB"), uma vez por abertura. Na estimativa do roteiro, uso completo chega a
+  1 MiB em 5 a 9 meses: a medição real decide quando começar a "dividir a
+  nuvem por mês" (perto de 500 KB).
+- **Sem espaço no aparelho, o `save()` parava no meio** (o `setItem` lança):
+  quem o chamou não terminava, e a nuvem não recebia. Hoje `guardarLocal`
+  segura o erro. Antes de desistir, solta o que é só cópia: a base da mescla
+  (sem ela a mescla junta tudo, o lado seguro) e o rastro. Se nem assim
+  couber, o lançamento continua na memória e sobe para a nuvem, e a pessoa
+  sabe: **um aviso por abertura** e a linha no Perfil, que some quando volta
+  a caber.
+- Coberto em `tests/bastidor.spec.js`.
+
 ### Nada do que foi lançado sem sinal se perde
 
 O caso que motivou: treino finalizado no subsolo da academia, sem sinal. O app
@@ -1338,15 +1383,21 @@ Como as peças se encaixam:
 - **Outra conta entrando descarta a marca e a base da anterior**
   (`limparSync`), junto com o treino em andamento.
 - Recusa que não é falta de sinal (documento grande demais, permissão) manda
-  ao Sentry **só o código do erro**, uma vez por abertura.
+  ao Sentry **só o código do erro**, uma vez por abertura. **A leitura da
+  abertura também** (#87): uma regra do Firestore que recusa a leitura deixa
+  a pessoa na abertura com "Conexão lenta", e antes nada chegava ao dono.
 - **O que ainda não resolve:** abrir o app **sem sinal** continua parado na
   abertura (a tela espera o `getDoc`); é a ideia "Abrir na hora", que muda
   uma regra desta página e precisa ser combinada. E aparelho com versão
   anterior à v44 ainda grava às cegas.
-- O semeador dos testes marca que já semeou em `sessionStorage` **e** em
-  `window.name`: numa rodada com a máquina cheia, a reabertura chegou a
-  semear de novo, e o aparelho voltava ao estado inicial — parecia perda de
-  dado do app, e era o teste.
+- O semeador dos testes marca que já semeou **no próprio armazenamento
+  local** (`__semeado`), junto com o estado semeado, e a volta do sinal
+  também (`__ligarNaProxima`). As duas marcas já moraram no `sessionStorage`
+  (e no `window.name`): numa rodada com a máquina cheia, a página recarregada
+  não as via, e a reabertura semeava de novo (o aparelho voltava ao estado
+  inicial) ou o sinal não voltava (#98). Parecia perda de dado do app, e era
+  o teste. O que ainda falha às vezes sob carga, na `main` também, é o
+  "apagado aqui sem sinal continua apagado" (1 em 24 com 4 processos).
 - Nos testes, **espere pelo estado, não por tempo** (`assentar`: sem marca
   pendente e sem envio no meio). O envio da abertura sai depois da leitura
   da nuvem e dos 800 ms de espera; num CI lento, uma espera fixa de 1 s
