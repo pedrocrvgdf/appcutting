@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v58";
+window.APP_RELEASE = "tresults-v59";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -2035,6 +2035,19 @@ window.APP_RELEASE = "tresults-v58";
     <div class="auth-msg" id="vincMsg"></div>
     <button class="btn" id="vincOk" type="button">Continuar</button>
     <button class="btn secondary" id="vincVoltar" type="button">Voltar</button>
+  </div>
+</div>
+
+<!-- "Sou treinador" numa conta que já existe (#103): o código de professor. -->
+<div class="overlay" id="profOverlay">
+  <div class="modal" style="max-width:420px">
+    <h3>Sou treinador</h3>
+    <p class="vinc-txt">Favor colocar o código de professor.</p>
+    <div class="field"><label class="lbl" for="profCodigo">Código de professor</label><input class="in vinc-cod" id="profCodigo" type="password" inputmode="numeric" maxlength="8" autocomplete="off" spellcheck="false" enterkeyhint="go"></div>
+    <p class="vinc-nao">Sua conta passa a ser de treinador: o app abre na tela Alunos, com o código para ligar um aluno, e as abas de comida e treino saem da barra. O que você já lançou continua guardado na conta.</p>
+    <div class="auth-msg" id="profMsg" aria-live="polite"></div>
+    <button class="btn" id="profOk" type="button">Confirmar</button>
+    <button class="btn secondary" id="profVoltar" type="button">Voltar</button>
   </div>
 </div>
 
@@ -4845,7 +4858,7 @@ function listaProtocolos(){
      "Meu protocolo" virtual — cada aluno tem os dele. O recém-criado, ainda
      sem o carimbo do save(), é do aluno aberto. */
   if(ehTreinador()){
-    const dele=x=>!!alunoAberto&&!!x&&(x.aluno||alunoAberto)===alunoAberto;
+    const dele=x=>!!alunoAberto&&!!x&&!x.pessoal&&(x.aluno||alunoAberto)===alunoAberto;   // `pessoal`: de antes de a conta virar de treinador (#103)
     gu.filter(dele).forEach(p=>add(p.id,p.nome));
     tps.filter(dele).forEach(w=>{if(w.prot)add(w.prot,w.protNome);});
     return out;
@@ -8384,6 +8397,7 @@ function applyRemote(data){
 /* Monta o store a partir de um documento da nuvem. `manterDia`: depois de
    uma gravação deste aparelho, a tela continua no dia que a pessoa via. */
 function aplicarNuvem(data,manterDia){
+  const papelAntes=ehTreinador();
   applyingRemote=true;
   /* Só herda do aparelho quem é dono dele. Com outra conta entrando neste
      celular, nada do que ficou aqui — o exógeno (dado de saúde), as
@@ -8445,6 +8459,9 @@ function aplicarNuvem(data,manterDia){
   }
   if(trS)pintarFalta();   // inventário mudou em outro aparelho; nunca renderTr, que mataria o descanso
   aplicarPapel();
+  /* A conta virou de treinador em outro aparelho (#103): troca os ouvintes
+     de aluno pelos de treinador, e a tela vai para Alunos. */
+  if(papelAntes!==ehTreinador()&&cloudEnabled&&user){pararPapel();iniciarPapel();if(ehTreinador()&&!["alunos","aluno","perfil"].includes(currentView))showView("alunos");}
   if(currentView==="alunos")renderAlunos(true);   // protocolos mudados em outro aparelho do treinador
   applyingRemote=false;
 }
@@ -8627,9 +8644,9 @@ function doTreinador(id){const p=(store.tprotos||[]).find(x=>x&&x.id===id);retur
    e salvar treino, em vez de um remendo em cada caminho. */
 function carimbarAlunos(){
   if(!alunoAberto)return;
-  (store.tprotos||[]).forEach(p=>{if(p&&!p.aluno)p.aluno=alunoAberto;});
+  (store.tprotos||[]).forEach(p=>{if(p&&!p.aluno&&!p.pessoal)p.aluno=alunoAberto;});
   (store.tprotocol||[]).forEach(w=>{
-    if(!w||w.aluno)return;
+    if(!w||w.aluno||w.pessoal)return;
     const p=(store.tprotos||[]).find(x=>x&&x.id===w.prot);
     w.aluno=(p&&p.aluno)||alunoAberto;
   });
@@ -9131,8 +9148,10 @@ function renderPerfilTreinador(){
   if(!mostra)return;
   const el=$("pfTrein");
   if(!vinc){
-    el.innerHTML='<p>Treina com um treinador? Com o código que ele mandar, ele monta o seu treino aqui no app e acompanha as suas cargas.</p><button class="btn secondary" id="pfTreinLigar" type="button">Ligar a um treinador</button>';
+    el.innerHTML='<p>Treina com um treinador? Com o código que ele mandar, ele monta o seu treino aqui no app e acompanha as suas cargas.</p><button class="btn secondary" id="pfTreinLigar" type="button">Ligar a um treinador</button>'
+      +'<button class="btn secondary" id="pfSouTreinador" type="button">Sou treinador</button>';
     $("pfTreinLigar").onclick=()=>abrirVinc("");
+    $("pfSouTreinador").onclick=abrirProf;
     return;
   }
   el.innerHTML=`<div class="pt-nome">${esc(vinc.treinadorNome)}</div><p>Seu treinador desde ${dataDeMs(vinc.desde)}. Ele monta os seus protocolos e vê os treinos que você faz.</p>`
@@ -9141,6 +9160,75 @@ function renderPerfilTreinador(){
   $("pfTreinPeso").onchange=e=>mudarPesoVinc(e.target.checked);
   $("pfTreinSair").onclick=desfazerVinculo;
 }
+
+/* ---- "Sou treinador" numa conta que já existe (#103) ----
+   O pedido do dono: o botão no Perfil abre "Favor colocar o código de
+   professor", e com o código certo a conta passa a ser de treinador e o
+   código para ligar um aluno é gerado.
+
+   O que o código protege, e o que não protege: ele vive neste arquivo, que
+   é público (GitHub Pages), e as regras da nuvem deixam qualquer conta criar
+   convite. Ele afasta quem não é professor de virar treinador por engano ou
+   por curiosidade; não é segurança. Por isso guardamos só o resumo (SHA-256)
+   do código, e não o código: ler a página não basta para achá-lo. Com 4
+   algarismos, quem souber programar acha mesmo assim. Uma barreira de
+   verdade precisa ser conferida no servidor (uma função, ou uma lista de
+   professores nas regras). Cinco erros seguidos travam por 5 minutos.
+
+   A conta de treinador é só de treinador (#95). Os protocolos e treinos que
+   a pessoa já tinha são dela, e não de um aluno: sem a marca `pessoal`, o
+   primeiro aluno aberto os receberia (carimbarAlunos carimba tudo o que não
+   tem dono) e eles iriam no plano dele. */
+const PROF_HASH="6eaed4c00d61cb6b72a46ecc1b60496ff653c9636a094da0c9efdc0fdd134eab";   // SHA-256 de "tresults-professor:" + código
+const PROF_TENT=5,PROF_TRAVA_MS=5*60*1000;
+async function hashProf(c){
+  const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode("tresults-professor:"+c));
+  return Array.from(new Uint8Array(b),x=>x.toString(16).padStart(2,"0")).join("");
+}
+function profTrava(){try{return JSON.parse(localStorage.getItem("tresults.profTrava")||"null")||{n:0,ate:0};}catch(e){return {n:0,ate:0};}}
+function guardarProfTrava(t){try{localStorage.setItem("tresults.profTrava",JSON.stringify(t));}catch(e){}}
+function abrirProf(){
+  if(trS)return appAlert("Finalize ou cancele o treino em andamento antes.","Sou treinador");
+  if(vinc)return appAlert(`Você está ligado a ${vinc.treinadorNome||"um treinador"}. Para a sua conta virar de treinador, desfaça a ligação antes, aqui no Perfil.`,"Sou treinador");
+  $("profCodigo").value="";$("profMsg").textContent="";$("profMsg").className="auth-msg";
+  $("profOk").disabled=false;
+  $("profOverlay").classList.add("open");
+  setTimeout(()=>$("profCodigo").focus(),220);
+}
+function fecharProf(){$("profOverlay").classList.remove("open");}
+const profErro=m=>{$("profMsg").textContent=m;$("profMsg").className="auth-msg err";};
+async function conferirProf(){
+  const c=$("profCodigo").value.trim();
+  const t=profTrava(),agora=Date.now();
+  if(t.ate>agora)return profErro(`Muitas tentativas. Tente de novo em ${Math.ceil((t.ate-agora)/60000)} min.`);
+  if(!c)return profErro("Digite o código de professor.");
+  $("profOk").disabled=true;
+  let certo=false;
+  try{certo=(await hashProf(c))===PROF_HASH;}catch(e){}
+  $("profOk").disabled=false;
+  if(!certo){
+    const n=(t.ate&&t.ate<=agora?0:t.n)+1;
+    guardarProfTrava(n>=PROF_TENT?{n:0,ate:agora+PROF_TRAVA_MS}:{n,ate:0});
+    $("profCodigo").value="";
+    return profErro(n>=PROF_TENT?"Código incorreto. Muitas tentativas: tente de novo em 5 min.":"Código incorreto.");
+  }
+  guardarProfTrava({n:0,ate:0});
+  virarTreinador();
+}
+function virarTreinador(){
+  (store.tprotos||[]).forEach(p=>{if(p&&!p.aluno)p.pessoal=true;});
+  (store.tprotocol||[]).forEach(w=>{if(w&&!w.aluno)w.pessoal=true;});
+  store.papel="treinador";
+  save();
+  fecharProf();
+  pararPapel();iniciarPapel();   // sai o vínculo e o plano de aluno; entram os alunos e o código
+  showView("alunos");
+  appAlert("Pronto: sua conta agora é de treinador. O código para ligar um aluno está aqui, em Alunos.","Sou treinador");
+}
+$("profOk").onclick=conferirProf;
+$("profVoltar").onclick=fecharProf;
+$("profCodigo").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();conferirProf();}});
+$("profOverlay").onclick=e=>{if(e.target===$("profOverlay"))fecharProf();};
 
 /* ---- Criar conta ----
 

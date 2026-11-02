@@ -803,6 +803,7 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 | `tests/app-nativo.spec.js` | Caminho web desligado quando o app Android está presente |
 | `tests/service-worker.spec.js` | Cache do app, versão, e a página de diagnóstico |
 | `tests/treinador.spec.js` | Treinador e aluno: conta de treinador (abas, cadastro sem data, código), protocolo só do aluno aberto e plano sem a marca interna, sem sinal e a volta, séries com carga e RIR, evolução, peso só com permissão, desfazer dos dois lados, trocar e enviar o código; aluno: código e consentimento, treino só de leitura, mudança que chega, plano de outro treinador ignorado, diário sem o que não foi aceito, ligar o peso, link do convite, outra conta no celular, excluir dados; conta nova que não perde o nome; 320/390px |
+| `tests/professor.spec.js` | "Sou treinador" numa conta que já existe: o pedido do código de professor, código errado, trava depois de 5 erros, o certo virando treinador com o código de convite e a tela Alunos, os protocolos de antes fora do aluno, ligado a um treinador ou com treino em andamento, modo local, outro aparelho, o código fora do arquivo, 320/390px |
 | `tests/convite.spec.js` | Página do convite: código à vista e só no formato certo, botão do Obtainium com a configuração e o filtro que deixa só o APK, navegador com o código, iPhone primeiro no navegador, copiar, nada de script de terceiro, 320px e tema escuro |
 | `tests-regras/regras.test.js` | As regras do Firestore no emulador: cada conta só no próprio documento; convite com formato e dono; vínculo só pelo aluno e com convite de verdade; plano só pelo treinador ligado; diário só pelo aluno, peso só com permissão; desfeita a ligação, o acesso acaba |
 | `tests/app.js` | Utilitários: Firebase falso (com `__docs` para as coleções do treinador e do aluno), estado inicial, atalhos de navegação |
@@ -841,6 +842,7 @@ Chaves usadas no armazenamento local, úteis para montar cenários:
 | `tresults.publicado` | `{uid, m}`: o plano de cada aluno que a nuvem já confirmou |
 | `tresults.diarioPub` | `{uid, j}`: o diário que a nuvem já confirmou |
 | `tresults.conviteLink` | Código que chegou por link (`?convite=`), até a pessoa entrar |
+| `tresults.profTrava` | `{n, ate}`: erros seguidos do código de professor, e até quando está travado |
 | `__docs` (testes) | Nuvem falsa dos outros caminhos: `{"vinculos/a1": {...}}` |
 
 ---
@@ -1599,6 +1601,29 @@ dele(a) e ver as cargas e as RIR e afins". Decisões do dono:
   (`body.treinador`), o Perfil perde o objetivo e o alarme, e `showView`
   manda para Alunos qualquer tela de quem treina. Para treinar, o
   treinador usa outra conta.
+- **Conta que já existe vira de treinador pelo Perfil** (#103): "Sou
+  treinador" (`#pfSouTreinador`, no cartão "Treinador", só com conta e sem
+  treinador ligado) abre "Favor colocar o código de professor"
+  (`#profOverlay`). Com o código certo, `virarTreinador` grava o papel,
+  troca os ouvintes de aluno pelos de treinador (`pararPapel`,
+  `iniciarPapel`, que gera o código de convite) e abre Alunos. Cuidados:
+  - **O código não está no arquivo, só o resumo SHA-256** (`PROF_HASH`, com
+    o prefixo `tresults-professor:`), conferido por `crypto.subtle`. Ler a
+    página não basta para achá-lo, mas **não é segurança**: são 4
+    algarismos, o arquivo é público e as regras deixam qualquer conta criar
+    convite. Barreira de verdade é conferir no servidor (uma função, ou uma
+    lista de professores nas regras). Trocar o código é trocar o resumo.
+    Cinco erros seguidos travam por 5 minutos (`tresults.profTrava`).
+  - **O que a pessoa já tinha é dela**: na conversão, protocolos e treinos
+    sem dono ganham `pessoal: true`, e `listaProtocolos` (do treinador) e
+    `carimbarAlunos` os pulam. Sem isso, o primeiro aluno aberto os recebia
+    no plano: o carimbo põe o aluno em tudo o que não tem dono.
+  - Ligada a um treinador, ou com treino em andamento, a conta não converte:
+    a tela diz o que fazer antes.
+  - **Virou de treinador em outro aparelho**: `aplicarNuvem` vê o papel
+    mudar e troca os ouvintes e a tela.
+  - Ainda **não existe o caminho de volta** (deixar de ser treinador).
+  - Coberto em `tests/professor.spec.js`.
 - **O aluno se liga por código** (6 letras e números, sem 0/O/1/I,
   `COD_RE`), digitado no Perfil ou vindo no link `?convite=` (guardado em
   `tresults.conviteLink` até a pessoa entrar). **Antes de aceitar, ele vê o
