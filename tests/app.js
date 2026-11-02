@@ -19,7 +19,7 @@ const PONTE = `
 window.__t={
   get store(){return store}, get trS(){return trS}, get trRestEnd(){return trRestEnd},
   get trRestTotal(){return trRestTotal}, get trRestEx(){return trRestEx}, get trRestIdx(){return trRestIdx},
-  SUG_DESCANSO, DESC_MAX,
+  SUG_DESCANSO, DESC_MAX, tendenciaDe, tendenciaAtual, pesagensRecentes, TEND_ALFA, TEND_MIN, TEND_JANELA,
   trElapsedMs:()=>trS?trElapsedMs():null, lastExSession, alarmWav, ALARM_VOL, todayKey,
   ALARM_DUR, ALARM_CICLO, restTick, ALARM_SONS, EX_POR_GRUPO,
   somDoAlarme:()=>somDoAlarme(), idadeDe, idadeAtual, computeTMB, buscaAlimentos, alimPontos, mapOff, ordenarOff, FOODS,

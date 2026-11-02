@@ -137,7 +137,9 @@ test.describe('A meta acompanha o peso', () => {
     await digitar(page, '#pesoN', '71,5');
     await clicar(page, '#pesoSalvar');
     await page.waitForTimeout(300);
-    expect(await cartao(page)).toContain('Com 71,5 kg (pesagem de hoje)');
+    /* A pergunta de novo vem pela tendência (#84): 72 ontem e 71,5 hoje
+       dão 71,95, que a tela escreve 72. */
+    expect(await cartao(page)).toContain('Com 72 kg (tendência das suas pesagens; a última, de hoje)');
   });
 
   test('diferença pequena não pergunta nada', async ({ page }) => {

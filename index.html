@@ -633,6 +633,14 @@ window.APP_RELEASE = "tresults-v58";
   .wt-latest b{color:var(--ink);font-family:var(--mono);font-weight:700}
   .wt-trendrow{margin-bottom:8px}
   .wt-pace{font-size:12.5px;font-weight:700;margin:-2px 0 8px;line-height:1.45}
+  /* Embaixo dos números da curva (#84): a legenda, a última pesagem e a
+     previsão pela tendência. */
+  .wt-nota{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:8px;font-size:12px;color:var(--muted);line-height:1.45}
+  .wt-nota b{color:var(--ink)}
+  .wt-leg{display:inline-flex;align-items:center;gap:5px;font-weight:700}
+  .wt-leg i{display:inline-block}
+  .wt-leg .lt{width:14px;height:3px;border-radius:2px}
+  .wt-leg .pt{width:7px;height:7px;border-radius:50%;background:var(--primary);opacity:.45}
   .wt-tabs{display:inline-flex;gap:4px}
   .tr-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
   .tr-timer{font-family:var(--mono);font-size:18px;font-weight:800;color:#fff;letter-spacing:0;background:var(--primary);border:0;border-radius:11px;padding:4px 11px;box-shadow:var(--sombra-sm)}
@@ -1188,6 +1196,9 @@ window.APP_RELEASE = "tresults-v58";
   .wt-stats>div{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:9px 12px;min-width:0}
   .wt-stats .k{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
   .wt-stats .v{font-size:15px;font-weight:800;font-family:var(--mono);margin-top:1px;white-space:nowrap}
+  /* Em 320 px os três quadros têm ~72 px: "78,1 kg" e "TENDÊNCIA" passavam
+     da borda (#84). */
+  @media (max-width:359px){.wt-stats{gap:6px}.wt-stats>div{padding:8px 6px}.wt-stats .k{font-size:9.5px;letter-spacing:.03em}.wt-stats .v{font-size:13px}}
 
   /* sugestões de treino */
   .tsug-card{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
@@ -9637,16 +9648,54 @@ function pesoNoDia(dk){
 /* O dia em que o peso de partida foi digitado. Objetivo salvo antes de
    existir a data: o início do plano, que era quando ele mudava. */
 function pesoDesde(g){g=g||{};return g.pesoDesde||g.inicio||"";}
-/* A pesagem que pode propor ajustar a meta: a mais recente desde o peso de
-   partida. */
-function pesagemDoPlano(){
-  const h=todayKey(),ini=pesoDesde(store.goals);
-  const ws=(store.weights||[]).filter(x=>x&&x.w>0&&x.d<=h&&x.d>=ini).sort((a,b)=>a.d<b.d?-1:1);
-  return ws.length?ws[ws.length-1]:null;
-}
 function ultimaPesagem(){
   const h=todayKey(),ws=(store.weights||[]).filter(x=>x&&x.w>0&&x.d<=h).sort((a,b)=>a.d<b.d?-1:1);
   return ws.length?ws[ws.length-1]:null;
+}
+/* ---- Tendência do peso (#84) ----
+   A balança de um dia mistura água, sal e o que ainda está no intestino, e
+   oscila mais do que a gordura muda numa semana. O veredito "No ritmo /
+   Atrasado" lia a pesagem crua, com tolerância menor que essa oscilação, e
+   o cartão "Atualizar / Manter" insistia a cada dia inchado.
+
+   A tendência é uma média exponencial com o intervalo entre as pesagens
+   descontado: cada pesagem puxa a tendência em 1 − 0,9^dias da diferença.
+   Os 10% por dia são os do "The Hacker's Diet" (John Walker), e são
+   ESCOLHA DE PRODUTO, não fisiologia: atrasam uns 9 dias, e em troca a
+   oscilação de um dia para o outro chega à tela bem menor. Quem pesa de vez
+   em quando não fica para trás: depois de uma semana sem pesar, a pesagem
+   nova vale metade (1 − 0,9^7).
+
+   A tendência recomeça no peso de partida (pesoDesde): as pesagens de antes
+   são mais velhas que ele. Só elas propõem ajustar a meta. */
+const TEND_ALFA=0.1,TEND_JANELA=14,TEND_MIN=3,TEND_TOL=0.4,TEND_PREV_MAX=730;
+function tendenciaDe(ws){
+  let t=null,dAnt=null;
+  return ws.map(x=>{
+    if(t===null)t=x.w;
+    else t+=(1-Math.pow(1-TEND_ALFA,Math.max(0,diasEntre(dAnt,x.d))))*(x.w-t);
+    dAnt=x.d;
+    return {d:x.d,w:x.w,t};
+  });
+}
+/* As pesagens do plano: desde o peso de partida até hoje, em ordem. */
+function pesagensDoPlano(){
+  const h=todayKey(),ini=pesoDesde(store.goals);
+  return (store.weights||[]).filter(x=>x&&x.w>0&&x.d<=h&&x.d>=ini).sort((a,b)=>a.d<b.d?-1:1);
+}
+/* A tendência de agora, arredondada como a tela a mostra (é ela que vira o
+   peso da conta no "Atualizar"). */
+function tendenciaAtual(){
+  const ws=pesagensDoPlano();if(!ws.length)return null;
+  const tr=tendenciaDe(ws),u=tr[tr.length-1];
+  return {d:u.d,w:Math.round(u.t*10)/10,n:ws.length};
+}
+/* Pesagens nos últimos TEND_JANELA dias (hoje incluído). Com menos de
+   TEND_MIN, o app não dá veredito nem previsão: com uma pesagem por semana,
+   nem a tendência separa o ritmo da oscilação. */
+function pesagensRecentes(ws){
+  const corte=keyOf(addDays(new Date(),-(TEND_JANELA-1))),h=todayKey();
+  return ws.filter(x=>x.d>=corte&&x.d<=h).length;
 }
 /* Os passos guardam o peso com que foram contados: uma pesagem nova não
    muda o passado. Registro de antes disto, sem peso, segue com o peso do
@@ -9782,36 +9831,72 @@ function renderWeight(){
   if(all.length===0){el.innerHTML=`<div class="ins-empty">Registre seu peso abaixo para acompanhar a curva rumo à meta${alvo?` de <b>${kgTxt(alvo)} kg</b>`:""}.</div>`;return;}
   const bulking=(g.objetivo||((parseFloat(g.pesoAlvo)||0)>(parseFloat(g.pesoAtual)||0)?"bulking":"cutting"))==="bulking";
   const lastAll=all[all.length-1];
-  // tendência e ritmo calculados sobre TODO o histórico
+  /* A curva é a TENDÊNCIA (#84), e as pesagens ficam como pontos. Ela
+     recomeça no peso de partida: as pesagens de antes são mais velhas que
+     ele (tendenciaDe, pesagensDoPlano). */
+  const ini=pesoDesde(g);
+  const doPlano=all.filter(x=>x.d>=ini),antes=all.filter(x=>x.d<ini);
+  const trend=tendenciaDe(antes).concat(tendenciaDe(doPlano));
+  const tDe={};trend.forEach(x=>{tDe[x.d]=x.t;});
+  const tAgora=trend[trend.length-1].t;
+  const pAtual=parseFloat(g.pesoAtual)||0,meses=parseFloat(g.meses)||0;
+  const hasPlan=alvo>0&&pAtual>0&&meses>0;
+  /* "Desde o início do plano": a tendência menos o peso de partida. Somado
+     a "Faltam", dá o objetivo do cabeçalho. Sem peso de partida, desde a
+     primeira pesagem, como era. */
+  const doInicio=pAtual>0&&doPlano.length>0;
   let trendHtml="",lineCol="var(--primary)",good=null;
-  if(all.length>=2){
-    const overall=lastAll.w-all[0].w;
+  if(doInicio||all.length>=2){
+    const overall=tAgora-(doInicio?pAtual:all[0].w);
     const dir=Math.abs(overall)<0.05?"flat":overall<0?"down":"up";
     good=dir==="flat"?null:(bulking?dir==="up":dir==="down");
     const arrow=dir==="down"?"↓":dir==="up"?"↑":"→";
     const word=dir==="down"?"Descendo":dir==="up"?"Subindo":"Estável";
     const col=good===null?"var(--muted)":good?"var(--ok)":"var(--warn)";
     lineCol=good===false?"var(--warn)":"var(--primary)";
-    trendHtml=`<div class="wt-trendrow"><span class="wt-trend" style="color:${col}">${arrow} ${word} · ${overall>0?"+":""}${kgTxt(overall)} kg desde o início</span></div>`;
+    trendHtml=`<div class="wt-trendrow"><span class="wt-trend" style="color:${col}">${arrow} ${word} · ${overall>0?"+":""}${kgTxt(overall)} kg ${doInicio?"desde o início do plano":"desde a primeira pesagem"}</span></div>`;
   }
-  const pAtual=parseFloat(g.pesoAtual)||0,meses=parseFloat(g.meses)||0;
-  const hasPlan=alvo>0&&pAtual>0&&meses>0;
-  let paceHtml="";
+  const recentes=pesagensRecentes(doPlano);
+  const mesesPt=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+  const mesAno=d=>mesesPt[d.getMonth()]+"/"+String(d.getFullYear()).slice(2);
+  let paceHtml="",prevTxt="";
   if(hasPlan){
     const inicioK=(g.inicio)||all[0].d;
     const iniT=dateFromKey(inicioK).getTime();
     const dlT=iniT+meses*30.44*86400000;
-    const f=Math.max(0,Math.min(1,(dateFromKey(lastAll.d).getTime()-iniT)/Math.max(1,dlT-iniT)));
-    const expNow=pAtual+(alvo-pAtual)*f;
-    const diff=lastAll.w-expNow,tol=0.4;
-    let cls,txt;
-    if(Math.abs(diff)<=tol){cls="var(--ok)";txt=`🎯 No ritmo do plano (esperado ${kgTxt(expNow)} kg para hoje)`;}
-    else{
-      const ahead=bulking?diff>0:diff<0;
-      cls=ahead?"var(--ok)":"var(--warn)";
-      txt=ahead?`Adiantado: ${kgTxt(Math.abs(diff))} kg à frente do plano (esperado ${kgTxt(expNow)} kg)`:`Atrasado: ${kgTxt(Math.abs(diff))} kg ${bulking?"abaixo":"acima"} do esperado (${kgTxt(expNow)} kg)`;
+    const plano=d=>pAtual+(alvo-pAtual)*Math.max(0,Math.min(1,(dateFromKey(d).getTime()-iniT)/Math.max(1,dlT-iniT)));
+    if(recentes>=TEND_MIN){
+      /* O veredito compara a tendência com a linha do plano filtrada do
+         MESMO jeito: a média exponencial do quanto cada pesagem ficou acima
+         ou abaixo do plano naquele dia. Comparar a tendência direto com o
+         plano de hoje deixaria "Atrasado" para sempre quem está exatamente
+         no plano: a tendência anda uns 9 dias atrás. */
+      const res=tendenciaDe(doPlano.map(x=>({d:x.d,w:x.w-plano(x.d)})));
+      const diff=res[res.length-1].t,tol=TEND_TOL;   // 0,4 kg: escolha de produto
+      let cls,txt;
+      if(Math.abs(diff)<=tol){cls="var(--ok)";txt="🎯 No ritmo do plano, pela tendência";}
+      else{
+        const ahead=bulking?diff>0:diff<0;
+        cls=ahead?"var(--ok)":"var(--warn)";
+        txt=ahead?`Adiantado: ${kgTxt(Math.abs(diff))} kg à frente do plano, pela tendência`:`Atrasado: ${kgTxt(Math.abs(diff))} kg ${bulking?"abaixo":"acima"} do plano, pela tendência`;
+      }
+      paceHtml=`<div class="wt-pace" style="color:${cls}">${txt}</div>`;
+      /* Previsão: quando a tendência cruza a meta, no ritmo das últimas
+         duas semanas da própria tendência. */
+      const tr=tendenciaDe(doPlano),u=tr[tr.length-1],corte=keyOf(addDays(dateFromKey(u.d),-TEND_JANELA));
+      let ref=tr[0];for(const x of tr)if(x.d<=corte)ref=x;
+      const span=diasEntre(ref.d,u.d),porDia=span>0?(u.t-ref.t)/span:0;
+      const chegou=bulking?u.t>=alvo:u.t<=alvo;
+      if(chegou)prevTxt="A tendência já chegou à meta.";
+      else{
+        const rumo=bulking?porDia>0:porDia<0,dias=rumo?(alvo-u.t)/porDia:Infinity;
+        prevTxt=span>=7&&rumo&&dias<=TEND_PREV_MAX
+          ?`Pela tendência, a meta chega em <b>${mesAno(addDays(dateFromKey(u.d),Math.ceil(dias)))}</b>.`
+          :span>=7?"Pela tendência, a meta ainda não está à vista.":"";
+      }
+    }else{
+      paceHtml=`<div class="wt-pace" style="color:var(--muted)">Para saber se está no ritmo do plano, pese-se ${TEND_MIN} vezes em ${TEND_JANELA} dias (${recentes===0?"nenhuma pesagem":recentes===1?"1 pesagem":recentes+" pesagens"} até agora).</div>`;
     }
-    paceHtml=`<div class="wt-pace" style="color:${cls}">${txt}</div>`;
   }
   // ---- janela do período ----
   let ws=all,emptyMsg="";
@@ -9820,7 +9905,7 @@ function renderWeight(){
     ws=all.filter(x=>x.d>=cut);
     if(ws.length===0){ws=all.slice(-1);emptyMsg=`<div class="ins-empty" style="padding:2px 2px 8px">Sem registros nos últimos ${nd} dias — mostrando o mais recente.</div>`;}
   }else if(all.length>15){
-    // agregação semanal (média) na visão Tudo
+    // agregação semanal (média) na visão Tudo; a tendência fica a do último dia da semana
     const wk={};
     all.forEach(x=>{const k=keyOf(weekStartMon(dateFromKey(x.d)));(wk[k]=wk[k]||[]).push(x);});
     ws=Object.keys(wk).sort().map(k=>{const arr=wk[k];return {d:arr[arr.length-1].d,w:arr.reduce((a,x)=>a+x.w,0)/arr.length};});
@@ -9829,7 +9914,7 @@ function renderWeight(){
   // ---- largura deslizável: espaço fixo por ponto ----
   const H=150,padL=18,padR=56,padT=24,padB=26,GAP=44;
   const W=Math.max(300,padL+padR+(ws.length-1)*GAP+20);
-  const vals=ws.map(x=>x.w).concat(alvo>0?[alvo]:[]);
+  const vals=ws.map(x=>x.w).concat(ws.map(x=>tDe[x.d]).filter(v=>v>0)).concat(alvo>0?[alvo]:[]);
   let yMin=Math.min(...vals),yMax=Math.max(...vals);
   if(yMax-yMin<2){yMin-=1.2;yMax+=1.2;}else{const pd=(yMax-yMin)*0.18;yMin-=pd;yMax+=pd;}
   const xAt=i=>ws.length===1?W/2:padL+i*GAP;
@@ -9837,31 +9922,38 @@ function renderWeight(){
   const fmtD=k=>{const d=dateFromKey(k);return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0");};
   const tgt=alvo>0?`<line x1="${padL}" y1="${yAt(alvo).toFixed(1)}" x2="${W-padR+10}" y2="${yAt(alvo).toFixed(1)}" stroke="var(--warn)" stroke-width="1.4" stroke-dasharray="5 4" opacity=".65"/><text x="${(W-padR+14).toFixed(1)}" y="${(yAt(alvo)+3).toFixed(1)}" class="cap-label" fill="var(--warn)" style="font-weight:800">meta ${kgTxt(alvo)}</text>`:"";
   const pts=ws.map((x,i)=>({x:xAt(i),y:yAt(x.w)}));
+  /* A linha é a tendência; ela não atravessa o recomeço no peso de partida. */
+  const tp=ws.map((x,i)=>({x:xAt(i),y:yAt(tDe[x.d]>0?tDe[x.d]:x.w),novo:i>0&&ws[i-1].d<ini&&x.d>=ini}));
   let path="";
-  if(pts.length>1){
-    path=`M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
-    for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1],mx=((a.x+b.x)/2).toFixed(1);path+=` C ${mx} ${a.y.toFixed(1)}, ${mx} ${b.y.toFixed(1)}, ${b.x.toFixed(1)} ${b.y.toFixed(1)}`;}
+  if(tp.length>1){
+    tp.forEach((p,i)=>{
+      if(i===0||p.novo){path+=`${path?" ":""}M ${p.x.toFixed(1)} ${p.y.toFixed(1)}`;return;}
+      const a=tp[i-1],mx=((a.x+p.x)/2).toFixed(1);
+      path+=` C ${mx} ${a.y.toFixed(1)}, ${mx} ${p.y.toFixed(1)}, ${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
+    });
   }
-  const line=pts.length>1?`<path d="${path}" fill="none" stroke="${lineCol}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>`:"";
+  const line=path?`<path class="wt-tend" d="${path}" fill="none" stroke="${lineCol}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>`:"";
   let dots="",wLabels="",dLabels="";
   ws.forEach((x,i)=>{
     const px=pts[i].x,py=pts[i].y,isLast=i===ws.length-1,isFirst=i===0;
-    dots+='<circle cx="'+px.toFixed(1)+'" cy="'+py.toFixed(1)+'" r="'+(isLast?4.6:3.2)+'" fill="'+(isLast?lineCol:"var(--primary)")+'"'+(isLast?' stroke="var(--surface)" stroke-width="2"':(isFirst?"":' opacity=".3"'))+"/>";
+    dots+='<circle cx="'+px.toFixed(1)+'" cy="'+py.toFixed(1)+'" r="'+(isLast?4.6:3.2)+'" fill="'+(isLast?lineCol:"var(--primary)")+'"'+(isLast?' stroke="var(--surface)" stroke-width="2"':' opacity=".35"')+"/>";
     if(isFirst||isLast){
       const anch=px<24?"start":"middle";
       wLabels+='<text x="'+px.toFixed(1)+'" y="'+Math.max(10,py-10).toFixed(1)+'" text-anchor="'+anch+'" class="wt-pt'+(isLast?" last":"")+'">'+kgTxt(x.w)+"</text>";
       dLabels+='<text x="'+px.toFixed(1)+'" y="'+(H-4)+'" text-anchor="'+anch+'" class="cap-label">'+fmtD(x.d)+"</text>";
     }
   });
-  let prevHtml="";
+  /* O prazo do plano tinha o nome de "Previsão"; a previsão de verdade vem
+     da tendência, na linha de baixo. */
+  let prazoHtml="";
   if(hasPlan){
-    const inicioK2=(g.inicio)||all[0].d;
-    const dEnd=new Date(dateFromKey(inicioK2).getTime()+meses*30.44*86400000);
-    const mesesPt=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
-    prevHtml='<div><div class="k">Previsão</div><div class="v">'+mesesPt[dEnd.getMonth()]+"/"+String(dEnd.getFullYear()).slice(2)+"</div></div>";
+    const dEnd=new Date(dateFromKey((g.inicio)||all[0].d).getTime()+meses*30.44*86400000);
+    prazoHtml='<div><div class="k">Prazo</div><div class="v">'+mesAno(dEnd)+"</div></div>";
   }
+  const ultTxt=lastAll.d===todayKey()?"hoje":lastAll.d===keyOf(addDays(new Date(),-1))?"ontem":"em "+fmtD(lastAll.d);
+  const nota=`<div class="wt-nota"><span class="wt-leg"><i class="lt" style="background:${lineCol}"></i>tendência</span><span class="wt-leg"><i class="pt"></i>pesagens</span><span>Última pesagem: <b>${kgTxt(lastAll.w)} kg</b>, ${ultTxt}.</span>${prevTxt?`<span>${prevTxt}</span>`:""}</div>`;
   el.innerHTML=trendHtml+paceHtml+emptyMsg+'<div class="wt-scroll"><svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+" "+H+'">'+tgt+line+dots+wLabels+dLabels+"</svg></div>"+
-    '<div class="wt-stats"><div><div class="k">Atual</div><div class="v">'+kgTxt(lastAll.w)+' kg</div></div>'+(alvo>0?'<div><div class="k">Faltam</div><div class="v">'+kgTxt(Math.abs(lastAll.w-alvo))+" kg</div></div>":"")+prevHtml+"</div>";
+    '<div class="wt-stats"><div><div class="k">Tendência</div><div class="v">'+kgTxt(tAgora)+' kg</div></div>'+(alvo>0?'<div><div class="k">Faltam</div><div class="v">'+kgTxt(Math.abs(tAgora-alvo))+" kg</div></div>":"")+prazoHtml+"</div>"+nota;
   const sc=el.querySelector(".wt-scroll");if(sc)sc.scrollLeft=sc.scrollWidth;
 }
 const wtOverlay=$("wtOverlay");
@@ -10523,8 +10615,11 @@ function propostaGetd(){
   /* Sem pesagem no plano (a que foi aceita em "Atualizar" foi apagada), a
      referência volta a ser o peso de partida: senão o GETD ficaria preso num
      peso que não existe mais. */
-  let ult=pesagemDoPlano();
-  if(!ult){if(!g.pesoConta)return null;ult={d:"inicio",w:parseFloat(g.pesoAtual)||0};}
+  /* A tendência das pesagens do plano, e não a pesagem do dia (#84): um dia
+     inchado não propõe nada, e com a oscilação o cartão não insiste. Com
+     uma pesagem só, a tendência é ela. O número é o mesmo do Progresso. */
+  let ult=tendenciaAtual();
+  if(!ult){if(!g.pesoConta)return null;ult={d:"inicio",w:parseFloat(g.pesoAtual)||0,n:0};}
   /* "Manter" vale para aquela pesagem: data e peso. Corrigir o peso do mesmo
      dia pergunta de novo. */
   const m=g.mantido;
@@ -10535,7 +10630,7 @@ function propostaGetd(){
   if(!(antes>0)||!(depois>0))return null;
   const dif=Math.round(depois-antes);
   if(Math.abs(dif)<GETD_AVISO)return null;
-  return {dif,novo:store.getd+dif,peso:ult.w,d:ult.d};
+  return {dif,novo:store.getd+dif,peso:ult.w,d:ult.d,n:ult.n};
 }
 /* A meta de hoje como ficaria com a proposta: a conta inteira (passos,
    treino, rotina), não só o GETD somado. */
@@ -10551,7 +10646,8 @@ function pintarAjuste(el){
   el.hidden=!p;
   if(!p){el.innerHTML="";return;}
   const t=goalTargets(),meta=t.configured?goalMeta(t,todayKey()):0,depois=meta>0?metaComAjuste(p,t):0;
-  const origem=p.d==="inicio"?"o peso de partida do plano, sem pesagem registrada":"pesagem de "+quandoTxt(p.d);
+  const origem=p.d==="inicio"?"o peso de partida do plano, sem pesagem registrada"
+    :p.n>1?`tendência das suas pesagens; a última, de ${quandoTxt(p.d)}`:"pesagem de "+quandoTxt(p.d);
   el.innerHTML=`<p class="am-tx">Com <b>${kgTxt(p.peso)} kg</b> (${origem}), seu gasto estimado ${p.dif<0?"cai":"sobe"} <b>${nPt(Math.abs(p.dif))} kcal</b> por dia.${meta>0?` Meta de hoje: <b>${nPt(depois)}</b> (era ${nPt(meta)}).`:""}</p>`
     +`<div class="am-bts"><button class="btn" type="button" data-ajuste="sim">Atualizar</button><button class="btn secondary" type="button" data-ajuste="nao">Manter</button></div>`;
   el.querySelector('[data-ajuste="sim"]').onclick=()=>aplicarAjuste(true);

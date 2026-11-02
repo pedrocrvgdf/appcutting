@@ -348,16 +348,18 @@ voltava para hoje). Por isso o objetivo passou a guardar dois pesos:
   e `macroTargets`). Ausente, vale o `pesoAtual`. Só muda quando a pessoa
   toca **"Atualizar"**.
 
-**A meta nunca muda sozinha.** Quando a pesagem mais recente muda o gasto
+**A meta nunca muda sozinha.** Quando a **tendência** das pesagens (#84, veja
+abaixo) muda o gasto
 estimado em `GETD_AVISO` (25) kcal ou mais, um cartão no Início (`#fdAjuste`)
 e na Alimentação (`#alAjuste`) diz quanto e mostra a meta de hoje antes e
 depois (`metaComAjuste`, a conta inteira, com passos e treino):
 
 - "Atualizar" troca `pesoConta` e o GETD (`aplicarAjuste`); o plano, o
   `inicio` e o `pesoAtual` não mudam.
-- "Manter" grava a pesagem (`goals.mantido = {d, w}`): a próxima pesagem, ou
-  o peso do mesmo dia corrigido, pergunta de novo.
-- **Só pesagem desde o peso de partida propõe** (`pesagemDoPlano`, data a
+- "Manter" grava a proposta (`goals.mantido = {d, w}`, a tendência e a
+  data da última pesagem): a próxima pesagem, ou o peso do mesmo dia
+  corrigido, pergunta de novo.
+- **Só pesagem desde o peso de partida propõe** (`pesagensDoPlano`, data a
   partir de `pesoDesde(g)`): a de antes é mais velha que ele. Pelo mesmo
   motivo, nos passos e no cardio (`pesoNoDia`, que `userWeight` usa) vale o
   peso de partida até a primeira pesagem depois dele.
@@ -375,6 +377,14 @@ depois (`metaComAjuste`, a conta inteira, com passos e treino):
   dica diz qual peso entra quando não é o do campo.
 - O limiar é decisão de produto: abaixo dele a diferença some no erro da
   própria estimativa.
+- **A tendência, e não a pesagem do dia** (#84, decisão do dono): um dia de
+  balança baixa não propõe nada, e com a oscilação o cartão não insiste.
+  `tendenciaAtual()` é a tendência das pesagens do plano, arredondada como a
+  tela a mostra; é ela que vira o `pesoConta`. Com uma pesagem só, a
+  tendência é ela, e o cartão diz "pesagem de hoje"; com mais, "tendência
+  das suas pesagens; a última, de hoje". O número é o mesmo do Progresso.
+  **Nos passos, no cardio e no peso do corpo continua a pesagem do dia**
+  (`pesoNoDia`): é o peso daquele dia que entra na conta daquele dia.
 - `saveGoals` remonta `store.goals` do zero: **`pesoConta`, `pesoDesde`,
   `getdManual`, `mantido` e `tIntro` são carregados junto**, como `nasc` e
   o exógeno (sem o `tIntro`, a apresentação do Treino voltava depois de
@@ -383,6 +393,39 @@ depois (`metaComAjuste`, a conta inteira, com passos e treino):
   outro prazo, alvo ou objetivo; com outro peso de partida, a conta parte
   dele. Depois de salvar, o Perfil e o Início são redesenhados: o prazo
   antigo ficava na tela até trocar de aba.
+
+**A tendência do peso (#84).** A balança oscila de um dia para o outro mais
+do que a gordura muda numa semana, e o veredito do Progresso lia a pesagem
+crua, com tolerância menor que essa oscilação.
+
+- **A conta** (`tendenciaDe`): média exponencial de `TEND_ALFA` (10%) por
+  dia, com o intervalo descontado: cada pesagem puxa `1 − 0,9^dias` da
+  diferença. Os 10% são os do "The Hacker's Diet" (John Walker) e são
+  **escolha de produto, não fisiologia**: atrasam uns 9 dias e, em troca, a
+  oscilação diária chega bem menor à tela. Ela **recomeça no peso de
+  partida** (`pesoDesde`); as pesagens de antes viram um trecho à parte, e a
+  linha do gráfico não atravessa o recomeço.
+- **O gráfico** desenha a tendência como linha e as pesagens como pontos.
+  Embaixo: "Tendência", "Faltam" (pela tendência) e "Prazo" (o fim do plano,
+  que antes se chamava "Previsão"), e uma linha com a legenda, a última
+  pesagem e a previsão.
+- **O veredito compara a tendência com o plano filtrado do mesmo jeito**: a
+  média exponencial do quanto cada pesagem ficou acima ou abaixo da linha do
+  plano naquele dia. Comparada direto com o plano de hoje, a tendência, que
+  anda ~9 dias atrás, diria "Atrasado" para sempre a quem está exatamente
+  no plano. Existe teste. A tolerância continua 0,4 kg (`TEND_TOL`, escolha
+  de produto).
+- **Sem veredito nem previsão com menos de `TEND_MIN` (3) pesagens em
+  `TEND_JANELA` (14) dias**: com uma por semana, nem a tendência separa o
+  ritmo da oscilação. A tela diz quantas faltam.
+- **"Desde o início do plano"** é a tendência menos o peso de partida;
+  somado a "Faltam", dá o objetivo do cabeçalho.
+- **A previsão** é a data em que a tendência cruza a meta, no ritmo das
+  últimas duas semanas dela, em mês/ano. Sem rumo para a meta, ou acima de
+  2 anos (`TEND_PREV_MAX`), "ainda não está à vista"; na meta, "já chegou".
+- Em 320 px os três quadros encolhem (fonte e espaçamento): "TENDÊNCIA" e
+  "78,1 kg" passavam da borda.
+- Coberto em `tests/tendencia.spec.js`.
 
 **O GETD de cada dia** (`store.getdHist`, `{desde, getd, base}`): mudar o
 GETD não pode reescrever o saldo dos dias que passaram — a semana, o mês e a
@@ -687,6 +730,7 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 | `tests/alarme.spec.js` | Volume e ausência de distorção do alarme de descanso |
 | `tests/sentry.spec.js` | Configuração do monitoramento, limpeza de dados pessoais, app abrindo sem a Sentry |
 | `tests/alarme-descanso.spec.js` | Tela do alarme, interrupção da música, insistência, permissão |
+| `tests/tendencia.spec.js` | Tendência do peso: conta com o intervalo descontado, recomeço no peso de partida; "No ritmo" para quem está no plano apesar do atraso, "Atrasado"/"Adiantado", dia inchado, sem veredito com menos de 3 em 14 dias; "desde o início do plano", prazo e previsão; vírgula; 320/390px; o cartão "Atualizar/Manter" pela tendência |
 | `tests/descanso.spec.js` | Descanso da sessão: continua ao avançar, voltar, trocar e desfazer, com o nome do exercício; "−15 s"/"+30 s" sem redesenhar, pular no fim, teto de 1 h, só este descanso; push do último toque e em fila; Android reagendado e cancelado ao finalizar; app descartado; sugestões em 90 s; 320/390px |
 | `tests/abertura.spec.js` | Splash, avisos de espera, instalação como app |
 | `tests/push.spec.js` | Aviso com o app fechado, e o app funcionando sem ele |
