@@ -702,7 +702,7 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 | `tests/app-nativo.spec.js` | Caminho web desligado quando o app Android está presente |
 | `tests/service-worker.spec.js` | Cache do app, versão, e a página de diagnóstico |
 | `tests/treinador.spec.js` | Treinador e aluno: conta de treinador (abas, cadastro sem data, código), protocolo só do aluno aberto e plano sem a marca interna, sem sinal e a volta, séries com carga e RIR, evolução, peso só com permissão, desfazer dos dois lados, trocar e enviar o código; aluno: código e consentimento, treino só de leitura, mudança que chega, plano de outro treinador ignorado, diário sem o que não foi aceito, ligar o peso, link do convite, outra conta no celular, excluir dados; conta nova que não perde o nome; 320/390px |
-| `tests/convite.spec.js` | Página do convite: código à vista e só no formato certo, botão do Obtainium com o endereço do app, navegador com o código, iPhone primeiro no navegador, copiar, nada de script de terceiro, 320px e tema escuro |
+| `tests/convite.spec.js` | Página do convite: código à vista e só no formato certo, botão do Obtainium com a configuração e o filtro que deixa só o APK, navegador com o código, iPhone primeiro no navegador, copiar, nada de script de terceiro, 320px e tema escuro |
 | `tests-regras/regras.test.js` | As regras do Firestore no emulador: cada conta só no próprio documento; convite com formato e dono; vínculo só pelo aluno e com convite de verdade; plano só pelo treinador ligado; diário só pelo aluno, peso só com permissão; desfeita a ligação, o acesso acaba |
 | `tests/app.js` | Utilitários: Firebase falso (com `__docs` para as coleções do treinador e do aluno), estado inicial, atalhos de navegação |
 
@@ -1444,14 +1444,23 @@ dele(a) e ver as cargas e as RIR e afins". Decisões do dono:
   `textoConvite`). Pedido do dono: o link "deve levar o usuário a baixar o
   app e o Obtainium para atualizar o app". A página põe os passos em ordem:
   baixar o Obtainium (GitHub do projeto dele), adicionar o T-RESULTS com um
-  toque (`obtainium://add/https://github.com/pedrocrvgdf/appcutting`, com o
-  endereço para colar se o toque não abrir) e digitar o código no Perfil. No
-  iPhone, onde não há APK, o caminho do navegador vem primeiro, pelo
-  `./?convite=`. Código fora do formato não aparece na tela: a página pede o
-  código ao treinador. Não está no `CORE` do service worker: é para quem
-  ainda não tem o app. Os passos dentro do Obtainium foram escritos sem
-  acesso à documentação dele (o proxy bloqueia o site): confira num celular
-  quando ele mudar de versão. Coberta em `tests/convite.spec.js`.
+  toque e digitar o código no Perfil. No iPhone, onde não há APK, o caminho
+  do navegador vem primeiro, pelo `./?convite=`. Código fora do formato não
+  aparece na tela: a página pede o código ao treinador. Não está no `CORE`
+  do service worker: é para quem ainda não tem o app. Coberta em
+  `tests/convite.spec.js`.
+- **O botão do Obtainium já leva a configuração** (#100):
+  `obtainium://app/<JSON>`, no formato do catálogo oficial dele
+  (apps.obtainium.imranr.dev; a wiki, em "Deep Links"), com `id` igual ao
+  pacote do APK (`com.pedrocrvgdf.tresults`) e `apkFilterRegEx`
+  `app-release\.apk$` dentro de `additionalSettings`, que é um **texto**
+  JSON, não um objeto. Sem o filtro, a versão publicada oferece também o
+  `.zip` e o `.tar.gz` do código-fonte (o GitHub anexa sozinho), o Obtainium
+  pergunta qual instalar (o dono viu isso ao atualizar para a 1.6) e, pela
+  wiki ("App Sources"), não atualiza sozinho em segundo plano. Quem cola o
+  endereço à mão fica sem o filtro, e a página diz qual pacote escolher.
+  Conferido na wiki e no catálogo em 2026-11-02; o nome do APK do próprio
+  Obtainium ("arm64") não está na documentação dele.
 - **Só o treinador edita o treino.** O aluno vê e treina, e troca exercício
   só na sessão, como sempre.
 - **O treinador vê os treinos; o peso, só se o aluno ligar**

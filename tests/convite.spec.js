@@ -36,11 +36,27 @@ test.describe('Página do convite', () => {
     const e = await estado(page);
     expect(e.codigo).toBe('ABC234');
     expect([e.cartao, e.semCodigo]).toEqual([true, false]);
-    expect(e.obtainium, 'abre o Obtainium já com o endereço do app').toBe('obtainium://add/https://github.com/pedrocrvgdf/appcutting');
+    expect(e.obtainium.startsWith('obtainium://app/'), 'adiciona o app já configurado (#100)').toBe(true);
     expect(e.baixar).toBe('https://github.com/ImranR98/Obtainium/releases/latest');
     expect(e.web, 'no navegador, o app abre o pedido já preenchido').toBe('./?convite=ABC234');
     expect(e.ordem).toEqual(['android', 'iphone']);
     expect(erros).toEqual([]);
+  });
+
+  test('o Obtainium recebe o app com o filtro do pacote: só o APK, nunca o código-fonte', async ({ page }) => {
+    /* Formato do catálogo oficial do Obtainium: additionalSettings é um
+       TEXTO JSON. Sem o filtro, a versão publicada oferece também o .zip e
+       o .tar.gz do código-fonte, o Obtainium pergunta qual instalar e não
+       atualiza sozinho em segundo plano (wiki dele, "App Sources"). */
+    await abrir(page, '?c=ABC234');
+    const href = await page.getAttribute('#obtainium', 'href');
+    const cfg = JSON.parse(decodeURIComponent(href.slice('obtainium://app/'.length)));
+    expect([cfg.id, cfg.url, cfg.name]).toEqual(['com.pedrocrvgdf.tresults', 'https://github.com/pedrocrvgdf/appcutting', 'T-RESULTS']);
+    expect(typeof cfg.additionalSettings).toBe('string');
+    const ajustes = JSON.parse(cfg.additionalSettings);
+    expect([ajustes.invertAPKFilter, ajustes.trackOnly, ajustes.includePrereleases]).toEqual([false, false, false]);
+    const filtro = new RegExp(ajustes.apkFilterRegEx);
+    expect(['app-release.apk', 'v1.6+7.zip', 'v1.6+7.tar.gz', 'app-release.apk.idsig'].map(n => filtro.test(n))).toEqual([true, false, false, false]);
   });
 
   test('código fora do formato não aparece: a página pede o código ao treinador', async ({ page }) => {
