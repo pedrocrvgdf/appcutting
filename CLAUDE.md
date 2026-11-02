@@ -687,6 +687,7 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 | `tests/alarme.spec.js` | Volume e ausência de distorção do alarme de descanso |
 | `tests/sentry.spec.js` | Configuração do monitoramento, limpeza de dados pessoais, app abrindo sem a Sentry |
 | `tests/alarme-descanso.spec.js` | Tela do alarme, interrupção da música, insistência, permissão |
+| `tests/descanso.spec.js` | Descanso da sessão: continua ao avançar, voltar, trocar e desfazer, com o nome do exercício; "−15 s"/"+30 s" sem redesenhar, pular no fim, teto de 1 h, só este descanso; push do último toque e em fila; Android reagendado e cancelado ao finalizar; app descartado; sugestões em 90 s; 320/390px |
 | `tests/abertura.spec.js` | Splash, avisos de espera, instalação como app |
 | `tests/push.spec.js` | Aviso com o app fechado, e o app funcionando sem ele |
 | `tests/feed.spec.js` | Feed do Início: ordem, progressão, cartão que expande, sessão inteira, vírgula decimal |
@@ -751,6 +752,31 @@ Chaves usadas no armazenamento local, úteis para montar cenários:
 - **O alarme do descanso é agendado no relógio do áudio** (`scheduleAlarm`), não
   por `setTimeout` — timers de JavaScript congelam em segundo plano. Ele passa
   por um limitador para ficar alto sem distorcer.
+- **O descanso é da sessão, não da tela** (#83). `renderTr` terminava em
+  `stopRest()`: "Próximo exercício" apagava a contagem enquanto o alarme do
+  Android, ou o push, seguia agendado sem dono. Hoje avançar, voltar, trocar
+  e desfazer não mexem no descanso, e ele guarda o próprio total e de qual
+  exercício é (`trRestTotal`, `trRestEx`, `trRestIdx`, que `trPersist` leva).
+  Fora do exercício dele, o botão diz "Descanso · Supino reto", sem artigo.
+  **Finalizar, cancelar e a troca de conta passam por `encerrarDescanso()`**,
+  que avisa o Android e o servidor: só `stopRest()` deixava o alarme do
+  sistema tocar depois do treino.
+- **"−15 s" / "+30 s"** (`ajustarDescanso`, `#trAjuste`, só com o descanso
+  correndo) valem **só para este descanso**: nem o protocolo, nem o próximo
+  descanso. Reagendam nos três caminhos (`descansoReagendar`): o Android
+  troca o agendamento pela mesma `iniciarDescanso` (sem APK novo); no
+  navegador, o som e a notificação na hora, e o push **só do último toque**
+  (`PUSH_ESPERA_MS`), porque o servidor envia só o último pedido. Os pedidos
+  ao servidor saem **em fila** (`pushEmFila`): fora de ordem, um "pular"
+  chegava antes do agendar e o aviso de um descanso encerrado tocava.
+  "−15" com 15 s ou menos encerra **como pular, sem alarme**; o teto é 1 h
+  (`DESC_MAX`), o limite da ponte e do servidor. O total fica inteiro: ele
+  vai para a notificação. As calorias continuam pelo descanso prescrito.
+- **As sugestões prontas descansam 90 s** (`SUG_DESCANSO`), no cutting e no
+  bulking: Singer et al. 2024, PMID 39205815 (vantagem pequena acima de 60 s,
+  nenhuma acima de 90 s). O cutting usava 60 s "para manter o gasto alto",
+  sem fonte, e o texto não promete mais nada sobre o gasto.
+- Coberto em `tests/descanso.spec.js`.
 - **O alarme se comporta como o temporizador do celular:** toma o áudio com
   `transient-solo` (interrompe a música, não só abaixa), repete por
   `ALARM_DUR` segundos, vibra em ciclo e abre `#restDone`, que toma a tela
@@ -1098,7 +1124,8 @@ nascer "tem" — sem aviso falso para quem já tinha marcado.
   no editor (`renderTpEquip`); estado na lista de academias. **Avisa, nunca
   esconde, reordena treino nem troca sozinho.**
 - **"Tem, sim" chama só `pintarFalta()`, nunca `renderTr()`**: `renderTr`
-  termina em `stopRest()` e mataria o descanso. Existe teste.
+  redesenha as séries (fecha o teclado), e até o #83 também matava o
+  descanso. Existe teste.
 - Exercício trocado (`e.orig`) não avisa: foi escolhido numa lista que já
   mostrava o que falta. "Desfazer" traz o aviso de volta.
 - Id de aparelho que esta versão não conhece fica guardado e é ignorado na
@@ -1299,8 +1326,8 @@ segundos.
   ficavam escondidas e não iam para o histórico. Exercício de tempo que da
   última vez foi contado em reps (referência com reps e sem segundos)
   **começa em reps**, a não ser que a sessão já tenha segundos digitados.
-- **"+ carga" e "contar em…" não chamam `renderTr()`**: ele termina em
-  `stopRest()` e mataria o descanso. Mostram o campo pelo DOM e gravam
+- **"+ carga" e "contar em…" não chamam `renderTr()`**: ele redesenha as
+  séries, e até o #83 também matava o descanso. Mostram o campo pelo DOM e gravam
   `comCarga`/`medida` no exercício da sessão (`trPersist` leva). Existe teste.
 - **Série feita é carga, reps ou segundos** (`serieFeita` sobre `serieDe`), e
   o mesmo critério vale no finalizar e nos avisos do fim do descanso.

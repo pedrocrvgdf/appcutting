@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v57";
+window.APP_RELEASE = "tresults-v58";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -882,6 +882,14 @@ window.APP_RELEASE = "tresults-v57";
   #trRest.resting{background:var(--surface);color:var(--primary);animation:restPulse 1.6s ease infinite}
   @keyframes restPulse{0%,100%{box-shadow:0 0 0 0 rgba(14,124,107,.25)}50%{box-shadow:0 0 0 9px rgba(14,124,107,0)}}
   #trRest.done{background:var(--selo-bg);color:var(--selo-ink);animation:donePop .4s cubic-bezier(.3,1.4,.5,1)}
+  /* Descanso que continua depois de avançar (#83): diz de qual exercício é,
+     numa linha menor em cima do tempo. */
+  #trRest .rtxt.col{flex-direction:column;gap:1px;line-height:1.25;width:100%;min-width:0}
+  #trRest .rde{font-size:12px;font-weight:700;opacity:.85;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* −15 s / +30 s: só com o descanso correndo. */
+  .tr-ajuste{display:none;gap:8px;margin-top:8px}
+  .tr-ajuste.on{display:flex}
+  .tr-ajuste .btn{flex:1;margin:0;padding:11px 8px;font-size:15px}
   @keyframes donePop{0%{transform:scale(.95)}100%{transform:scale(1)}}
   .wt-tabs button{font-size:11px;font-weight:800;padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--muted);letter-spacing:0}
   .wt-tabs button.on{background:var(--primary);border-color:var(--primary);color:#fff}
@@ -2266,6 +2274,7 @@ window.APP_RELEASE = "tresults-v57";
     </div>
     <div id="trSets"></div>
     <button class="btn secondary" id="trRest" style="margin-top:12px"></button>
+    <div class="tr-ajuste" id="trAjuste"><button class="btn secondary" id="trMenos15" type="button" aria-label="Tirar 15 segundos do descanso">−15 s</button><button class="btn secondary" id="trMais30" type="button" aria-label="Somar 30 segundos ao descanso">+30 s</button></div>
     <p class="tr-hint">RIR = quantas repetições você <b>ainda aguentaria</b> fazer com postura correta. <b>0</b> = falha total · <b>1</b> = faria só mais 1 · <b>2</b> = faria mais 2.</p>
     <button class="btn" id="trNext">Próximo exercício ›</button>
     <button class="btn secondary" id="trPrev">‹ Exercício anterior</button>
@@ -4293,8 +4302,8 @@ function openTSug(destino){
   tSugDestino=(destino&&protPorId(destino))?destino:null;
   const obj=(store.goals||{}).objetivo||"cutting",cutting=obj!=="bulking";
   $("tSugSub").innerHTML=(cutting
-    ?'Para o seu objetivo de <b>cutting</b>: descansos de <b>60 s</b> para manter o gasto alto e preservar músculo no déficit. Busque a falha entre 6–12 reps.'
-    :'Para o seu objetivo de <b>bulking</b>: descansos de <b>90 s</b> para render mais carga e maximizar o estímulo. Busque a falha entre 6–12 reps.')
+    ?'Para o seu objetivo de <b>cutting</b>: descansos de <b>90 s</b>. Nos estudos, descansar mais de 60 s deu um pouco mais de músculo, e passar de 90 s não fez diferença. Nos exercícios pesados, descanse mais se precisar. Busque a falha entre 6–12 reps.'
+    :'Para o seu objetivo de <b>bulking</b>: descansos de <b>90 s</b>. Nos estudos, descansar mais de 60 s deu um pouco mais de músculo, e passar de 90 s não fez diferença. Nos exercícios pesados, descanse mais se precisar. Busque a falha entre 6–12 reps.')
     +(!tSugDestino&&(store.tprotocol||[]).length?' Cada sugestão entra como um protocolo novo, com o nome dela — dá para renomear depois.':'');
   /* Treinador (#95): o objetivo é do aluno, que ele não vê aqui. */
   if(ehTreinador())$("tSugSub").textContent="Treinos prontos para começar. Séries e descanso você ajusta depois, no editor.";
@@ -4307,10 +4316,19 @@ function openTSug(destino){
   $("tSugList").querySelectorAll("[data-usesug]").forEach(b=>b.onclick=()=>useTSug(b.dataset.usesug,tSugDestino));
   $("tSugOverlay").classList.add("open");
 }
+/* Descanso das sugestões prontas (#83): 90 s, no cutting e no bulking.
+   O dono pediu "o que a ciência indica como melhor para hipertrofia".
+   Singer A, Wolf M, Generoso L, et al. "Give it a rest: a systematic review
+   with Bayesian meta-analysis on the effect of inter-set rest interval
+   duration on muscle hypertrophy". Front Sports Act Living 2024;6:1429789,
+   PMID 39205815 (resumo conferido no PubMed): pequena vantagem para o músculo
+   acima de 60 s, e nenhuma diferença perceptível acima de 90 s. O cutting
+   usava 60 s "para manter o gasto alto", sem fonte, e o texto não promete
+   mais nada sobre o gasto. */
+const SUG_DESCANSO=90;
 function useTSug(pid,destino){
   const p=T_SUG.find(x=>x.id===pid);if(!p)return;
-  const obj=(store.goals||{}).objetivo||"cutting";
-  const rest=obj==="bulking"?90:60;
+  const rest=SUG_DESCANSO;
   store.tprotocol=store.tprotocol||[];
   /* Quem escolheu uma academia e pegou uma sugestão está montando o treino
      DELA: sem isto, o protocolo novo apareceria em todas. */
@@ -5576,6 +5594,10 @@ $("tpSave").onclick=()=>{
 /* ---- execução do treino ---- */
 const tRunOverlay=$("tRunOverlay");
 let trS=null,trInt=null,trRestInt=null,trRestEnd=0;
+/* O descanso é da sessão, não da tela (#83): avançar para o próximo
+   exercício não o apaga. Por isso ele guarda o próprio total (com os "+30 s")
+   e de qual exercício é. */
+let trRestTotal=0,trRestEx="",trRestIdx=-1;
 
 /* ============================================================
    ALARME DO DESCANSO
@@ -5882,15 +5904,47 @@ function descansoIniciar(secs,exercicio){
   // fica na barra de notificação com o horário de término (ver limite no CLAUDE.md)
   notifMostrar("Descanso em andamento",`Termina às ${hhmm(new Date(trRestEnd))} · ${fmtSec(secs)} de descanso`,
     {silent:true,requireInteraction:true});
-  pushAgendar(secs,"Hora da próxima série."); // chega mesmo com o app fechado
+  pushEmFila(()=>pushAgendar(secs,"Hora da próxima série.")); // chega mesmo com o app fechado
 }
+
+/* Os pedidos ao servidor saem um de cada vez, na ordem dos toques. Dois
+   pedidos ao mesmo tempo podiam chegar fora de ordem, e o aviso que ficava
+   valendo era o de um toque antigo — ou um "pular" chegava antes do agendar,
+   e o aviso de um descanso já encerrado tocava. */
+let pushFila=Promise.resolve(),pushReT=null;
+function pushEmFila(f){pushFila=pushFila.then(f,f);return pushFila;}
+
+/** "+30 s" / "−15 s": o mesmo descanso, com outro fim, nos três caminhos. */
+function descansoReagendar(secs){
+  if(appNativo){
+    /* A ponte já troca o agendamento: `Descanso.agendar` cancela o anterior
+       antes de pôr o novo. Não precisa de APK novo. */
+    try{ window.TResults.iniciarDescanso(secs,trRestEx||""); return; }catch(e){}
+  }
+  keepAudioAlive(true);
+  scheduleAlarm(secs);   // cancela o agendado e põe o novo
+  clearTimeout(trDuckT);
+  trDuckT=setTimeout(tomarOAudio,Math.max(0,secs*1000-400));
+  notifMostrar("Descanso em andamento",`Termina às ${hhmm(new Date(trRestEnd))} · ${fmtSec(trRestTotal)} de descanso`,
+    {silent:true,requireInteraction:true});
+  /* O servidor recebe só o último de uma sequência de toques ("+30" três
+     vezes vira um pedido). O aviso de antes perde a validade sozinho: o
+     servidor só envia o último que foi pedido. Perto do fim, sem espera. */
+  clearTimeout(pushReT);
+  pushReT=setTimeout(()=>pushEmFila(()=>{
+    const r=(trRestEnd-Date.now())/1000;
+    if(trRestInt&&r>=1)return pushAgendar(r,"Hora da próxima série.");
+  }),secs<5?0:PUSH_ESPERA_MS);
+}
+const PUSH_ESPERA_MS=800;
 
 /** Descanso pulado, alarme já tocado ou treino encerrado. */
 function descansoCancelar(){
+  clearTimeout(pushReT);
   if(appNativo){
     try{ window.TResults.cancelarDescanso(); return; }catch(e){}
   }
-  pushCancelar();
+  pushEmFila(pushCancelar);
 }
 
 /* --- Som do alarme e biometria ---
@@ -5991,14 +6045,15 @@ function trPersist(){
       w:trS.w,start:trS.start,idx:trS.idx,logs:trS.logs,
       away:trS.away||0,hiddenAt:trS.hiddenAt||0,acad:trS.acad||"",acadNome:trS.acadNome||"",
       prot:trS.prot||"",protNome:trS.protNome||"",
-      restEnd:trRestInt?trRestEnd:0,at:Date.now()
+      restEnd:trRestInt?trRestEnd:0,restTotal:trRestInt?trRestTotal:0,restEx:trRestInt?trRestEx:"",restIdx:trRestInt?trRestIdx:-1,
+      at:Date.now()
     }));
   }catch(e){}
 }
 function trPersistSoon(){clearTimeout(trPersistT);trPersistT=setTimeout(trPersist,400);}
 /* outra conta entrou neste aparelho: o treino em andamento não é dela */
 function trDiscardRun(){
-  clearInterval(trInt);stopRest();trS=null;
+  clearInterval(trInt);encerrarDescanso();trS=null;
   try{localStorage.removeItem(RUNKEY);}catch(e){}
   tRunOverlay.classList.remove("open");
 }
@@ -6028,6 +6083,12 @@ function trRestore(){
   if(s.restEnd){
     if(s.restEnd>Date.now()){ // descanso continuou correndo pelo relógio real
       trRestEnd=s.restEnd;
+      /* Treino salvo pela versão anterior não traz o total nem o exercício:
+         vale o do exercício da vez, como era. */
+      const ex=trS.w.ex[trS.idx];
+      trRestTotal=s.restTotal||(ex&&ex.rest)||90;
+      trRestIdx=Number.isInteger(s.restIdx)&&s.restIdx>=0&&s.restIdx<trS.w.ex.length?s.restIdx:trS.idx;
+      trRestEx=s.restEx||((trS.w.ex[trRestIdx]||{}).n)||"";
       $("trRest").classList.add("resting");$("trRest").classList.remove("done");
       restTick();trRestInt=setInterval(restTick,500);
     } else restFinish(Date.now()-s.restEnd<120000); // acabou enquanto você estava fora
@@ -6055,7 +6116,42 @@ function trTick(){
   if(!trS)return;
   $("trTimer").textContent=fmtSec(Math.floor(trElapsedMs()/1000));
 }
-function stopRest(){clearInterval(trRestInt);trRestInt=null;trRestEnd=0;clearTimeout(trDuckT);cancelAlarm();keepAudioAlive(false);}
+function stopRest(){
+  clearInterval(trRestInt);trRestInt=null;trRestEnd=0;trRestTotal=0;trRestEx="";trRestIdx=-1;
+  clearTimeout(trDuckT);clearTimeout(pushReT);cancelAlarm();keepAudioAlive(false);
+  const a=$("trAjuste");if(a)a.classList.remove("on");
+}
+/* Treino finalizado, cancelado ou de outra conta: o descanso que corria
+   avisa o Android e o servidor também. Só parar a tela deixava o alarme do
+   sistema tocando depois do treino. */
+function encerrarDescanso(){
+  if(trRestInt)descansoCancelar();
+  stopRest();
+}
+/** Toque no descanso em andamento = pular. */
+function pularDescanso(){
+  stopRest();descansoCancelar();restLabel();trPersist();
+}
+/* "+30 s" / "−15 s" (#83). Valem só para este descanso: a sessão, nunca o
+   protocolo, como a troca de exercício. O teto é o da ponte do Android e do
+   servidor: descanso acima de 1 h não é descanso. */
+const DESC_MAIS=30,DESC_MENOS=15,DESC_MAX=3600;
+function ajustarDescanso(delta){
+  if(!trS||!trRestInt||!trRestEnd)return;
+  const agora=Date.now(),falta=(trRestEnd-agora)/1000;
+  /* "−15" com 15 s ou menos: a pessoa quer ir agora. Encerra como pular,
+     sem alarme logo depois do toque — e sem mandar 0 s ao Android e ao
+     servidor, que recusariam e deixariam o alarme antigo valendo. */
+  if(delta<0&&falta<=-delta){pularDescanso();return;}
+  const seg=Math.max(1,Math.min(DESC_MAX,Math.round(falta+delta)));
+  if(seg===Math.round(falta))return;   // no teto
+  trRestTotal=Math.max(1,Math.round(trRestTotal+seg-falta));   // inteiro: vai para a notificação
+  trRestEnd=agora+seg*1000;
+  descansoReagendar(seg);
+  restTick();trPersist();
+}
+$("trMenos15").onclick=()=>ajustarDescanso(-DESC_MENOS);
+$("trMais30").onclick=()=>ajustarDescanso(DESC_MAIS);
 let restDoneT=null;
 function restLabel(){
   const e=trS.w.ex[trS.idx],b=$("trRest");
@@ -6083,7 +6179,7 @@ function restFinish(soar){
     else abrirRestDone();
     /* Nada de notificar daqui: se o app está em segundo plano este código não
        roda. Quem avisa nesse caso é o push do servidor. */
-    pushCancelar();          // já avisamos na tela; o push viraria aviso repetido
+    pushEmFila(pushCancelar); // já avisamos na tela; o push viraria aviso repetido
   }
   trPersist();
   setTimeout(()=>{if(!trRestInt&&trS)restLabel();},2800);
@@ -6142,11 +6238,17 @@ function fecharRestDone(){
 }
 function restTick(){
   if(!trRestEnd)return;
-  const b=$("trRest"),e=trS&&trS.w.ex[trS.idx],total=(e&&e.rest)||90;
+  const b=$("trRest"),e=trS&&trS.w.ex[trS.idx],total=trRestTotal||(e&&e.rest)||90;
   const left=Math.ceil((trRestEnd-Date.now())/1000);
   if(left<=0){restFinish(Date.now()-trRestEnd<180000);return;}  // atrasado demais: mostra, mas não toca
-  const pct=Math.min(100,((total-left)/total)*100);
-  b.innerHTML=`<span class="rfill" style="width:${pct}%"></span><span class="rtxt">Descanso: ${fmtSec(left)} · toque para pular</span>`;
+  const pct=Math.max(0,Math.min(100,((total-left)/total)*100));
+  /* Avançou com o descanso correndo: ele continua, e diz de qual exercício
+     é. O nome vai sem artigo ("do rosca" sairia em metade do catálogo). */
+  const deOutro=!!(trS&&trRestEx&&trRestIdx!==trS.idx);
+  b.innerHTML=`<span class="rfill" style="width:${pct}%"></span>`+(deOutro
+    ?`<span class="rtxt col"><span class="rde">Descanso · ${esc(trRestEx)}</span><span>${fmtSec(left)} · toque para pular</span></span>`
+    :`<span class="rtxt">Descanso: ${fmtSec(left)} · toque para pular</span>`);
+  const a=$("trAjuste");if(a)a.classList.add("on");
 }
 $("restDone").onclick=fecharRestDone;
 $("rdGo").onclick=e=>{e.stopPropagation();fecharRestDone();};
@@ -6155,11 +6257,12 @@ $("rpOk").onclick=e=>{e.stopPropagation();fecharRestPop();};
 $("trRest").onclick=()=>{
   if(!trS)return;
   const b=$("trRest");
-  if(trRestInt){stopRest();descansoCancelar();restLabel();trPersist();return;} // toque durante o descanso = pular
+  if(trRestInt){pularDescanso();return;} // toque durante o descanso = pular
   beepInit(); // gesto do usuário libera o áudio do alarme
   trS.saiuNoDescanso=false;   // começa limpo: quem sair marca no visibilitychange
   const secs=(trS.w.ex[trS.idx].rest||90);
   trRestEnd=Date.now()+secs*1000; // relógio real: não para em segundo plano
+  trRestTotal=secs;trRestIdx=trS.idx;trRestEx=trS.w.ex[trS.idx].n||"";
   descansoIniciar(secs,trS.w.ex[trS.idx].n);
   b.classList.add("resting");b.classList.remove("done");
   restTick();
@@ -6614,8 +6717,8 @@ function renderTr(){
     ${trRecorde?'<div class="tsrec" hidden></div>':""}
     <div class="tsr2"><span class="rirl">RIR</span><div class="rirseg">${[0,1,2,3].map(v=>`<button data-rir="${v}" class="${l.rir===v?"on":""}">${v===3?"3+":v}</button>`).join("")}</div></div>
   </div>`;}).join("");
-  /* "+ carga" mostra o campo sem redesenhar: renderTr termina em stopRest()
-     e mataria o descanso em andamento. */
+  /* "+ carga" mostra o campo sem redesenhar: renderTr redesenha as séries
+     e fecharia o teclado (até o #83, matava também o descanso). */
   if($("trMaisCarga"))$("trMaisCarga").onclick=()=>{
     e.comCarga=true;
     $("trSets").querySelectorAll(".fkg.oculto").forEach(f=>f.classList.remove("oculto"));
@@ -6651,7 +6754,10 @@ function renderTr(){
     trDelta(row);pintarRecorde(row);
   });
   pintarFalta();
-  stopRest();restLabel();
+  /* O descanso é da sessão (#83): avançar, voltar ou trocar o exercício não
+     o apaga. Antes, a tela voltava a "Iniciar descanso" enquanto o alarme do
+     Android (ou o push) seguia agendado, sem dono na tela. */
+  if(trRestInt)restTick();else restLabel();
   $("trNext").textContent=trS.idx===w.ex.length-1?"Finalizar treino ✓":"Próximo exercício ›";
   $("trPrev").style.display=trS.idx>0?"flex":"none";
 }
@@ -6729,7 +6835,7 @@ function pintarFalta(){
   $("trFaltaTem").onclick=()=>{
     const a=acadPorId(trS.acad);
     if(a&&Array.isArray(a.faltam)){const tira=new Set(r.melhor);a.faltam=a.faltam.filter(id=>!tira.has(id));save();}
-    pintarFalta();   // nunca renderTr: ele termina em stopRest() e mataria o descanso
+    pintarFalta();   // nunca renderTr: ele redesenha as séries (até o #83, matava o descanso)
   };
 }
 function aplicarTroca(){
@@ -7183,12 +7289,12 @@ $("trNext").onclick=async()=>{
   reg.tid=trS.w.id;reg.prot=trS.prot||PROT_PADRAO;reg.protNome=protNomeDe(trS)||trS.protNome||"";
   tToday().push(reg);
   if(ehForca(reg))fecharPausaAoTreinar("forca",todayKey(),reg.id);   // finalizada sem nenhuma série não é treino
-  clearInterval(trInt);stopRest();trS=null;trPersist();tRunOverlay.classList.remove("open");
+  clearInterval(trInt);encerrarDescanso();trS=null;trPersist();tRunOverlay.classList.remove("open");
   audioSession("auto");
   save();renderTreino();render();renderInicio();
   showCongrats(`Treino finalizado — ${min} min (${Math.round(workMin)} de esforço) · intensidade ${label} · ${kcal} kcal`);
 };
-$("trQuit").onclick=async()=>{if(await appConfirm("Cancelar o treino em andamento? Nada será registrado.",{okText:"Sim, cancelar",cancelText:"Continuar treino"})){clearInterval(trInt);stopRest();trS=null;trPersist();tRunOverlay.classList.remove("open");audioSession("auto");}};
+$("trQuit").onclick=async()=>{if(await appConfirm("Cancelar o treino em andamento? Nada será registrado.",{okText:"Sim, cancelar",cancelText:"Continuar treino"})){clearInterval(trInt);encerrarDescanso();trS=null;trPersist();tRunOverlay.classList.remove("open");audioSession("auto");}};
 
 /* ---- mapa muscular (frente/costas) ---- */
 /* ---- Como fazer: demonstração de exercícios ---- */

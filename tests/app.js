@@ -18,6 +18,8 @@ const PONTE = `
 /* injetado apenas na cópia de teste */
 window.__t={
   get store(){return store}, get trS(){return trS}, get trRestEnd(){return trRestEnd},
+  get trRestTotal(){return trRestTotal}, get trRestEx(){return trRestEx}, get trRestIdx(){return trRestIdx},
+  SUG_DESCANSO, DESC_MAX,
   trElapsedMs:()=>trS?trElapsedMs():null, lastExSession, alarmWav, ALARM_VOL, todayKey,
   ALARM_DUR, ALARM_CICLO, restTick, ALARM_SONS, EX_POR_GRUPO,
   somDoAlarme:()=>somDoAlarme(), idadeDe, idadeAtual, computeTMB, buscaAlimentos, alimPontos, mapOff, ordenarOff, FOODS,
