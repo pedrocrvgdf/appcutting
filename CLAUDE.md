@@ -813,7 +813,11 @@ do módulo. Se a linha `$("mealSel").value=defaultMeal();` for renomeada, a
 injeção quebra e o próprio teste avisa — ajuste `ANCORA` em `tests/app.js`.
 
 O login é interceptado com `page.route()` devolvendo módulos falsos do Firebase;
-sem isso a sessão trava esperando a rede.
+sem isso a sessão trava esperando a rede. **O carregador do Sentry de verdade
+é bloqueado em `isolarRede`**: na sessão o proxy já o barrava, mas no GitHub
+Actions há internet, ele carregava por cima do Sentry falso dos testes e
+mandava ao projeto do dono o que os testes provocam. Quem testa o carregador
+é `tests/sentry.spec.js`, com `page.route`, que vence a rota do contexto.
 
 **A suíte não substitui olhar.** Dois defeitos reais desta base — placeholder de
 carga cortado ("57," em vez de "57,5") e a linha de referência despedaçada em
