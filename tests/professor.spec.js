@@ -12,11 +12,12 @@
    plano do primeiro aluno (carimbarAlunos carimba tudo o que não tem dono). */
 
 const { test, expect } = require('@playwright/test');
-const { estadoBase, urlApp, isolarRede, coletarErros } = require('./app');
+const { estadoBase, URL_HTTP, servirPorHttp, isolarRede, coletarErros } = require('./app');
 
 /* Semeia antes do app, como em treinador.spec.js. */
 async function abrirApp(page, storage) {
   await isolarRede(page.context());
+  await servirPorHttp(page.context());   // sob file://, a recarga às vezes acha o armazenamento vazio (tests/app.js)
   const erros = coletarErros(page);
   await page.addInitScript(s => {
     if (localStorage.getItem('__semeado')) return;
@@ -24,7 +25,7 @@ async function abrirApp(page, storage) {
     for (const k in s) localStorage.setItem(k, s[k]);
     localStorage.setItem('__semeado', '1');
   }, storage);
-  await page.goto(urlApp());
+  await page.goto(URL_HTTP);
   await page.waitForFunction(() => !!window.__t, null, { timeout: 15000 });
   await page.waitForTimeout(600);
   return erros;
@@ -117,7 +118,7 @@ test.describe('Sou treinador, numa conta que já existe', () => {
     expect(s.cod, 'o código aparece na tela').toBe(s.convite);
     expect((await docs(page))['convites/' + s.convite]).toEqual(expect.objectContaining({ treinador: 'u1', nome: 'Pedro' }));
     const abas = await page.evaluate(() => [...document.querySelectorAll('#tabbar button')].filter(b => getComputedStyle(b).display !== 'none').map(b => b.textContent.trim()));
-    expect(abas).toEqual(['Alunos', 'Perfil']);
+    expect(abas).toEqual(['Alunos', 'Pessoal', 'Perfil']);
     // e a nuvem fica sabendo: o papel sobe com o documento
     await page.waitForFunction(() => !localStorage.getItem('cutting.pendente'), null, { timeout: 5000 }).catch(() => {});
     expect(erros).toEqual([]);
