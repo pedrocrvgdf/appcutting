@@ -10,7 +10,7 @@
    "Outro aparelho" é o teste mexendo direto no documento da nuvem. */
 
 const { test, expect } = require('@playwright/test');
-const { isolarRede, coletarErros, urlApp, estadoBase, diaISO, iniciarTreino, preencherSerie } = require('./app');
+const { isolarRede, coletarErros, URL_HTTP, servirPorHttp, estadoBase, diaISO, iniciarTreino, preencherSerie } = require('./app');
 
 const hoje = diaISO(0), ontem = diaISO(1), anteontem = diaISO(2);
 const loja = () => JSON.parse(estadoBase()['cutting.v1']);
@@ -21,6 +21,10 @@ const comida = (id, name = 'Arroz') => ({ id, name, grams: 100, unit: 'g', base:
     daí, recarregar é reabrir o app com o que ficou no aparelho. */
 async function abrir(page, { aparelho, nuvem, base, pendente, extra = {} }) {
   await isolarRede(page.context());
+  /* Pelo http falso: sob file://, a página recarregada às vezes achava o
+     armazenamento vazio, e o semeador semeava de novo o estado inicial
+     (#98; medido em tests/app.js). */
+  await servirPorHttp(page.context());
   const erros = coletarErros(page);
   const s = { 'cutting.v1': JSON.stringify(aparelho), 'cutting.owner': 'u1', '__nuvem': JSON.stringify(nuvem === undefined ? null : nuvem), ...extra };
   if (pendente) s['cutting.pendente'] = JSON.stringify(pendente === true ? { uid: 'u1' } : pendente);
@@ -39,7 +43,7 @@ async function abrir(page, { aparelho, nuvem, base, pendente, extra = {} }) {
     for (const k in s) localStorage.setItem(k, s[k]);
     localStorage.setItem('__semeado', '1');
   }, s);
-  await page.goto(urlApp());
+  await page.goto(URL_HTTP);
   await page.waitForFunction(() => !!window.__t, null, { timeout: 15000 });
   await page.waitForTimeout(400);
   return erros;
@@ -426,7 +430,8 @@ test.describe('A mescla', () => {
   /* Direto na função, com casos que a tela não alcança fácil. */
   const abrirSimples = async page => {
     await isolarRede(page.context());
-    await page.goto(urlApp());
+    await servirPorHttp(page.context());
+    await page.goto(URL_HTTP);
     await page.waitForFunction(() => !!window.__t, null, { timeout: 15000 });
   };
 

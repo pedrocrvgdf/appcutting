@@ -210,7 +210,8 @@ data de nascimento, e-mail e senha.
   Os testes não pegavam porque o login falso nunca trocava de conta; hoje
   `window.__novaConta` troca (`tests/treinador.spec.js`).
 - **"Vou treinar" / "Sou treinador"** (`#cadPapelSeg`, #95): a conta de
-  treinador não pede data de nascimento. Veja "Treinador e aluno".
+  treinador não pede data de nascimento (o Pessoal dela segue pela idade
+  digitada no objetivo, como as contas antigas). Veja "Treinador e aluno".
 - Coberto em `tests/cadastro.spec.js`.
 
 ### Uso de exógenos: quem usa clembuterol gasta mais em repouso
@@ -803,6 +804,7 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 | `tests/app-nativo.spec.js` | Caminho web desligado quando o app Android está presente |
 | `tests/service-worker.spec.js` | Cache do app, versão, e a página de diagnóstico |
 | `tests/treinador.spec.js` | Treinador e aluno: conta de treinador (abas, cadastro sem data, código), protocolo só do aluno aberto e plano sem a marca interna, sem sinal e a volta, séries com carga e RIR, evolução, peso só com permissão, desfazer dos dois lados, trocar e enviar o código; aluno: código e consentimento, treino só de leitura, mudança que chega, plano de outro treinador ignorado, diário sem o que não foi aceito, ligar o peso, link do convite, outra conta no celular, excluir dados; conta nova que não perde o nome; 320/390px |
+| `tests/pessoal.spec.js` | O Pessoal do treinador: a barra que muda e o Alunos que volta, o Perfil com a barra de onde veio, o lado lembrado por conta, o Pessoal sem nada de aluno e o aluno sem nada do Pessoal, o que nasce no Pessoal fora do plano, o mesmo nome nos dois lados sem herdar id, a lista do Pessoal sem apagar a dos alunos, academias contando só os treinos dele, treino em andamento que volta, textos, 320/390px |
 | `tests/professor.spec.js` | "Sou treinador" numa conta que já existe: o pedido do código de professor, código errado, trava depois de 5 erros, o certo virando treinador com o código de convite e a tela Alunos, os protocolos de antes fora do aluno, ligado a um treinador ou com treino em andamento, modo local, outro aparelho, o código fora do arquivo, 320/390px |
 | `tests/convite.spec.js` | Página do convite: código à vista e só no formato certo, botão do Obtainium com a configuração e o filtro que deixa só o APK, navegador com o código, iPhone primeiro no navegador, copiar, nada de script de terceiro, 320px e tema escuro |
 | `tests-regras/regras.test.js` | As regras do Firestore no emulador: cada conta só no próprio documento; convite com formato e dono; vínculo só pelo aluno e com convite de verdade; plano só pelo treinador ligado; diário só pelo aluno, peso só com permissão; desfeita a ligação, o acesso acaba |
@@ -819,6 +821,23 @@ sem isso a sessão trava esperando a rede. **O carregador do Sentry de verdade
 Actions há internet, ele carregava por cima do Sentry falso dos testes e
 mandava ao projeto do dono o que os testes provocam. Quem testa o carregador
 é `tests/sentry.spec.js`, com `page.route`, que vence a rota do contexto.
+
+**Sob `file://`, a página recarregada às vezes acha o armazenamento local
+vazio.** Medido com o semeador de `tests/pessoal.spec.js`: 1 recarga em 16
+com um processo só. Sem a marca `__semeado`, o semeador semeava de novo o
+estado inicial: o aparelho "voltava" ao começo e parecia perda de dado do
+app. Servido por um endereço falso, `http://localhost` (`servirPorHttp`,
+`URL_HTTP` em `tests/app.js`), deu 0 em 24. É a causa provável da #98: os
+três testes instáveis de `sem-sinal.spec.js` passaram 30 de 30 assim, e
+falham cerca de 1 vez em 10 por `file://`, na `main` também.
+- **Quem recarrega a página usa o http:** `sem-sinal`, `treinador`,
+  `professor` e `pessoal`. Os outros arquivos ainda abrem por `file://`.
+- **O endereço é localhost porque é contexto seguro**, como o https do
+  site. Num http qualquer, o `crypto.subtle` do código de professor não
+  existe.
+- **Nada sai para a rede:** a rota responde tudo.
+- **O service worker é um vazio**, sem ouvinte de fetch. Em localhost o
+  registro acontece, e um 404 viraria erro no console.
 
 **A suíte não substitui olhar.** Dois defeitos reais desta base — placeholder de
 carga cortado ("57," em vez de "57,5") e a linha de referência despedaçada em
@@ -843,6 +862,7 @@ Chaves usadas no armazenamento local, úteis para montar cenários:
 | `tresults.diarioPub` | `{uid, j}`: o diário que a nuvem já confirmou |
 | `tresults.conviteLink` | Código que chegou por link (`?convite=`), até a pessoa entrar |
 | `tresults.profTrava` | `{n, ate}`: erros seguidos do código de professor, e até quando está travado |
+| `tresults.lado` | `{uid, e}`: o lado da conta de treinador aberto por último, `alunos` ou `pessoal` |
 | `__docs` (testes) | Nuvem falsa dos outros caminhos: `{"vinculos/a1": {...}}` |
 
 ---
@@ -1402,8 +1422,9 @@ Como as peças se encaixam:
   (e no `window.name`): numa rodada com a máquina cheia, a página recarregada
   não as via, e a reabertura semeava de novo (o aparelho voltava ao estado
   inicial) ou o sinal não voltava (#98). Parecia perda de dado do app, e era
-  o teste. O que ainda falha às vezes sob carga, na `main` também, é o
-  "apagado aqui sem sinal continua apagado" (1 em 24 com 4 processos).
+  o teste. O que sobrava (1 falha em 10, na `main` também) era o
+  armazenamento vazio na recarga sob `file://`: este arquivo agora abre o
+  app por `http://localhost` (veja a seção 5).
 - Nos testes, **espere pelo estado, não por tempo** (`assentar`: sem marca
   pendente e sem envio no meio). O envio da abertura sai depois da leitura
   da nuvem e dos 800 ms de espera; num CI lento, uma espera fixa de 1 s
@@ -1596,11 +1617,36 @@ O pedido: "quero que o app tenha a visão TREINADOR e ALUNO. Quero poder
 passar o treino para um aluno que vai baixar o app e editar o treino
 dele(a) e ver as cargas e as RIR e afins". Decisões do dono:
 
-- **A conta de treinador é só de treinador** (`store.papel="treinador"`,
-  escolhida no cadastro). Ela não treina: a barra fica com Alunos e Perfil
-  (`body.treinador`), o Perfil perde o objetivo e o alarme, e `showView`
-  manda para Alunos qualquer tela de quem treina. Para treinar, o
-  treinador usa outra conta.
+- **A conta de treinador** (`store.papel="treinador"`, escolhida no
+  cadastro ou pelo código de professor) tem dois lados (#104). Ela nasceu
+  "só de treinador" (#95), e o dono, ao converter a própria conta, relatou:
+  "sumiu o meu pessoal, coloque um novo botão escrito 'PESSOAL'". Ele
+  escolheu, entre três formas, **"a barra muda"**:
+  - **Nos alunos**, a barra é Alunos, Pessoal e Perfil (`body.treinador`).
+  - **No Pessoal** (`body.treinador.pessoal`), a barra de sempre (Início,
+    Comida, +, Treino), com **Alunos na ponta** para voltar. São seis
+    lugares: em 320 px, só cabem sem a largura mínima de cada botão.
+  - **O Perfil é dos dois lados** e fica com a barra de onde a pessoa veio;
+    o objetivo e o alarme voltaram para ele.
+  - **O lado fica lembrado no aparelho** (`tresults.lado`, por conta), e o
+    app abre nele. O treino em andamento é do Pessoal: volta em
+    `onAuthStateChanged`, e `routeAfterLogin` não o tira da aba Treino.
+  - **O que separa um lado do outro é `alunoAberto`.** Com um aluno aberto,
+    `listaProtocolos` é a dele; sem, é a do treinador, **sem nada que
+    tenha `aluno`**, com o "Meu protocolo" virtual como numa conta comum.
+    `materializarProtocolos` no Pessoal refaz só a lista dele e mantém a
+    dos alunos depois. `treinosProprios()` conta só os treinos dele (as
+    academias, os textos da aba Treino).
+  - **O que nasce sem dono com nenhum aluno aberto ganha `pessoal`** no
+    `save()` (`carimbarAlunos`). Sem a marca, o próximo `save()` com um
+    aluno aberto o levaria para o plano dele.
+  - **O protocolo de um aluno nunca herda id pelo histórico** (`protOrfao`
+    devolve vazio com aluno aberto): as sessões do treinador são do
+    Pessoal, e o nome repetido de um protocolo excluído dele daria ao
+    aluno o mesmo id, misturando os dois.
+  - O Pessoal **não se liga a outro treinador**: o cartão "Treinador" do
+    Perfil continua fora da conta de treinador, e o diário não é publicado.
+  - Coberto em `tests/pessoal.spec.js`.
 - **Conta que já existe vira de treinador pelo Perfil** (#103): "Sou
   treinador" (`#pfSouTreinador`, no cartão "Treinador", só com conta e sem
   treinador ligado) abre "Favor colocar o código de professor"
@@ -1622,7 +1668,8 @@ dele(a) e ver as cargas e as RIR e afins". Decisões do dono:
     a tela diz o que fazer antes.
   - **Virou de treinador em outro aparelho**: `aplicarNuvem` vê o papel
     mudar e troca os ouvintes e a tela.
-  - Ainda **não existe o caminho de volta** (deixar de ser treinador).
+  - Ainda **não existe o caminho de volta** (deixar de ser treinador). O
+    que a pessoa tinha continua no Pessoal (#104).
   - Coberto em `tests/professor.spec.js`.
 - **O aluno se liga por código** (6 letras e números, sem 0/O/1/I,
   `COD_RE`), digitado no Perfil ou vindo no link `?convite=` (guardado em

@@ -19,7 +19,7 @@
    tests-regras/. */
 
 const { test, expect } = require('@playwright/test');
-const { estadoBase, diaISO, iniciarTreino, preencherSerie, urlApp, isolarRede, coletarErros } = require('./app');
+const { estadoBase, diaISO, iniciarTreino, preencherSerie, URL_HTTP, servirPorHttp, isolarRede, coletarErros } = require('./app');
 
 /** Semeia o armazenamento UMA vez, antes de qualquer script do app, como em
     sem-sinal.spec.js. O abrirApp de sempre abre a página vazia, semeia e
@@ -28,6 +28,7 @@ const { estadoBase, diaISO, iniciarTreino, preencherSerie, urlApp, isolarRede, c
     semeado. No app de verdade essa página vazia não existe. */
 async function abrirApp(page, storage) {
   await isolarRede(page.context());
+  await servirPorHttp(page.context());   // sob file://, a recarga às vezes acha o armazenamento vazio (tests/app.js)
   const erros = coletarErros(page);
   await page.addInitScript(s => {
     /* A marca de "já semeado" mora no armazenamento local, junto com o
@@ -37,7 +38,7 @@ async function abrirApp(page, storage) {
     for (const k in s) localStorage.setItem(k, s[k]);
     localStorage.setItem('__semeado', '1');
   }, storage);
-  await page.goto(urlApp());
+  await page.goto(URL_HTTP);
   await page.waitForFunction(() => !!window.__t, null, { timeout: 15000 });
   await page.waitForTimeout(400);
   return erros;
@@ -111,7 +112,7 @@ async function montarProtocolo(page, nome, treino, exercicio) {
 
 test.describe('Treinador', () => {
 
-  test('a conta de treinador abre nos alunos, com a barra só de Alunos e Perfil', async ({ page }) => {
+  test('a conta de treinador abre nos alunos, com a barra de Alunos, Pessoal e Perfil', async ({ page }) => {
     const erros = await abrirApp(page, comDocs(estadoTreinador(), docsTreinador()));
     await page.waitForTimeout(300);
     expect(await viewOn(page)).toBe('view-alunos');
@@ -120,17 +121,15 @@ test.describe('Treinador', () => {
       codigo: document.getElementById('alCodigo').textContent,
       alunos: [...document.querySelectorAll('#alLista .al-n')].map(e => e.textContent),
       meta: [...document.querySelectorAll('#alLista .al-m')].map(e => e.textContent),
-      objetivo: getComputedStyle(document.querySelector('.pfgoal')).display,
     }));
-    expect(r.abas).toEqual(['Alunos', 'Perfil']);
+    expect(r.abas).toEqual(['Alunos', 'Pessoal', 'Perfil']);
     expect(r.codigo).toBe('ABC234');
     expect(r.alunos, 'só os alunos deste treinador').toEqual(['Ana', 'Bruno']);
     expect(r.meta[0]).toContain('último treino: ontem');
     expect(r.meta[1]).toContain('sem treino montado');
-    expect(r.objetivo, 'o treinador não tem objetivo nem dieta').toBe('none');
-    // as telas de quem treina não abrem para ele
-    await clicar(page, '#tabbar [data-tab="inicio"]');
-    expect(await viewOn(page)).toBe('view-alunos');
+    // as telas de quem treina são do Pessoal (#104)
+    await clicar(page, '#tabbar [data-tab="pessoal"]');
+    expect(await viewOn(page)).toBe('view-inicio');
     expect(erros).toEqual([]);
   });
 
@@ -527,7 +526,7 @@ test.describe('Aluno', () => {
 
   test('o link do convite abre o pedido já preenchido, depois de entrar', async ({ page }) => {
     await abrirApp(page, comDocs(estadoBase(), { 'convites/ABC234': { treinador: 't1', nome: 'Carla', criado: 1 } }));
-    await page.goto(urlApp() + '?convite=abc234');
+    await page.goto(URL_HTTP + '?convite=abc234');
     await page.waitForSelector('#vincOverlay.open', { timeout: 5000 });
     await page.waitForFunction(() => document.getElementById('vincNome').textContent === 'Carla');
     expect(await page.evaluate(() => [location.search, document.getElementById('vincOk').textContent])).toEqual(['', 'Aceitar']);
@@ -590,6 +589,8 @@ test.describe('Aluno', () => {
     await clicar(page, '#tabbar [data-tab="perfil"]');
     await page.waitForTimeout(150);
     expect(await page.isVisible('#pfTreinWrap')).toBe(false);
-    expect(await page.isVisible('#pfAlarme'), 'nem o alarme do descanso: ele não treina').toBe(false);
+    // o objetivo e o alarme do descanso são do Pessoal dele (#104)
+    expect(await page.isVisible('.pfgoal')).toBe(true);
+    expect(await page.isVisible('#pfAlarme')).toBe(true);
   });
 });

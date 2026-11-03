@@ -36,6 +36,7 @@ window.__t={
   carimbarTid, raizTreino, acadsExcluidas, fracaoCorpo, tipoDe, corpoKgDe, corpoKgSessao, medidasSessao, PC_SEG,
   publicarPlanos:()=>publicarPlanos(), publicarDiario:f=>publicarDiario(f), sessoesParaTreinador, planoDe,
   get vinc(){return vinc}, get alunoAberto(){return alunoAberto}, ehTreinador:()=>ehTreinador(),
+  get ladoTrein(){return ladoTrein}, useTSug:(p,d)=>useTSug(p,d), acadResumo, protOrfao, materializarProtocolos:()=>materializarProtocolos(),
   appAlert, appConfirm, pausas:()=>pausas(), diasEntre, ultimoTreino, retornoDe, prDe, pausaAberta, PAUSA_AVISO_DIAS, PAUSA_QUEDA_DIAS, get trRecorde(){return trRecorde},
   EQUIP, EQUIP_ID, EX_EQUIP, EX_POR_GRUPO_: EX_POR_GRUPO, exEquip, equipFalta, equipFaltam,
   /* Trocar quem está logado, para alcançar o modo local — onde não há conta e
@@ -83,6 +84,29 @@ function prepararCopia() {
 }
 
 const urlApp = () => 'file://' + COPIA;
+
+/* O app servido num endereço http falso, em vez de file://. Sob file://, o
+   Chromium às vezes entrega à página RECARREGADA um armazenamento local
+   vazio: medido com o semeador de pessoal.spec.js, 1 recarga em 16 (um
+   processo só), e o semeador semeava de novo o estado inicial. No http, 0
+   em 24. É a causa provável da #98. O endereço é localhost porque é
+   contexto seguro, como o https do site: num http qualquer, o
+   crypto.subtle do código de professor não existe. Nada sai para a rede: a
+   rota responde tudo. O service worker de verdade fica de fora: o cache
+   dele atrapalharia a cópia instrumentada. No lugar vai um vazio, sem
+   ouvinte de fetch (não intercepta nada), porque em localhost o registro
+   acontece, e um 404 vira erro no console. */
+const URL_HTTP = 'http://localhost:5179/';
+const TIPOS = { '.html': 'text/html', '.js': 'application/javascript', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.css': 'text/css' };
+async function servirPorHttp(context) {
+  await context.route(URL_HTTP + '**', r => {
+    const p = new URL(r.request().url()).pathname;
+    const f = p === '/' ? COPIA : path.join(RAIZ, decodeURIComponent(p));
+    if (p === '/sw.js') return r.fulfill(js('/* service worker vazio dos testes */'));
+    if (!f.startsWith(RAIZ) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) return r.fulfill({ status: 404, body: '' });
+    return r.fulfill({ status: 200, contentType: TIPOS[path.extname(f)] || 'application/octet-stream', body: fs.readFileSync(f) });
+  });
+}
 
 /* ---- Firebase falso ----
    O app faz `await import(...)` dos módulos do Firebase no topo do script.
@@ -353,6 +377,7 @@ async function preencherSerie(page, i, kg, reps, rir) {
 }
 
 module.exports = {
+  URL_HTTP, servirPorHttp,
   RAIZ, APP, COPIA, prepararCopia, urlApp,
   isolarRede, coletarErros, abrirApp,
   diaISO, estadoBase, iniciarTreino, preencherSerie,

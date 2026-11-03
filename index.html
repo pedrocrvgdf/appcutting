@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v59";
+window.APP_RELEASE = "tresults-v60";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -1372,13 +1372,15 @@ window.APP_RELEASE = "tresults-v59";
   #printArea{display:none}
 
   /* ---- Treinador e aluno (#95) ----
-     A conta de treinador não treina: a barra fica com Alunos e Perfil, e o
-     Perfil perde o objetivo e o alarme. O resto usa as peças que já existem
-     (cartão, fio fino, o feed para as sessões do aluno). */
+     Nos alunos, a barra do treinador é Alunos, Pessoal e Perfil. No Pessoal
+     (#104), a de sempre, com Alunos na ponta: seis lugares, que em 320 px só
+     cabem sem a largura mínima de cada botão. O resto usa as peças que já
+     existem (cartão, fio fino, o feed para as sessões do aluno). */
   #tabbar .tab-trein{display:none}
   body.treinador #tabbar .tab-trein{display:flex}
-  body.treinador #tabbar [data-tab="inicio"],body.treinador #tabbar [data-tab="food"],body.treinador #tabbar [data-tab="treino"],body.treinador #tabbar .fab{display:none}
-  body.treinador .pfgoal,body.treinador #pfAlarme{display:none}
+  body.treinador:not(.pessoal) #tabbar [data-tab="inicio"],body.treinador:not(.pessoal) #tabbar [data-tab="food"],body.treinador:not(.pessoal) #tabbar [data-tab="treino"],body.treinador:not(.pessoal) #tabbar .fab{display:none}
+  body.treinador.pessoal #tabbar [data-tab="pessoal"]{display:none}
+  body.treinador.pessoal #tabbar button:not(.fab){min-width:0;flex:1 1 0;padding:4px 2px}
   #view-alunos::before,#view-aluno::before{
     content:"";position:fixed;z-index:-1;pointer-events:none;
     right:-48px;bottom:calc(72px + env(safe-area-inset-bottom));width:300px;height:300px;
@@ -1539,7 +1541,7 @@ window.APP_RELEASE = "tresults-v59";
 
     <!-- Conta de treinador (#95): só monta o treino dos alunos e acompanha as cargas deles. -->
     <div class="seg" id="cadPapelSeg" data-v="aluno" role="group" aria-label="Tipo de conta" style="margin-top:12px"><button type="button" data-v="aluno" class="on">Vou treinar</button><button type="button" data-v="treinador">Sou treinador</button></div>
-    <p class="cad-papel-nota" id="cadPapelNota" style="display:none">Conta só de treinador: você monta o treino dos seus alunos e acompanha as cargas e o RIR deles. Para registrar o seu próprio treino, use outra conta.</p>
+    <p class="cad-papel-nota" id="cadPapelNota" style="display:none">Conta de treinador: você monta o treino dos seus alunos e acompanha as cargas e o RIR deles. A sua dieta e o seu treino ficam no botão Pessoal.</p>
 
     <div class="field" style="margin-top:14px">
       <label class="lbl" for="cadNome">Nome completo</label>
@@ -2044,7 +2046,7 @@ window.APP_RELEASE = "tresults-v59";
     <h3>Sou treinador</h3>
     <p class="vinc-txt">Favor colocar o código de professor.</p>
     <div class="field"><label class="lbl" for="profCodigo">Código de professor</label><input class="in vinc-cod" id="profCodigo" type="password" inputmode="numeric" maxlength="8" autocomplete="off" spellcheck="false" enterkeyhint="go"></div>
-    <p class="vinc-nao">Sua conta passa a ser de treinador: o app abre na tela Alunos, com o código para ligar um aluno, e as abas de comida e treino saem da barra. O que você já lançou continua guardado na conta.</p>
+    <p class="vinc-nao">Sua conta passa a ser de treinador: o app abre na tela Alunos, com o código para ligar um aluno. A sua dieta, o seu treino e o que você já lançou ficam no botão Pessoal, na barra de baixo.</p>
     <div class="auth-msg" id="profMsg" aria-live="polite"></div>
     <button class="btn" id="profOk" type="button">Confirmar</button>
     <button class="btn secondary" id="profVoltar" type="button">Voltar</button>
@@ -2491,12 +2493,14 @@ window.APP_RELEASE = "tresults-v59";
 
 <!-- TAB BAR -->
 <nav id="tabbar">
+  <!-- Conta de treinador (#95, #104): nos alunos, a barra é Alunos, Pessoal e
+       Perfil; no Pessoal, a de sempre, com Alunos na ponta para voltar. -->
+  <button data-tab="alunos" class="tab-trein"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-5.5 6.5-5.5s6.5 2 6.5 5.5M16 4.8a3.5 3.5 0 0 1 0 6.4M18 14.8c2.2.6 3.5 2.4 3.5 5.2"/></svg>Alunos</button>
+  <button data-tab="pessoal" class="tab-trein"><svg viewBox="0 0 24 24"><path d="M12 20s-7.5-4.6-7.5-10.2A4.2 4.2 0 0 1 12 7.3a4.2 4.2 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20z"/></svg>Pessoal</button>
   <button data-tab="inicio" class="on"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10"/></svg>Início</button>
   <button data-tab="food"><svg viewBox="0 0 24 24"><path d="M5 3v9a3 3 0 0 0 6 0V3M8 12v9M17 3c-1.5 2-2 4-2 6v3h4V9c0-2-.5-4-2-6zM17 12v9"/></svg>Comida</button>
   <button class="fab" id="tabAdd" aria-label="Adicionar refeição"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
   <button data-tab="treino"><svg viewBox="0 0 24 24"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/></svg>Treino</button>
-  <!-- Conta de treinador (#95): a barra fica só com Alunos e Perfil. -->
-  <button data-tab="alunos" class="tab-trein"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-5.5 6.5-5.5s6.5 2 6.5 5.5M16 4.8a3.5 3.5 0 0 1 0 6.4M18 14.8c2.2.6 3.5 2.4 3.5 5.2"/></svg>Alunos</button>
   <button data-tab="perfil"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Perfil</button>
 </nav>
 
@@ -3938,11 +3942,16 @@ function fecharSessao(){$("sessaoOverlay").classList.remove("open");}
 
 function showView(name){
   hideSplash();
-  /* Conta de treinador (#95): as telas de quem treina não existem para ela;
-     e a tela dos alunos não existe para quem treina. */
-  if(ehTreinador()&&["inicio","food","progresso","treino","setup"].includes(name))name="alunos";
+  /* A tela dos alunos não existe para quem treina. O treinador tem as telas
+     de quem treina no Pessoal (#104): o botão abre o Início dele. */
+  if(name==="pessoal")name="inicio";
   if(!ehTreinador()&&["alunos","aluno"].includes(name))name="inicio";
   if(name!=="aluno"&&alunoAberto)sairDoAluno();
+  if(ehTreinador()){
+    if(telaPessoal(name))lembrarLado("pessoal");
+    else if(["alunos","aluno"].includes(name))lembrarLado("alunos");
+  }
+  pintarLado();
   if(currentView!==name)rastro("tela "+name);
   currentView=name;
   document.querySelectorAll(".view").forEach(v=>v.classList.remove("on"));
@@ -4338,8 +4347,9 @@ $("taAdd").onclick=()=>{
 };
 
 function renderTreino(){
-  /* Conta de treinador (#95): não treina. Quem mudou protocolo foi a tela do aluno. */
-  if(ehTreinador()){if(currentView==="aluno")renderAluno();return;}
+  /* Conta de treinador com um aluno aberto (#95): quem mudou protocolo foi a
+     tela do aluno. Sem aluno aberto, esta é a aba Treino do Pessoal (#104). */
+  if(ehTreinador()&&alunoAberto){if(currentView==="aluno")renderAluno();return;}
   if(!$("tGasto"))return;
   /* A mesma conta do Início e da Alimentação (gastoDia): esta tela já
      mostrou "GETD + treino" ignorando os passos, e os três números do app
@@ -4437,9 +4447,9 @@ function openTSug(destino){
   $("tSugSub").innerHTML=(cutting
     ?'Para o seu objetivo de <b>cutting</b>: descansos de <b>90 s</b>. Nos estudos, descansar mais de 60 s deu um pouco mais de músculo, e passar de 90 s não fez diferença. Nos exercícios pesados, descanse mais se precisar. Busque a falha entre 6–12 reps.'
     :'Para o seu objetivo de <b>bulking</b>: descansos de <b>90 s</b>. Nos estudos, descansar mais de 60 s deu um pouco mais de músculo, e passar de 90 s não fez diferença. Nos exercícios pesados, descanse mais se precisar. Busque a falha entre 6–12 reps.')
-    +(!tSugDestino&&(store.tprotocol||[]).length?' Cada sugestão entra como um protocolo novo, com o nome dela — dá para renomear depois.':'');
+    +(!tSugDestino&&treinosProprios().length?' Cada sugestão entra como um protocolo novo, com o nome dela — dá para renomear depois.':'');
   /* Treinador (#95): o objetivo é do aluno, que ele não vê aqui. */
-  if(ehTreinador())$("tSugSub").textContent="Treinos prontos para começar. Séries e descanso você ajusta depois, no editor.";
+  if(ehTreinador()&&alunoAberto)$("tSugSub").textContent="Treinos prontos para começar. Séries e descanso você ajusta depois, no editor.";
   const rotulo=tSugDestino?`Colocar em “${esc(protPorId(tSugDestino).nome)}”`:"Usar este protocolo";
   $("tSugList").innerHTML=T_SUG.map(p=>{
     const totEx=p.w.reduce((a,w)=>a+w.ex.length,0);
@@ -4585,8 +4595,10 @@ function carimbarTid(w){
 }
 
 /** Treinos e protocolos de uma academia, para a linha de baixo do nome. */
+/** Os treinos de quem treina: na conta de treinador, só os do Pessoal (#104). */
+function treinosProprios(){return (store.tprotocol||[]).filter(w=>w&&!(ehTreinador()&&w.aluno));}
 function acadResumo(id){
-  const ws=(store.tprotocol||[]).filter(w=>treinoNaAcad(w,id));
+  const ws=treinosProprios().filter(w=>treinoNaAcad(w,id));
   if(!ws.length)return "nenhum treino ainda";
   const np=new Set(ws.map(protDoTreino)).size;
   return (np>1?np+" protocolos · ":"")+ws.length+(ws.length===1?" treino":" treinos");
@@ -4744,7 +4756,7 @@ function acadNomeValido(nome,ignorar){
   return true;
 }
 function renderAcadLista(){
-  const lista=academias(),prot=store.tprotocol||[];
+  const lista=academias(),prot=treinosProprios();
   $("acadLista").innerHTML=lista.length?lista.map(a=>{
     if(a.id===acadRen)return `<div class="proto-meal-row acad-row"><input class="in" id="acadRenIn" type="text" maxlength="${ACAD_NOME_MAX}" value="${esc(acadRenTxt!=null?acadRenTxt:a.nome)}" autocomplete="off" enterkeyhint="done"><div class="acts"><button data-acadok="${esc(a.id)}">Salvar</button><button data-acadvolta="1">Voltar</button></div></div>`;
     const n=prot.filter(w=>acadsDoTreino(w).includes(a.id)).length;
@@ -4852,15 +4864,19 @@ const PROT_PADRAO="principal",PROT_PADRAO_NOME="Meu protocolo",PROT_NOME_MAX=40,
 function protDoTreino(w){return (w&&w.prot)||PROT_PADRAO;}
 /** Os protocolos que a pessoa vê, na ordem. Nunca vazia. */
 function listaProtocolos(){
-  const out=[],visto=new Set(),tps=store.tprotocol||[],gu=Array.isArray(store.tprotos)?store.tprotos:[];
+  /* Conta de treinador sem aluno aberto: o Pessoal dele (#104), que é a
+     conta de sempre sem nada que seja de aluno. */
+  const meu=x=>!ehTreinador()||!(x&&x.aluno);
+  const out=[],visto=new Set(),tps=(store.tprotocol||[]).filter(meu),gu=(Array.isArray(store.tprotos)?store.tprotos:[]).filter(meu);
   const add=(id,nome)=>{if(!id||visto.has(id))return;visto.add(id);out.push({id,nome:(nome||"").trim()||"Protocolo sem nome"});};
-  /* Conta de treinador (#95): só os protocolos do aluno aberto, e sem o
-     "Meu protocolo" virtual — cada aluno tem os dele. O recém-criado, ainda
-     sem o carimbo do save(), é do aluno aberto. */
-  if(ehTreinador()){
-    const dele=x=>!!alunoAberto&&!!x&&!x.pessoal&&(x.aluno||alunoAberto)===alunoAberto;   // `pessoal`: de antes de a conta virar de treinador (#103)
-    gu.filter(dele).forEach(p=>add(p.id,p.nome));
-    tps.filter(dele).forEach(w=>{if(w.prot)add(w.prot,w.protNome);});
+  /* Conta de treinador com um aluno aberto (#95): só os protocolos dele, e
+     sem o "Meu protocolo" virtual — cada aluno tem os dele. O recém-criado,
+     ainda sem o carimbo do save(), é do aluno aberto. */
+  if(ehTreinador()&&alunoAberto){
+    const dele=x=>!!x&&!x.pessoal&&(x.aluno||alunoAberto)===alunoAberto;   // `pessoal`: do Pessoal do treinador (#103, #104)
+    const T=store.tprotocol||[],G=Array.isArray(store.tprotos)?store.tprotos:[];
+    G.filter(dele).forEach(p=>add(p.id,p.nome));
+    T.filter(dele).forEach(w=>{if(w.prot)add(w.prot,w.protNome);});
     return out;
   }
   const nomePrincipal=()=>{const w=tps.find(x=>x.prot===PROT_PADRAO&&x.protNome);return w?w.protNome:PROT_PADRAO_NOME;};
@@ -4877,17 +4893,22 @@ function protMaterializado(){return Array.isArray(store.tprotos)&&store.tprotos.
     virtual e vazio fica de fora: quem cria o primeiro protocolo não ganha um
     bloco vazio de brinde. */
 function materializarProtocolos(){
-  /* Treinador: a lista vista é só a do aluno aberto, e refazê-la daqui
-     apagaria a dos outros alunos. Só acrescenta o que faltar. */
-  if(ehTreinador()){
+  /* Treinador com um aluno aberto: a lista vista é só a dele, e refazê-la
+     daqui apagaria a dos outros alunos. Só acrescenta o que faltar. */
+  if(ehTreinador()&&alunoAberto){
     store.tprotos=Array.isArray(store.tprotos)?store.tprotos:[];
     listaProtocolos().forEach(p=>{if(!store.tprotos.some(x=>x&&x.id===p.id))store.tprotos.push({id:p.id,nome:p.nome,aluno:alunoAberto});});
     return;
   }
-  const ant=Array.isArray(store.tprotos)?store.tprotos:[];
+  /* No Pessoal do treinador (#104), os protocolos dos alunos ficam como
+     estão, depois dos dele. Fora da conta de treinador, não há nenhum. */
+  const todos=Array.isArray(store.tprotos)?store.tprotos:[];
+  const deAluno=x=>ehTreinador()&&!!(x&&x.aluno);
+  const ant=todos.filter(x=>!deAluno(x));
   store.tprotos=listaProtocolos()
     .filter(p=>!(p.id===PROT_PADRAO&&!ant.some(x=>x.id===PROT_PADRAO)&&!treinosDoProt(PROT_PADRAO).length))
-    .map(p=>Object.assign({},ant.find(x=>x.id===p.id)||{},{id:p.id,nome:p.nome}));
+    .map(p=>Object.assign({},ant.find(x=>x.id===p.id)||{},{id:p.id,nome:p.nome}))
+    .concat(todos.filter(deAluno));
 }
 function protNomeValido(nome,ignorar){
   if(!nome){appAlert("Escreva o nome do protocolo.");return false;}
@@ -4897,6 +4918,9 @@ function protNomeValido(nome,ignorar){
 /** Id de um protocolo excluído com este nome, ainda no histórico: recriá-lo
     devolve a comparação com as sessões dele, como `idOrfao` faz com academias. */
 function protOrfao(nome){
+  /* As sessões do treinador são dele: o protocolo de um aluno nunca herda o
+     id de um protocolo do Pessoal (#104), senão os dois se misturariam. */
+  if(ehTreinador()&&alunoAberto)return "";
   const alvo=norm(nome),tds=store.tdays||{};
   for(const dk of Object.keys(tds).sort().reverse())
     for(const r of tds[dk]||[]){
@@ -4993,7 +5017,7 @@ function renderProtLista(){
   const donoAb=doTreinador(aberto);
   if(!list.length&&donoAb){$("tprotoCards").innerHTML=`<div class="proto-empty">${esc(donoAb.treinadorNome)} ainda não colocou treinos neste protocolo.</div>`;return;}
   $("tprotoCards").innerHTML=list.length?list.map(w=>`<button class="proto-card" data-tw="${w.id}"><div><div class="pccat">Treino ${esc(w.cat||"")}</div><div class="pcname">${esc(w.nome)}</div><div class="pcmac">${qtdTxt((w.ex||[]).length,"exercício","exercícios")} · ${qtdTxt(tpSeries(w),"série","séries")}</div>${pcFalta(w,sel)}</div><span class="pckcal">▶ Iniciar</span></button>`).join("")
-    :(store.tprotocol||[]).length
+    :treinosProprios().length
       ?'<div class="proto-empty">Você ainda não montou este protocolo. Toque abaixo para cadastrar os treinos (ex.: Treino A, B, C) — depois é um toque para iniciar o do dia.</div>'
       :'<div class="proto-empty">Você ainda não montou seu protocolo de treino. Toque abaixo para cadastrar (ex.: Treino A, B, C) — depois é um toque para iniciar o treino do dia.</div>';
   $("tprotoCards").querySelectorAll("[data-tw]").forEach(b=>b.onclick=()=>startTRun(b.dataset.tw));
@@ -5528,7 +5552,7 @@ function renderTpList(){
   const list=treinosDoProt(tpProtAtual),dono=doTreinador(tpProtAtual);
   $("tpSugAqui").style.display=list.length||dono?"none":"";
   $("tpPdf").style.display=$("tpPdfNota").style.display=list.length?"":"none";   // sem treino, não há folha
-  $("tpProtDel").style.display=!dono&&(listaProtocolos().length>1||ehTreinador())?"":"none";   // o aluno pode ficar sem nenhum
+  $("tpProtDel").style.display=!dono&&(listaProtocolos().length>1||(ehTreinador()&&alunoAberto))?"":"none";   // o aluno pode ficar sem nenhum
   /* Protocolo do treinador (#95): só leitura. Nem nome, nem treino novo,
      nem editar ou excluir treino: a próxima mudança dele desfaria. */
   $("tpNew").style.display=dono?"none":"";
@@ -7942,8 +7966,9 @@ async function resetData(){
   const r=await askDanger({
     ico:"⚠️",title:"Excluir dados",
     msg:ehTreinador()
-      /* Treinador (#95): o que some é o treino dos alunos, e eles sentem. */
-      ?"Você está prestes a <b>excluir os dados da sua conta</b>: os protocolos que você montou para os seus alunos. <b>Eles deixam de ter esses treinos no app.</b> A ligação com os alunos continua, e o histórico de treinos deles é deles.<br><br>Isso apaga também a cópia salva na nuvem, e <b>não dá para desfazer</b>.<br><br><b>Tem certeza de que deseja continuar?</b>"
+      /* Treinador (#95): o que some é o treino dos alunos, e eles sentem.
+         E o Pessoal dele (#104), que também mora nesta conta. */
+      ?"Você está prestes a <b>excluir os dados da sua conta</b>: os protocolos que você montou para os seus alunos e o seu Pessoal (dieta, treinos, pesos e objetivo). <b>Os alunos deixam de ter esses treinos no app.</b> A ligação com os alunos continua, e o histórico de treinos deles é deles.<br><br>Isso apaga também a cópia salva na nuvem, e <b>não dá para desfazer</b>.<br><br><b>Tem certeza de que deseja continuar?</b>"
       :"Você está prestes a <b>excluir os dados da sua conta</b>: dieta, protocolos, treinos, academias, pesos e objetivo. Você vai <b>perder todo o seu progresso</b> e o app voltará ao primeiro acesso (sua conta e login continuam existindo).<br><br>Isso apaga também a cópia salva na nuvem, e <b>não dá para desfazer</b>.<br><br><b>Tem certeza de que deseja continuar?</b>",
     confirm:"Sim, excluir tudo",
     pw:comConta
@@ -8025,11 +8050,14 @@ function routeAfterLogin(){
   if(!user&&cloudEnabled)return;
   fillUser();
   aplicarPapel();
-  /* Conta de treinador (#95): abre direto nos alunos; não tem objetivo nem treino. */
+  /* Conta de treinador (#95): abre no lado que ela usou por último neste
+     aparelho, Alunos ou Pessoal (#104). Sem lembrança, nos alunos. O treino
+     em andamento é do Pessoal: já voltou em onAuthStateChanged, na aba
+     Treino, e a pessoa fica nele. */
   if(ehTreinador()){
-    if(["alunos","aluno","perfil"].includes(currentView))return;
+    if(["alunos","aluno","perfil"].includes(currentView)||telaPessoal(currentView))return;
     if(!userName()){showView("welcome");return;}
-    mostrarImersao();showView("alunos");return;
+    mostrarImersao();showView(ladoLembrado()==="pessoal"?"inicio":"alunos");return;
   }
   if(userName()&&trRestore())return; // treino em andamento volta exatamente de onde parou
   if(["inicio","food","treino"].includes(currentView))return; // já está dentro do app
@@ -8598,7 +8626,8 @@ $("email").addEventListener("input",renderDigitalLogin);
    O pedido: "quero que o app tenha a visão TREINADOR e ALUNO. Quero poder
    passar o treino para um aluno que vai baixar o app e editar o treino
    dele(a) e ver as cargas e as RIR e afins". Decisões do dono:
-   - a conta de treinador é só de treinador: não treina e abre em Alunos;
+   - a conta de treinador abre em Alunos, e a dieta e o treino dela ficam
+     no Pessoal (#104);
    - o aluno se liga por um código de convite, e vê o que o treinador vai
      enxergar ANTES de aceitar (é o consentimento);
    - só o treinador edita o treino; o aluno treina, e troca exercício só
@@ -8633,7 +8662,31 @@ const COD_ALFA="ABCDEFGHJKLMNPQRSTUVWXYZ23456789",COD_RE=/^[A-HJ-NP-Z2-9]{6}$/;
 const DIARIO_DIAS=365,DIARIO_MAX=400;
 
 function ehTreinador(){return !!store&&store.papel==="treinador";}
-function aplicarPapel(){document.body.classList.toggle("treinador",ehTreinador());}
+function aplicarPapel(){document.body.classList.toggle("treinador",ehTreinador());pintarLado();}
+
+/* ---- O Pessoal do treinador (#104) ----
+   "Quando eu coloquei minha conta como treinador, sumiu o meu pessoal": a
+   conta de treinador também é de quem treina e faz dieta. Nos alunos, a
+   barra é Alunos, Pessoal e Perfil; no Pessoal, a de sempre, com Alunos na
+   ponta. O lado fica lembrado neste aparelho (`tresults.lado`, por conta),
+   e o Perfil, que é dos dois, fica com a barra do lado de onde veio.
+   O que separa um lado do outro é `alunoAberto`: com um aluno aberto, a
+   lista de protocolos é a dele; sem, é a do treinador, sem nada de aluno
+   (`listaProtocolos`), e o que nascer sem dono ganha `pessoal` no save()
+   (`carimbarAlunos`), para nunca ir para o plano de um aluno. */
+var ladoTrein="";
+function telaPessoal(n){return ["inicio","food","progresso","treino","setup"].includes(n);}
+function ladoLembrado(){
+  try{const l=JSON.parse(localStorage.getItem("tresults.lado")||"null");return l&&l.uid===(user?user.uid:"")?l.e:"";}catch(e){return "";}
+}
+function lembrarLado(e){
+  ladoTrein=e;
+  try{localStorage.setItem("tresults.lado",JSON.stringify({uid:user?user.uid:"",e}));}catch(x){}
+}
+function pintarLado(){
+  if(!ladoTrein)ladoTrein=ladoLembrado()||"alunos";
+  document.body.classList.toggle("pessoal",ehTreinador()&&ladoTrein==="pessoal");
+}
 function dataDeMs(ms){if(!ms)return "—";const d=new Date(ms);return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();}
 function diaMenos(n){const d=new Date(todayKey()+"T12:00:00");d.setDate(d.getDate()-n);return d.toISOString().slice(0,10);}
 /** O protocolo do treinador, no aluno (só leitura), ou null. */
@@ -8643,7 +8696,14 @@ function doTreinador(id){const p=(store.tprotos||[]).find(x=>x&&x.id===id);retur
    daquele aluno. Um carimbo só, no save(), cobre criar, sugestão, renomear
    e salvar treino, em vez de um remendo em cada caminho. */
 function carimbarAlunos(){
-  if(!alunoAberto)return;
+  /* Sem aluno aberto, o que nasce sem dono é do Pessoal do treinador
+     (#104). Sem esta marca, o próximo save() com um aluno aberto o levaria
+     para o plano dele. */
+  if(!alunoAberto){
+    (store.tprotos||[]).forEach(p=>{if(p&&!p.aluno&&!p.pessoal)p.pessoal=true;});
+    (store.tprotocol||[]).forEach(w=>{if(w&&!w.aluno&&!w.pessoal)w.pessoal=true;});
+    return;
+  }
   (store.tprotos||[]).forEach(p=>{if(p&&!p.aluno&&!p.pessoal)p.aluno=alunoAberto;});
   (store.tprotocol||[]).forEach(w=>{
     if(!w||w.aluno||w.pessoal)return;
@@ -8664,7 +8724,7 @@ function iniciarPapel(){
 function pararPapel(){
   [alunosUnsub,diarioUnsub,vincUnsub,planoUnsub].forEach(f=>{try{if(f)f();}catch(e){}});
   alunosUnsub=diarioUnsub=vincUnsub=planoUnsub=null;
-  alunosLista=null;alunosErro=false;diarios={};alunoAberto=null;
+  alunosLista=null;alunosErro=false;diarios={};alunoAberto=null;ladoTrein="";
   vinc=null;ultimoPlano=null;vincPrimeira=true;pubErro={};
   clearTimeout(planosT);clearTimeout(diarioT);
 }
@@ -9175,10 +9235,10 @@ function renderPerfilTreinador(){
    verdade precisa ser conferida no servidor (uma função, ou uma lista de
    professores nas regras). Cinco erros seguidos travam por 5 minutos.
 
-   A conta de treinador é só de treinador (#95). Os protocolos e treinos que
-   a pessoa já tinha são dela, e não de um aluno: sem a marca `pessoal`, o
-   primeiro aluno aberto os receberia (carimbarAlunos carimba tudo o que não
-   tem dono) e eles iriam no plano dele. */
+   Os protocolos e treinos que a pessoa já tinha são dela (o Pessoal, #104),
+   e não de um aluno: sem a marca `pessoal`, o primeiro aluno aberto os
+   receberia (carimbarAlunos carimba tudo o que não tem dono) e eles iriam
+   no plano dele. */
 const PROF_HASH="6eaed4c00d61cb6b72a46ecc1b60496ff653c9636a094da0c9efdc0fdd134eab";   // SHA-256 de "tresults-professor:" + código
 const PROF_TENT=5,PROF_TRAVA_MS=5*60*1000;
 async function hashProf(c){
@@ -9223,7 +9283,7 @@ function virarTreinador(){
   fecharProf();
   pararPapel();iniciarPapel();   // sai o vínculo e o plano de aluno; entram os alunos e o código
   showView("alunos");
-  appAlert("Pronto: sua conta agora é de treinador. O código para ligar um aluno está aqui, em Alunos.","Sou treinador");
+  appAlert("Pronto: sua conta agora é de treinador. O código para ligar um aluno está aqui, em Alunos. A sua dieta e o seu treino ficam no botão Pessoal.","Sou treinador");
 }
 $("profOk").onclick=conferirProf;
 $("profVoltar").onclick=fecharProf;
