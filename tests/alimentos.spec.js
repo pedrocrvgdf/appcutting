@@ -166,7 +166,6 @@ async function comOff(page, resposta) {
     resposta ? r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ hits: resposta }) }) : r.abort());
   await ctx.route('**/world.openfoodfacts.org/**', r =>
     resposta ? r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ products: resposta }) }) : r.abort());
-  await ctx.route('**/api.allorigins.win/**', r => r.abort());
 }
 
 const nomesOnline = page => page.evaluate(() =>
@@ -181,7 +180,7 @@ test.describe('Busca na internet', () => {
     await abrirApp(page, estadoBase());
     await irAlimentacao(page);
     await digitar(page, 'gatorade zero');
-    await page.waitForTimeout(1300);   // espera a pessoa parar de digitar
+    await page.waitForTimeout(2000);   // espera a pessoa parar de digitar
 
     const n = await nomesOnline(page);
     expect(n.length, 'a internet precisa ter sido consultada sem toque').toBeGreaterThan(0);
@@ -192,7 +191,7 @@ test.describe('Busca na internet', () => {
     await abrirApp(page, estadoBase());
     await irAlimentacao(page);
     await digitar(page, 'gatorade zero');
-    await page.waitForTimeout(1300);
+    await page.waitForTimeout(2000);
 
     const limao = await page.evaluate(() =>
       [...document.querySelectorAll('#drop .opt[data-offidx]')]
@@ -207,7 +206,7 @@ test.describe('Busca na internet', () => {
     await abrirApp(page, estadoBase());
     await irAlimentacao(page);
     await digitar(page, 'gatorade zero');
-    await page.waitForTimeout(1300);
+    await page.waitForTimeout(2000);
 
     const n = await nomesOnline(page);
     expect(new Set(n).size).toBe(n.length);
@@ -222,7 +221,7 @@ test.describe('Busca na internet', () => {
     await abrirApp(page, estadoBase());
     await irAlimentacao(page);
     await digitar(page, 'gatorade zero');
-    await page.waitForTimeout(1600);
+    await page.waitForTimeout(2200);
 
     expect(await page.evaluate(() => document.getElementById('drop').textContent))
       .toMatch(/Não consegui buscar online/);
@@ -237,7 +236,7 @@ test.describe('Busca na internet', () => {
     await digitar(page, 'gatorade zero');
     await page.waitForTimeout(300);
     await digitar(page, 'frango');
-    await page.waitForTimeout(1300);
+    await page.waitForTimeout(2000);
 
     expect(await nomesOnline(page)).toEqual([]);
     expect((await nomesDoDrop(page))[0]).toMatch(/frango/i);
@@ -261,7 +260,7 @@ test.describe('Busca na internet', () => {
     const antes = await nomesDoDrop(page);
     expect(antes.length, 'o banco responde na hora').toBeGreaterThan(0);
     expect(antes.length).toBeLessThan(3);
-    await page.waitForTimeout(1300);
+    await page.waitForTimeout(2000);
 
     const locais = await nomesDoDrop(page);
     const online = await nomesOnline(page);
@@ -277,11 +276,10 @@ test.describe('Busca na internet', () => {
     let chamadas = 0;
     const ctx = page.context();
     await ctx.route('**/openfoodfacts.org/**', r => { chamadas++; r.fulfill({ status: 200, contentType: 'application/json', body: '{"hits":[]}' }); });
-    await ctx.route('**/api.allorigins.win/**', r => r.abort());
     await abrirApp(page, estadoBase());
     await irAlimentacao(page);
     await digitar(page, 'frango');
-    await page.waitForTimeout(1300);
+    await page.waitForTimeout(2000);
     expect((await nomesDoDrop(page)).length).toBeGreaterThanOrEqual(3);
     expect(chamadas).toBe(0);
   });
@@ -292,27 +290,24 @@ test.describe('Produto do Brasil primeiro, e sem lixo', () => {
 
   test('a busca pede produto do Brasil, e só vai ao mundo se o Brasil não responder', async ({ page }) => {
     /* "picanha" devolvia hambúrguer importado; "salmão", um produto só. Com o
-       filtro de país, picanha de verdade e 30 coxinhas em vez de 9. */
+       filtro de país, picanha de verdade e 30 coxinhas em vez de 9. Desde o
+       #87 é um pedido por vez: o Brasil primeiro, e o mundo só se o Brasil
+       respondeu vazio. */
     const pedidos = [];
     const ctx = page.context();
-    await ctx.route('**/search.openfoodfacts.org/**', r => {
-      const u = decodeURIComponent(r.request().url());
-      /* a lista de campos também contém "countries_tags": o filtro de país é
-         o trecho com o valor */
-      const brasil = u.includes('countries_tags:"en:brazil"');
+    await ctx.route('**/world.openfoodfacts.org/**', r => {
+      const brasil = r.request().url().includes('cc=br');
       pedidos.push(brasil ? 'brasil' : 'mundo');
-      r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ hits: brasil ? [] : [PRODUTOS[0]] }) });
+      r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ products: brasil ? [] : [PRODUTOS[0]] }) });
     });
-    await ctx.route('**/world.openfoodfacts.org/**', r => r.fulfill({ status: 200, contentType: 'application/json', body: '{"products":[]}' }));
-    await ctx.route('**/api.allorigins.win/**', r => r.abort());
+    await ctx.route('**/search.openfoodfacts.org/**', r => { pedidos.push('outro corredor'); r.abort(); });
     await abrirApp(page, estadoBase());
     await irAlimentacao(page);
     await digitar(page, 'gatorade zero');
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(2200);
 
-    expect(pedidos[0], 'o primeiro pedido é só Brasil').toBe('brasil');
-    expect(pedidos, 'o mundo entra como reserva').toContain('mundo');
-    expect((await nomesOnline(page)).length, 'a reserva respondeu').toBeGreaterThan(0);
+    expect(pedidos, 'o Brasil primeiro, o mundo depois, um de cada vez').toEqual(['brasil', 'mundo']);
+    expect((await nomesOnline(page)).length, 'o mundo respondeu').toBeGreaterThan(0);
   });
 
   test('o que não tem nenhuma palavra da pergunta no nome sai da lista', async ({ page }) => {
@@ -326,7 +321,7 @@ test.describe('Produto do Brasil primeiro, e sem lixo', () => {
     await abrirApp(page, estadoBase());
     await irAlimentacao(page);
     await digitar(page, 'banana passa');
-    await page.waitForTimeout(1300);
+    await page.waitForTimeout(2000);
     const n = await nomesOnline(page);
     expect(n.some(x => /Banana Passa/.test(x))).toBe(true);
     expect(n.some(x => /Protein/.test(x)), 'sem banana no nome, não responde à pergunta').toBe(false);

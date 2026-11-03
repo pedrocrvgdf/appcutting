@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v57";
+window.APP_RELEASE = "tresults-v59";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -619,12 +619,30 @@ window.APP_RELEASE = "tresults-v57";
   .macroleg b{color:var(--ink);font-family:var(--mono);font-weight:700}
   .macroleg s{margin-left:auto;text-decoration:none;font-family:var(--mono)}
   #streakLine{margin:0 2px 10px}
-  .streak-pill{display:inline-flex;align-items:center;gap:7px;background:var(--surface);border:0;border-radius:999px;padding:6px 14px 6px 10px;box-shadow:var(--sombra-sm)}
-  .streak-pill .sn{color:var(--primary)}
-  .streak-pill svg{width:16px;height:19px;flex:none}
-  .streak-pill .sn{font-family:var(--mono);font-weight:800;font-size:14px;color:var(--ink)}
-  .streak-pill .st{font-size:12px;font-weight:700;color:var(--muted)}
-  .streak-pill.cold .sn{color:var(--muted)}
+  /* Sequência por semana (#85): o número, "de 7 nesta semana" e um ponto por
+     dia, de segunda a domingo. */
+  .seq-pill{display:inline-flex;align-items:center;gap:7px;max-width:100%;background:var(--surface);border:0;border-radius:999px;padding:6px 14px 6px 10px;box-shadow:var(--sombra-sm)}
+  .seq-pill svg{width:16px;height:19px;flex:none}
+  .seq-pill .sn{font-family:var(--mono);font-weight:800;font-size:14px;color:var(--ink)}
+  .seq-pill .st{font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap}
+  .seq-pill.cold .sn{color:var(--muted)}
+  .wk-abaixo{display:block;margin-top:6px;color:var(--warn);font-weight:700}
+  .h-abaixo{color:var(--warn);font-weight:700}
+  .seq-sub{font-size:11.5px;font-weight:600;color:var(--muted);margin:5px 4px 0;line-height:1.45}
+  .seq-dots{display:inline-flex;gap:3px;flex:none;margin-left:2px}
+  .seq-dots i{width:8px;height:8px;border-radius:50%;background:var(--line);display:block}
+  .seq-dots i.sq-meta{background:var(--primary)}
+  .seq-dots i.sq-abaixo{background:transparent;box-shadow:inset 0 0 0 2px var(--warn)}
+  .seq-dots i.sq-hoje{background:transparent;box-shadow:inset 0 0 0 2px var(--primary)}
+  .seq-dots i.sq-futuro{opacity:.45}
+  .fd-seq{height:auto;min-height:46px;padding-top:8px;padding-bottom:8px}
+  .fd-seq .fd-seq-ico{flex:none;display:flex}
+  .fd-seq .fd-seq-ico svg{width:16px;height:19px;stroke:none}
+  .fd-seq .fd-seq-txt{display:flex;flex-direction:column;gap:3px;white-space:normal;overflow:visible}
+  .fd-seq .fd-seq-txt>span{flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .fd-seq .fd-seq-l2{display:flex;align-items:center;gap:8px}
+  .fd-seq #fdSeqPts,.fd-seq #fdSeqSub{flex:none}
+  .fd-seq #fdSeqSub{font-size:12px;font-weight:600;color:var(--muted)}
   .ins-svg{width:100%;height:auto;display:block;overflow:visible}
   .cap-label{font-size:10px;fill:var(--muted);font-weight:700}
   .wt-pt{font-size:9.5px;font-weight:800;fill:var(--ink);font-family:var(--mono)}
@@ -633,6 +651,15 @@ window.APP_RELEASE = "tresults-v57";
   .wt-latest b{color:var(--ink);font-family:var(--mono);font-weight:700}
   .wt-trendrow{margin-bottom:8px}
   .wt-pace{font-size:12.5px;font-weight:700;margin:-2px 0 8px;line-height:1.45}
+  /* Embaixo dos números da curva (#84): a legenda, a última pesagem e a
+     previsão pela tendência. */
+  .pf-espaco{margin:0 4px 12px;padding:10px 12px;border-radius:16px;background:var(--surface);box-shadow:0 0 0 1px var(--line);font-size:12.5px;line-height:1.5;color:var(--warn)}
+  .wt-nota{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:8px;font-size:12px;color:var(--muted);line-height:1.45}
+  .wt-nota b{color:var(--ink)}
+  .wt-leg{display:inline-flex;align-items:center;gap:5px;font-weight:700}
+  .wt-leg i{display:inline-block}
+  .wt-leg .lt{width:14px;height:3px;border-radius:2px}
+  .wt-leg .pt{width:7px;height:7px;border-radius:50%;background:var(--primary);opacity:.45}
   .wt-tabs{display:inline-flex;gap:4px}
   .tr-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
   .tr-timer{font-family:var(--mono);font-size:18px;font-weight:800;color:#fff;letter-spacing:0;background:var(--primary);border:0;border-radius:11px;padding:4px 11px;box-shadow:var(--sombra-sm)}
@@ -882,6 +909,14 @@ window.APP_RELEASE = "tresults-v57";
   #trRest.resting{background:var(--surface);color:var(--primary);animation:restPulse 1.6s ease infinite}
   @keyframes restPulse{0%,100%{box-shadow:0 0 0 0 rgba(14,124,107,.25)}50%{box-shadow:0 0 0 9px rgba(14,124,107,0)}}
   #trRest.done{background:var(--selo-bg);color:var(--selo-ink);animation:donePop .4s cubic-bezier(.3,1.4,.5,1)}
+  /* Descanso que continua depois de avançar (#83): diz de qual exercício é,
+     numa linha menor em cima do tempo. */
+  #trRest .rtxt.col{flex-direction:column;gap:1px;line-height:1.25;width:100%;min-width:0}
+  #trRest .rde{font-size:12px;font-weight:700;opacity:.85;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* −15 s / +30 s: só com o descanso correndo. */
+  .tr-ajuste{display:none;gap:8px;margin-top:8px}
+  .tr-ajuste.on{display:flex}
+  .tr-ajuste .btn{flex:1;margin:0;padding:11px 8px;font-size:15px}
   @keyframes donePop{0%{transform:scale(.95)}100%{transform:scale(1)}}
   .wt-tabs button{font-size:11px;font-weight:800;padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--muted);letter-spacing:0}
   .wt-tabs button.on{background:var(--primary);border-color:var(--primary);color:#fff}
@@ -1180,6 +1215,9 @@ window.APP_RELEASE = "tresults-v57";
   .wt-stats>div{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:9px 12px;min-width:0}
   .wt-stats .k{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
   .wt-stats .v{font-size:15px;font-weight:800;font-family:var(--mono);margin-top:1px;white-space:nowrap}
+  /* Em 320 px os três quadros têm ~72 px: "78,1 kg" e "TENDÊNCIA" passavam
+     da borda (#84). */
+  @media (max-width:359px){.wt-stats{gap:6px}.wt-stats>div{padding:8px 6px}.wt-stats .k{font-size:9.5px;letter-spacing:.03em}.wt-stats .v{font-size:13px}}
 
   /* sugestões de treino */
   .tsug-card{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
@@ -1634,6 +1672,12 @@ window.APP_RELEASE = "tresults-v57";
        parada; tocar abre a pausa, com "Voltei a treinar hoje". -->
   <div id="fdPausas"></div>
   <div class="ajuste-meta" id="fdAjuste" hidden></div>
+  <!-- Sequência da semana (#85): "5 de 7 dias na meta". Abre o Progresso. -->
+  <button class="fd-passos fd-seq" id="fdSeq" type="button" hidden>
+    <span class="fd-seq-ico" id="fdSeqIco" aria-hidden="true"></span>
+    <span class="fd-seq-txt"><span id="fdSeqTx"></span><span class="fd-seq-l2"><span id="fdSeqPts"></span><span id="fdSeqSub"></span></span></span>
+    <svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
+  </button>
 
   <div class="fd-atalhos">
     <button class="fd-atalho" id="fdIrProgresso">
@@ -1916,6 +1960,7 @@ window.APP_RELEASE = "tresults-v57";
     </div>
   </div>
 
+  <p class="pf-espaco" id="pfEspaco" hidden></p>
   <div class="card" style="padding:4px">
     <button class="pf-row" id="pfTheme"><svg id="themeMoon2" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg><span id="themeLbl2">Modo escuro</span></button>
     <a class="pf-row" id="pfPriv" href="privacidade.html"><svg viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/></svg><span>Privacidade e seus dados</span><svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></a>
@@ -1990,6 +2035,19 @@ window.APP_RELEASE = "tresults-v57";
     <div class="auth-msg" id="vincMsg"></div>
     <button class="btn" id="vincOk" type="button">Continuar</button>
     <button class="btn secondary" id="vincVoltar" type="button">Voltar</button>
+  </div>
+</div>
+
+<!-- "Sou treinador" numa conta que já existe (#103): o código de professor. -->
+<div class="overlay" id="profOverlay">
+  <div class="modal" style="max-width:420px">
+    <h3>Sou treinador</h3>
+    <p class="vinc-txt">Favor colocar o código de professor.</p>
+    <div class="field"><label class="lbl" for="profCodigo">Código de professor</label><input class="in vinc-cod" id="profCodigo" type="password" inputmode="numeric" maxlength="8" autocomplete="off" spellcheck="false" enterkeyhint="go"></div>
+    <p class="vinc-nao">Sua conta passa a ser de treinador: o app abre na tela Alunos, com o código para ligar um aluno, e as abas de comida e treino saem da barra. O que você já lançou continua guardado na conta.</p>
+    <div class="auth-msg" id="profMsg" aria-live="polite"></div>
+    <button class="btn" id="profOk" type="button">Confirmar</button>
+    <button class="btn secondary" id="profVoltar" type="button">Voltar</button>
   </div>
 </div>
 
@@ -2266,6 +2324,7 @@ window.APP_RELEASE = "tresults-v57";
     </div>
     <div id="trSets"></div>
     <button class="btn secondary" id="trRest" style="margin-top:12px"></button>
+    <div class="tr-ajuste" id="trAjuste"><button class="btn secondary" id="trMenos15" type="button" aria-label="Tirar 15 segundos do descanso">−15 s</button><button class="btn secondary" id="trMais30" type="button" aria-label="Somar 30 segundos ao descanso">+30 s</button></div>
     <p class="tr-hint">RIR = quantas repetições você <b>ainda aguentaria</b> fazer com postura correta. <b>0</b> = falha total · <b>1</b> = faria só mais 1 · <b>2</b> = faria mais 2.</p>
     <button class="btn" id="trNext">Próximo exercício ›</button>
     <button class="btn secondary" id="trPrev">‹ Exercício anterior</button>
@@ -3493,7 +3552,85 @@ const setOwner=uid=>localStorage.setItem(OWNER_KEY,uid||"");
 /* Toda gravação marca que este aparelho tem algo que a nuvem ainda não tem
    (marcarPendente, na seção da nuvem). É a marca que impede a próxima
    abertura de trocar o que foi lançado sem sinal pela versão da nuvem. */
-function save(){if(ehTreinador())carimbarAlunos();localStorage.setItem(KEY,JSON.stringify(store));if(!applyingRemote){marcarPendente();pushRemote(false);aposSalvar();}}
+function save(){if(ehTreinador())carimbarAlunos();guardarLocal();if(!applyingRemote){marcarPendente();pushRemote(false);aposSalvar();}}
+/* ---- Armazenamento cheio (#87) ----
+   Sem espaço no aparelho, o setItem lança erro, e o save() parava no meio:
+   quem o chamou não terminava (o treino finalizado não redesenhava, a nuvem
+   não recebia). Agora o lançamento continua na memória e sobe para a nuvem;
+   só que, se o app fechar sem sinal, ele se perde, e a pessoa precisa saber:
+   um aviso por abertura e a linha no Perfil. Antes de desistir, o app solta
+   o que é só cópia: a base da mescla (sem ela, a mescla junta tudo, que é o
+   lado seguro) e o rastro do diagnóstico. */
+let semEspaco=false,avisouEspaco=false;
+function guardarLocal(){
+  const txt=JSON.stringify(store);
+  try{localStorage.setItem(KEY,txt);}
+  catch(e){
+    try{localStorage.removeItem("cutting.base");localStorage.removeItem("tresults.rastro");localStorage.setItem(KEY,txt);}
+    catch(_){
+      semEspaco=true;pintarEspaco();
+      if(!avisouEspaco){avisouEspaco=true;
+        appAlert(cloudEnabled&&user
+          ?"O espaço do app neste celular acabou, e o que você lançou não ficou guardado no aparelho. Com sinal, ele sobe para a sua conta. Sem sinal, se o app fechar, ele se perde."
+          :"O espaço do app neste celular acabou, e o que você lançou não ficou guardado no aparelho. Sem conta, se o app fechar, ele se perde.",
+          "Sem espaço no aparelho");}
+      return false;
+    }
+  }
+  if(semEspaco){semEspaco=false;pintarEspaco();}
+  return true;
+}
+/* ---- O tamanho do documento na nuvem (#87) ----
+   O Firestore recusa documento acima de 1 MiB, e o app grava tudo num
+   documento só: a falha seria calada, e o que fosse lançado depois nunca
+   subiria. O app mede o documento a cada gravação, pelas regras de tamanho
+   da documentação do Firestore (texto: bytes em UTF-8 + 1; número e data:
+   8; verdadeiro/falso e nulo: 1; lista e mapa: a soma, com o nome de cada
+   campo como texto; documento: o nome + 32). A página oficial não abre
+   desta sessão; as regras foram conferidas no README do pacote
+   firestore-size, que as transcreve. A partir de NUVEM_AVISO, uma linha no
+   Perfil diz quanto falta, e o Sentry recebe só a faixa, uma vez por
+   abertura. Sem pop-up: a pessoa não tem o que fazer; quem tem é o dono do
+   app, dividindo o documento. */
+const NUVEM_MAX=1048576,NUVEM_AVISO=700*1024;
+let nuvemBytes=0,avisouTamanho=false;
+function bytesUtf8(t){let n=0;for(let i=0;i<t.length;i++){const c=t.charCodeAt(i);if(c<0x80)n++;else if(c<0x800)n+=2;else if(c>=0xD800&&c<0xDC00){n+=4;i++;}else n+=3;}return n;}
+function tamanhoFs(v){
+  if(v===null||v===undefined)return 1;
+  if(typeof v==="string")return bytesUtf8(v)+1;
+  if(typeof v==="number")return 8;
+  if(typeof v==="boolean")return 1;
+  if(Array.isArray(v)){let t=0;for(const x of v)t+=tamanhoFs(x);return t;}
+  if(typeof v==="object"){
+    if(typeof v.toMillis==="function")return 8;   // Timestamp
+    let t=0;for(const k in v){if(v[k]===undefined)continue;t+=bytesUtf8(k)+1+tamanhoFs(v[k]);}
+    return t;
+  }
+  return 0;
+}
+/* users/{uid}: "users" e o uid, +1 cada, +16; mais os 32 do documento e as
+   marcas de quem gravou e quando. */
+function tamanhoDoc(uid,M){return (6+bytesUtf8(uid||"")+1+16)+32+tamanhoFs(Object.assign({},M,{writer:DEVICE}))+("updatedAt".length+1+8);}
+function medirNuvem(uid,M){
+  nuvemBytes=tamanhoDoc(uid,M);
+  if(nuvemBytes>=NUVEM_AVISO&&!avisouTamanho){
+    avisouTamanho=true;
+    const faixa=Math.floor(nuvemBytes/1024/100)*100;
+    try{if(window.Sentry&&Sentry.captureMessage)Sentry.captureMessage(`Documento na nuvem: ${faixa}–${faixa+100} KB`);}catch(_){}
+  }
+  pintarEspaco();
+}
+function pintarEspaco(){
+  const el=$("pfEspaco");if(!el)return;
+  const kb=Math.round(nuvemBytes/1024);
+  const linhas=[];
+  if(semEspaco)linhas.push(`<b>Sem espaço neste aparelho.</b> O que você lança só fica salvo depois de subir para a nuvem${cloudEnabled&&user?"":", e sem conta não sobe"}.`);
+  if(nuvemBytes>=NUVEM_AVISO)linhas.push(nuvemBytes>NUVEM_MAX
+    ?`<b>Seus dados na nuvem: ${nPt(kb)} KB de ${nPt(NUVEM_MAX/1024)} KB.</b> Passou do limite: o que for lançado agora fica só neste aparelho.`
+    :`<b>Seus dados na nuvem: ${nPt(kb)} KB de ${nPt(NUVEM_MAX/1024)} KB.</b> Perto do limite.`);
+  el.hidden=!linhas.length;
+  el.innerHTML=linhas.join("<br>");
+}
 function dayItems(){const k=viewKey;if(!store.days[k])store.days[k]=[];return store.days[k];}
 
 const MEALS=[["cafe","Café da manhã"],["almoco","Almoço"],["lanche","Lanche"],["jantar","Jantar"],["ceia","Ceia"],["outros","Outros"]];
@@ -3687,6 +3824,7 @@ function renderInicio(){
 
   renderFdPassos();
   renderFdPeso();
+  renderFdSeq(t);
   renderFdPausa();
 
   /* --- feed --- */
@@ -3837,6 +3975,10 @@ document.querySelectorAll("[data-volta]").forEach(b=>b.onclick=()=>showView(b.da
    tinha ficado aberto lá. */
 if($("fdDia"))$("fdDia").onclick=()=>{viewKey=todayKey();showView("food");};
 if($("fdIrProgresso"))$("fdIrProgresso").onclick=()=>showView("progresso");
+if($("fdSeq"))$("fdSeq").onclick=()=>{
+  showView("progresso");
+  const w=$("weekBars");if(w)setTimeout(()=>{try{w.closest(".ins-card").scrollIntoView({block:"center",behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});}catch(e){}},60);
+};
 if($("fdIrTreino"))$("fdIrTreino").onclick=()=>showView("treino");
 if($("ssFechar"))$("ssFechar").onclick=fecharSessao;
 /* Uma série em texto: carga × reps, só reps (peso do corpo) ou segundos.
@@ -4293,8 +4435,8 @@ function openTSug(destino){
   tSugDestino=(destino&&protPorId(destino))?destino:null;
   const obj=(store.goals||{}).objetivo||"cutting",cutting=obj!=="bulking";
   $("tSugSub").innerHTML=(cutting
-    ?'Para o seu objetivo de <b>cutting</b>: descansos de <b>60 s</b> para manter o gasto alto e preservar músculo no déficit. Busque a falha entre 6–12 reps.'
-    :'Para o seu objetivo de <b>bulking</b>: descansos de <b>90 s</b> para render mais carga e maximizar o estímulo. Busque a falha entre 6–12 reps.')
+    ?'Para o seu objetivo de <b>cutting</b>: descansos de <b>90 s</b>. Nos estudos, descansar mais de 60 s deu um pouco mais de músculo, e passar de 90 s não fez diferença. Nos exercícios pesados, descanse mais se precisar. Busque a falha entre 6–12 reps.'
+    :'Para o seu objetivo de <b>bulking</b>: descansos de <b>90 s</b>. Nos estudos, descansar mais de 60 s deu um pouco mais de músculo, e passar de 90 s não fez diferença. Nos exercícios pesados, descanse mais se precisar. Busque a falha entre 6–12 reps.')
     +(!tSugDestino&&(store.tprotocol||[]).length?' Cada sugestão entra como um protocolo novo, com o nome dela — dá para renomear depois.':'');
   /* Treinador (#95): o objetivo é do aluno, que ele não vê aqui. */
   if(ehTreinador())$("tSugSub").textContent="Treinos prontos para começar. Séries e descanso você ajusta depois, no editor.";
@@ -4307,10 +4449,19 @@ function openTSug(destino){
   $("tSugList").querySelectorAll("[data-usesug]").forEach(b=>b.onclick=()=>useTSug(b.dataset.usesug,tSugDestino));
   $("tSugOverlay").classList.add("open");
 }
+/* Descanso das sugestões prontas (#83): 90 s, no cutting e no bulking.
+   O dono pediu "o que a ciência indica como melhor para hipertrofia".
+   Singer A, Wolf M, Generoso L, et al. "Give it a rest: a systematic review
+   with Bayesian meta-analysis on the effect of inter-set rest interval
+   duration on muscle hypertrophy". Front Sports Act Living 2024;6:1429789,
+   PMID 39205815 (resumo conferido no PubMed): pequena vantagem para o músculo
+   acima de 60 s, e nenhuma diferença perceptível acima de 90 s. O cutting
+   usava 60 s "para manter o gasto alto", sem fonte, e o texto não promete
+   mais nada sobre o gasto. */
+const SUG_DESCANSO=90;
 function useTSug(pid,destino){
   const p=T_SUG.find(x=>x.id===pid);if(!p)return;
-  const obj=(store.goals||{}).objetivo||"cutting";
-  const rest=obj==="bulking"?90:60;
+  const rest=SUG_DESCANSO;
   store.tprotocol=store.tprotocol||[];
   /* Quem escolheu uma academia e pegou uma sugestão está montando o treino
      DELA: sem isto, o protocolo novo apareceria em todas. */
@@ -4707,7 +4858,7 @@ function listaProtocolos(){
      "Meu protocolo" virtual — cada aluno tem os dele. O recém-criado, ainda
      sem o carimbo do save(), é do aluno aberto. */
   if(ehTreinador()){
-    const dele=x=>!!alunoAberto&&!!x&&(x.aluno||alunoAberto)===alunoAberto;
+    const dele=x=>!!alunoAberto&&!!x&&!x.pessoal&&(x.aluno||alunoAberto)===alunoAberto;   // `pessoal`: de antes de a conta virar de treinador (#103)
     gu.filter(dele).forEach(p=>add(p.id,p.nome));
     tps.filter(dele).forEach(w=>{if(w.prot)add(w.prot,w.protNome);});
     return out;
@@ -5576,6 +5727,10 @@ $("tpSave").onclick=()=>{
 /* ---- execução do treino ---- */
 const tRunOverlay=$("tRunOverlay");
 let trS=null,trInt=null,trRestInt=null,trRestEnd=0;
+/* O descanso é da sessão, não da tela (#83): avançar para o próximo
+   exercício não o apaga. Por isso ele guarda o próprio total (com os "+30 s")
+   e de qual exercício é. */
+let trRestTotal=0,trRestEx="",trRestIdx=-1;
 
 /* ============================================================
    ALARME DO DESCANSO
@@ -5882,15 +6037,47 @@ function descansoIniciar(secs,exercicio){
   // fica na barra de notificação com o horário de término (ver limite no CLAUDE.md)
   notifMostrar("Descanso em andamento",`Termina às ${hhmm(new Date(trRestEnd))} · ${fmtSec(secs)} de descanso`,
     {silent:true,requireInteraction:true});
-  pushAgendar(secs,"Hora da próxima série."); // chega mesmo com o app fechado
+  pushEmFila(()=>pushAgendar(secs,"Hora da próxima série.")); // chega mesmo com o app fechado
 }
+
+/* Os pedidos ao servidor saem um de cada vez, na ordem dos toques. Dois
+   pedidos ao mesmo tempo podiam chegar fora de ordem, e o aviso que ficava
+   valendo era o de um toque antigo — ou um "pular" chegava antes do agendar,
+   e o aviso de um descanso já encerrado tocava. */
+let pushFila=Promise.resolve(),pushReT=null;
+function pushEmFila(f){pushFila=pushFila.then(f,f);return pushFila;}
+
+/** "+30 s" / "−15 s": o mesmo descanso, com outro fim, nos três caminhos. */
+function descansoReagendar(secs){
+  if(appNativo){
+    /* A ponte já troca o agendamento: `Descanso.agendar` cancela o anterior
+       antes de pôr o novo. Não precisa de APK novo. */
+    try{ window.TResults.iniciarDescanso(secs,trRestEx||""); return; }catch(e){}
+  }
+  keepAudioAlive(true);
+  scheduleAlarm(secs);   // cancela o agendado e põe o novo
+  clearTimeout(trDuckT);
+  trDuckT=setTimeout(tomarOAudio,Math.max(0,secs*1000-400));
+  notifMostrar("Descanso em andamento",`Termina às ${hhmm(new Date(trRestEnd))} · ${fmtSec(trRestTotal)} de descanso`,
+    {silent:true,requireInteraction:true});
+  /* O servidor recebe só o último de uma sequência de toques ("+30" três
+     vezes vira um pedido). O aviso de antes perde a validade sozinho: o
+     servidor só envia o último que foi pedido. Perto do fim, sem espera. */
+  clearTimeout(pushReT);
+  pushReT=setTimeout(()=>pushEmFila(()=>{
+    const r=(trRestEnd-Date.now())/1000;
+    if(trRestInt&&r>=1)return pushAgendar(r,"Hora da próxima série.");
+  }),secs<5?0:PUSH_ESPERA_MS);
+}
+const PUSH_ESPERA_MS=800;
 
 /** Descanso pulado, alarme já tocado ou treino encerrado. */
 function descansoCancelar(){
+  clearTimeout(pushReT);
   if(appNativo){
     try{ window.TResults.cancelarDescanso(); return; }catch(e){}
   }
-  pushCancelar();
+  pushEmFila(pushCancelar);
 }
 
 /* --- Som do alarme e biometria ---
@@ -5991,14 +6178,15 @@ function trPersist(){
       w:trS.w,start:trS.start,idx:trS.idx,logs:trS.logs,
       away:trS.away||0,hiddenAt:trS.hiddenAt||0,acad:trS.acad||"",acadNome:trS.acadNome||"",
       prot:trS.prot||"",protNome:trS.protNome||"",
-      restEnd:trRestInt?trRestEnd:0,at:Date.now()
+      restEnd:trRestInt?trRestEnd:0,restTotal:trRestInt?trRestTotal:0,restEx:trRestInt?trRestEx:"",restIdx:trRestInt?trRestIdx:-1,
+      at:Date.now()
     }));
   }catch(e){}
 }
 function trPersistSoon(){clearTimeout(trPersistT);trPersistT=setTimeout(trPersist,400);}
 /* outra conta entrou neste aparelho: o treino em andamento não é dela */
 function trDiscardRun(){
-  clearInterval(trInt);stopRest();trS=null;
+  clearInterval(trInt);encerrarDescanso();trS=null;
   try{localStorage.removeItem(RUNKEY);}catch(e){}
   tRunOverlay.classList.remove("open");
 }
@@ -6028,6 +6216,12 @@ function trRestore(){
   if(s.restEnd){
     if(s.restEnd>Date.now()){ // descanso continuou correndo pelo relógio real
       trRestEnd=s.restEnd;
+      /* Treino salvo pela versão anterior não traz o total nem o exercício:
+         vale o do exercício da vez, como era. */
+      const ex=trS.w.ex[trS.idx];
+      trRestTotal=s.restTotal||(ex&&ex.rest)||90;
+      trRestIdx=Number.isInteger(s.restIdx)&&s.restIdx>=0&&s.restIdx<trS.w.ex.length?s.restIdx:trS.idx;
+      trRestEx=s.restEx||((trS.w.ex[trRestIdx]||{}).n)||"";
       $("trRest").classList.add("resting");$("trRest").classList.remove("done");
       restTick();trRestInt=setInterval(restTick,500);
     } else restFinish(Date.now()-s.restEnd<120000); // acabou enquanto você estava fora
@@ -6055,7 +6249,42 @@ function trTick(){
   if(!trS)return;
   $("trTimer").textContent=fmtSec(Math.floor(trElapsedMs()/1000));
 }
-function stopRest(){clearInterval(trRestInt);trRestInt=null;trRestEnd=0;clearTimeout(trDuckT);cancelAlarm();keepAudioAlive(false);}
+function stopRest(){
+  clearInterval(trRestInt);trRestInt=null;trRestEnd=0;trRestTotal=0;trRestEx="";trRestIdx=-1;
+  clearTimeout(trDuckT);clearTimeout(pushReT);cancelAlarm();keepAudioAlive(false);
+  const a=$("trAjuste");if(a)a.classList.remove("on");
+}
+/* Treino finalizado, cancelado ou de outra conta: o descanso que corria
+   avisa o Android e o servidor também. Só parar a tela deixava o alarme do
+   sistema tocando depois do treino. */
+function encerrarDescanso(){
+  if(trRestInt)descansoCancelar();
+  stopRest();
+}
+/** Toque no descanso em andamento = pular. */
+function pularDescanso(){
+  stopRest();descansoCancelar();restLabel();trPersist();
+}
+/* "+30 s" / "−15 s" (#83). Valem só para este descanso: a sessão, nunca o
+   protocolo, como a troca de exercício. O teto é o da ponte do Android e do
+   servidor: descanso acima de 1 h não é descanso. */
+const DESC_MAIS=30,DESC_MENOS=15,DESC_MAX=3600;
+function ajustarDescanso(delta){
+  if(!trS||!trRestInt||!trRestEnd)return;
+  const agora=Date.now(),falta=(trRestEnd-agora)/1000;
+  /* "−15" com 15 s ou menos: a pessoa quer ir agora. Encerra como pular,
+     sem alarme logo depois do toque — e sem mandar 0 s ao Android e ao
+     servidor, que recusariam e deixariam o alarme antigo valendo. */
+  if(delta<0&&falta<=-delta){pularDescanso();return;}
+  const seg=Math.max(1,Math.min(DESC_MAX,Math.round(falta+delta)));
+  if(seg===Math.round(falta))return;   // no teto
+  trRestTotal=Math.max(1,Math.round(trRestTotal+seg-falta));   // inteiro: vai para a notificação
+  trRestEnd=agora+seg*1000;
+  descansoReagendar(seg);
+  restTick();trPersist();
+}
+$("trMenos15").onclick=()=>ajustarDescanso(-DESC_MENOS);
+$("trMais30").onclick=()=>ajustarDescanso(DESC_MAIS);
 let restDoneT=null;
 function restLabel(){
   const e=trS.w.ex[trS.idx],b=$("trRest");
@@ -6083,7 +6312,7 @@ function restFinish(soar){
     else abrirRestDone();
     /* Nada de notificar daqui: se o app está em segundo plano este código não
        roda. Quem avisa nesse caso é o push do servidor. */
-    pushCancelar();          // já avisamos na tela; o push viraria aviso repetido
+    pushEmFila(pushCancelar); // já avisamos na tela; o push viraria aviso repetido
   }
   trPersist();
   setTimeout(()=>{if(!trRestInt&&trS)restLabel();},2800);
@@ -6142,11 +6371,17 @@ function fecharRestDone(){
 }
 function restTick(){
   if(!trRestEnd)return;
-  const b=$("trRest"),e=trS&&trS.w.ex[trS.idx],total=(e&&e.rest)||90;
+  const b=$("trRest"),e=trS&&trS.w.ex[trS.idx],total=trRestTotal||(e&&e.rest)||90;
   const left=Math.ceil((trRestEnd-Date.now())/1000);
   if(left<=0){restFinish(Date.now()-trRestEnd<180000);return;}  // atrasado demais: mostra, mas não toca
-  const pct=Math.min(100,((total-left)/total)*100);
-  b.innerHTML=`<span class="rfill" style="width:${pct}%"></span><span class="rtxt">Descanso: ${fmtSec(left)} · toque para pular</span>`;
+  const pct=Math.max(0,Math.min(100,((total-left)/total)*100));
+  /* Avançou com o descanso correndo: ele continua, e diz de qual exercício
+     é. O nome vai sem artigo ("do rosca" sairia em metade do catálogo). */
+  const deOutro=!!(trS&&trRestEx&&trRestIdx!==trS.idx);
+  b.innerHTML=`<span class="rfill" style="width:${pct}%"></span>`+(deOutro
+    ?`<span class="rtxt col"><span class="rde">Descanso · ${esc(trRestEx)}</span><span>${fmtSec(left)} · toque para pular</span></span>`
+    :`<span class="rtxt">Descanso: ${fmtSec(left)} · toque para pular</span>`);
+  const a=$("trAjuste");if(a)a.classList.add("on");
 }
 $("restDone").onclick=fecharRestDone;
 $("rdGo").onclick=e=>{e.stopPropagation();fecharRestDone();};
@@ -6155,11 +6390,12 @@ $("rpOk").onclick=e=>{e.stopPropagation();fecharRestPop();};
 $("trRest").onclick=()=>{
   if(!trS)return;
   const b=$("trRest");
-  if(trRestInt){stopRest();descansoCancelar();restLabel();trPersist();return;} // toque durante o descanso = pular
+  if(trRestInt){pularDescanso();return;} // toque durante o descanso = pular
   beepInit(); // gesto do usuário libera o áudio do alarme
   trS.saiuNoDescanso=false;   // começa limpo: quem sair marca no visibilitychange
   const secs=(trS.w.ex[trS.idx].rest||90);
   trRestEnd=Date.now()+secs*1000; // relógio real: não para em segundo plano
+  trRestTotal=secs;trRestIdx=trS.idx;trRestEx=trS.w.ex[trS.idx].n||"";
   descansoIniciar(secs,trS.w.ex[trS.idx].n);
   b.classList.add("resting");b.classList.remove("done");
   restTick();
@@ -6614,8 +6850,8 @@ function renderTr(){
     ${trRecorde?'<div class="tsrec" hidden></div>':""}
     <div class="tsr2"><span class="rirl">RIR</span><div class="rirseg">${[0,1,2,3].map(v=>`<button data-rir="${v}" class="${l.rir===v?"on":""}">${v===3?"3+":v}</button>`).join("")}</div></div>
   </div>`;}).join("");
-  /* "+ carga" mostra o campo sem redesenhar: renderTr termina em stopRest()
-     e mataria o descanso em andamento. */
+  /* "+ carga" mostra o campo sem redesenhar: renderTr redesenha as séries
+     e fecharia o teclado (até o #83, matava também o descanso). */
   if($("trMaisCarga"))$("trMaisCarga").onclick=()=>{
     e.comCarga=true;
     $("trSets").querySelectorAll(".fkg.oculto").forEach(f=>f.classList.remove("oculto"));
@@ -6651,7 +6887,10 @@ function renderTr(){
     trDelta(row);pintarRecorde(row);
   });
   pintarFalta();
-  stopRest();restLabel();
+  /* O descanso é da sessão (#83): avançar, voltar ou trocar o exercício não
+     o apaga. Antes, a tela voltava a "Iniciar descanso" enquanto o alarme do
+     Android (ou o push) seguia agendado, sem dono na tela. */
+  if(trRestInt)restTick();else restLabel();
   $("trNext").textContent=trS.idx===w.ex.length-1?"Finalizar treino ✓":"Próximo exercício ›";
   $("trPrev").style.display=trS.idx>0?"flex":"none";
 }
@@ -6729,7 +6968,7 @@ function pintarFalta(){
   $("trFaltaTem").onclick=()=>{
     const a=acadPorId(trS.acad);
     if(a&&Array.isArray(a.faltam)){const tira=new Set(r.melhor);a.faltam=a.faltam.filter(id=>!tira.has(id));save();}
-    pintarFalta();   // nunca renderTr: ele termina em stopRest() e mataria o descanso
+    pintarFalta();   // nunca renderTr: ele redesenha as séries (até o #83, matava o descanso)
   };
 }
 function aplicarTroca(){
@@ -7183,12 +7422,12 @@ $("trNext").onclick=async()=>{
   reg.tid=trS.w.id;reg.prot=trS.prot||PROT_PADRAO;reg.protNome=protNomeDe(trS)||trS.protNome||"";
   tToday().push(reg);
   if(ehForca(reg))fecharPausaAoTreinar("forca",todayKey(),reg.id);   // finalizada sem nenhuma série não é treino
-  clearInterval(trInt);stopRest();trS=null;trPersist();tRunOverlay.classList.remove("open");
+  clearInterval(trInt);encerrarDescanso();trS=null;trPersist();tRunOverlay.classList.remove("open");
   audioSession("auto");
   save();renderTreino();render();renderInicio();
   showCongrats(`Treino finalizado — ${min} min (${Math.round(workMin)} de esforço) · intensidade ${label} · ${kcal} kcal`);
 };
-$("trQuit").onclick=async()=>{if(await appConfirm("Cancelar o treino em andamento? Nada será registrado.",{okText:"Sim, cancelar",cancelText:"Continuar treino"})){clearInterval(trInt);stopRest();trS=null;trPersist();tRunOverlay.classList.remove("open");audioSession("auto");}};
+$("trQuit").onclick=async()=>{if(await appConfirm("Cancelar o treino em andamento? Nada será registrado.",{okText:"Sim, cancelar",cancelText:"Continuar treino"})){clearInterval(trInt);encerrarDescanso();trS=null;trPersist();tRunOverlay.classList.remove("open");audioSession("auto");}};
 
 /* ---- mapa muscular (frente/costas) ---- */
 /* ---- Como fazer: demonstração de exercícios ---- */
@@ -7852,8 +8091,18 @@ async function startSync(){
       sincronizar();
     },()=>setSyncDot("err","Erro de conexão"));
     if(!pendente())setSyncDot("ok","Sincronizado");
-  }catch(e){ setSyncDot("err","Erro ao carregar"); }
+  }catch(e){
+    setSyncDot("err","Erro ao carregar");
+    /* A nuvem recusou a LEITURA, e não por falta de sinal: quase sempre é a
+       regra do Firestore (permission-denied). A pessoa fica na abertura
+       com "Conexão lenta", e nada chegava ao dono. O Sentry recebe só o
+       código, uma vez por abertura, como a recusa de gravação. */
+    const code=(e&&e.code)||"";
+    const semSinal=navigator.onLine===false||code==="unavailable"||code==="deadline-exceeded";
+    if(!semSinal&&!avisouLeitura){avisouLeitura=true;try{if(window.Sentry&&Sentry.captureMessage)Sentry.captureMessage("Nuvem recusou a leitura: "+(code||"sem código"));}catch(_){}}
+  }
 }
+var avisouLeitura=false;   // var: startSync pode rodar antes desta linha
 function stopSync(){ if(unsub){unsub();unsub=null;} pararPapel(); }
 /* O uso de exógenos é dado de saúde sensível (LGPD, art. 5º e 11), e pode
    sugerir conduta ilícita. Por padrão ele fica só no aparelho: a nuvem recebe o
@@ -8148,6 +8397,7 @@ function applyRemote(data){
 /* Monta o store a partir de um documento da nuvem. `manterDia`: depois de
    uma gravação deste aparelho, a tela continua no dia que a pessoa via. */
 function aplicarNuvem(data,manterDia){
+  const papelAntes=ehTreinador();
   applyingRemote=true;
   /* Só herda do aparelho quem é dono dele. Com outra conta entrando neste
      celular, nada do que ficou aqui — o exógeno (dado de saúde), as
@@ -8209,6 +8459,9 @@ function aplicarNuvem(data,manterDia){
   }
   if(trS)pintarFalta();   // inventário mudou em outro aparelho; nunca renderTr, que mataria o descanso
   aplicarPapel();
+  /* A conta virou de treinador em outro aparelho (#103): troca os ouvintes
+     de aluno pelos de treinador, e a tela vai para Alunos. */
+  if(papelAntes!==ehTreinador()&&cloudEnabled&&user){pararPapel();iniciarPapel();if(ehTreinador()&&!["alunos","aluno","perfil"].includes(currentView))showView("alunos");}
   if(currentView==="alunos")renderAlunos(true);   // protocolos mudados em outro aparelho do treinador
   applyingRemote=false;
 }
@@ -8241,6 +8494,7 @@ async function sincronizarAgora(uid){
       const snap=await tx.get(ref);
       const R=snap.exists()?semMeta(snap.data()):null;
       M=(!R||(pend&&p.substituir))?L:(pend?mesclar(B,L,R):R);
+      medirNuvem(uid,M);   // medido antes de gravar: a recusa por tamanho não fica calada
       gravou=!R||!igual(M,R);
       if(gravou)tx.set(ref,Object.assign({},M,{writer:DEVICE,updatedAt:serverTimestamp()}));
     });
@@ -8390,9 +8644,9 @@ function doTreinador(id){const p=(store.tprotos||[]).find(x=>x&&x.id===id);retur
    e salvar treino, em vez de um remendo em cada caminho. */
 function carimbarAlunos(){
   if(!alunoAberto)return;
-  (store.tprotos||[]).forEach(p=>{if(p&&!p.aluno)p.aluno=alunoAberto;});
+  (store.tprotos||[]).forEach(p=>{if(p&&!p.aluno&&!p.pessoal)p.aluno=alunoAberto;});
   (store.tprotocol||[]).forEach(w=>{
-    if(!w||w.aluno)return;
+    if(!w||w.aluno||w.pessoal)return;
     const p=(store.tprotos||[]).find(x=>x&&x.id===w.prot);
     w.aluno=(p&&p.aluno)||alunoAberto;
   });
@@ -8894,8 +9148,10 @@ function renderPerfilTreinador(){
   if(!mostra)return;
   const el=$("pfTrein");
   if(!vinc){
-    el.innerHTML='<p>Treina com um treinador? Com o código que ele mandar, ele monta o seu treino aqui no app e acompanha as suas cargas.</p><button class="btn secondary" id="pfTreinLigar" type="button">Ligar a um treinador</button>';
+    el.innerHTML='<p>Treina com um treinador? Com o código que ele mandar, ele monta o seu treino aqui no app e acompanha as suas cargas.</p><button class="btn secondary" id="pfTreinLigar" type="button">Ligar a um treinador</button>'
+      +'<button class="btn secondary" id="pfSouTreinador" type="button">Sou treinador</button>';
     $("pfTreinLigar").onclick=()=>abrirVinc("");
+    $("pfSouTreinador").onclick=abrirProf;
     return;
   }
   el.innerHTML=`<div class="pt-nome">${esc(vinc.treinadorNome)}</div><p>Seu treinador desde ${dataDeMs(vinc.desde)}. Ele monta os seus protocolos e vê os treinos que você faz.</p>`
@@ -8904,6 +9160,75 @@ function renderPerfilTreinador(){
   $("pfTreinPeso").onchange=e=>mudarPesoVinc(e.target.checked);
   $("pfTreinSair").onclick=desfazerVinculo;
 }
+
+/* ---- "Sou treinador" numa conta que já existe (#103) ----
+   O pedido do dono: o botão no Perfil abre "Favor colocar o código de
+   professor", e com o código certo a conta passa a ser de treinador e o
+   código para ligar um aluno é gerado.
+
+   O que o código protege, e o que não protege: ele vive neste arquivo, que
+   é público (GitHub Pages), e as regras da nuvem deixam qualquer conta criar
+   convite. Ele afasta quem não é professor de virar treinador por engano ou
+   por curiosidade; não é segurança. Por isso guardamos só o resumo (SHA-256)
+   do código, e não o código: ler a página não basta para achá-lo. Com 4
+   algarismos, quem souber programar acha mesmo assim. Uma barreira de
+   verdade precisa ser conferida no servidor (uma função, ou uma lista de
+   professores nas regras). Cinco erros seguidos travam por 5 minutos.
+
+   A conta de treinador é só de treinador (#95). Os protocolos e treinos que
+   a pessoa já tinha são dela, e não de um aluno: sem a marca `pessoal`, o
+   primeiro aluno aberto os receberia (carimbarAlunos carimba tudo o que não
+   tem dono) e eles iriam no plano dele. */
+const PROF_HASH="6eaed4c00d61cb6b72a46ecc1b60496ff653c9636a094da0c9efdc0fdd134eab";   // SHA-256 de "tresults-professor:" + código
+const PROF_TENT=5,PROF_TRAVA_MS=5*60*1000;
+async function hashProf(c){
+  const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode("tresults-professor:"+c));
+  return Array.from(new Uint8Array(b),x=>x.toString(16).padStart(2,"0")).join("");
+}
+function profTrava(){try{return JSON.parse(localStorage.getItem("tresults.profTrava")||"null")||{n:0,ate:0};}catch(e){return {n:0,ate:0};}}
+function guardarProfTrava(t){try{localStorage.setItem("tresults.profTrava",JSON.stringify(t));}catch(e){}}
+function abrirProf(){
+  if(trS)return appAlert("Finalize ou cancele o treino em andamento antes.","Sou treinador");
+  if(vinc)return appAlert(`Você está ligado a ${vinc.treinadorNome||"um treinador"}. Para a sua conta virar de treinador, desfaça a ligação antes, aqui no Perfil.`,"Sou treinador");
+  $("profCodigo").value="";$("profMsg").textContent="";$("profMsg").className="auth-msg";
+  $("profOk").disabled=false;
+  $("profOverlay").classList.add("open");
+  setTimeout(()=>$("profCodigo").focus(),220);
+}
+function fecharProf(){$("profOverlay").classList.remove("open");}
+const profErro=m=>{$("profMsg").textContent=m;$("profMsg").className="auth-msg err";};
+async function conferirProf(){
+  const c=$("profCodigo").value.trim();
+  const t=profTrava(),agora=Date.now();
+  if(t.ate>agora)return profErro(`Muitas tentativas. Tente de novo em ${Math.ceil((t.ate-agora)/60000)} min.`);
+  if(!c)return profErro("Digite o código de professor.");
+  $("profOk").disabled=true;
+  let certo=false;
+  try{certo=(await hashProf(c))===PROF_HASH;}catch(e){}
+  $("profOk").disabled=false;
+  if(!certo){
+    const n=(t.ate&&t.ate<=agora?0:t.n)+1;
+    guardarProfTrava(n>=PROF_TENT?{n:0,ate:agora+PROF_TRAVA_MS}:{n,ate:0});
+    $("profCodigo").value="";
+    return profErro(n>=PROF_TENT?"Código incorreto. Muitas tentativas: tente de novo em 5 min.":"Código incorreto.");
+  }
+  guardarProfTrava({n:0,ate:0});
+  virarTreinador();
+}
+function virarTreinador(){
+  (store.tprotos||[]).forEach(p=>{if(p&&!p.aluno)p.pessoal=true;});
+  (store.tprotocol||[]).forEach(w=>{if(w&&!w.aluno)w.pessoal=true;});
+  store.papel="treinador";
+  save();
+  fecharProf();
+  pararPapel();iniciarPapel();   // sai o vínculo e o plano de aluno; entram os alunos e o código
+  showView("alunos");
+  appAlert("Pronto: sua conta agora é de treinador. O código para ligar um aluno está aqui, em Alunos.","Sou treinador");
+}
+$("profOk").onclick=conferirProf;
+$("profVoltar").onclick=fecharProf;
+$("profCodigo").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();conferirProf();}});
+$("profOverlay").onclick=e=>{if(e.target===$("profOverlay"))fecharProf();};
 
 /* ---- Criar conta ----
 
@@ -9174,8 +9499,10 @@ function renderDrop(){
   clearTimeout(offAutoT);
   if(!q){closeDrop();return;}
   currentResults=buscaAlimentos(raw,localList(),8);hlIndex=-1;offResults=[];
+  /* A Open Food Facts pede para não buscar a cada tecla (#87): a busca
+     sozinha espera OFF_ESPERA depois da última, e o Enter busca na hora. */
   if(currentResults.length<OFF_MIN&&raw.length>=3){
-    offAutoT=setTimeout(()=>{ if(search.value.trim()===raw&&!manualMode&&!picked)offSearch(raw); },700);
+    offAutoT=setTimeout(()=>{ if(search.value.trim()===raw&&!manualMode&&!picked)offSearch(raw,true); },OFF_ESPERA);
   }
   pintarDrop(raw.length>=2?linhaOff(raw):"");
 }
@@ -9241,55 +9568,73 @@ function fetchJSONone(u,ms){
   });
 }
 const offCache=new Map();
-async function offFetch(q){
+/* ---- Quantos pedidos vão à Open Food Facts (#87) ----
+   O serviço limita as buscas por minuto e pede para não buscar a cada
+   tecla. Antes, cada frase disparava dois pedidos em paralelo e, sem
+   resposta, mais dois de reserva, um deles por um proxy de terceiro
+   (api.allorigins.win) que a política de privacidade não citava e que
+   estava fora do ar. Agora:
+   - um corredor por vez, em CASCATA: o cgi primeiro (o único com CORS
+     aberto quando responde), o search-a-licious se ele falhar. O que falha
+     fica de fora por OFF_FORA_MS (10 min), e o regime normal é 1 pedido
+     por frase;
+   - o mundo só entra se o Brasil respondeu, e respondeu vazio;
+   - no máximo OFF_POR_MIN (8) pedidos por minuto, abaixo dos 10 por IP da
+     documentação deles. A busca sozinha para em silêncio quando estoura; o
+     toque explica quanto falta;
+   - o proxy saiu.
+   Cada pedido deixa no rastro do diag.html o corredor e o resultado (nunca
+   o que a pessoa digitou): é por ele que se vê, no celular, se a busca chega. */
+const OFF_ESPERA=1200,OFF_POR_MIN=8,OFF_FORA_MS=10*60*1000,OFF_TIMEOUT=7000;
+let offPedidos=[];
+const offFora={};
+function offLivre(){const ag=Date.now();offPedidos=offPedidos.filter(t=>ag-t<60000);return offPedidos.length<OFF_POR_MIN;}
+function offEsperaS(){return offPedidos.length?Math.max(1,Math.ceil((offPedidos[0]+60000-Date.now())/1000)):0;}
+async function offFetch(q,forcar){
   if(offCache.has(q))return offCache.get(q);
   const enc=encodeURIComponent(q);
   const FIELDS="product_name,product_name_pt,brands,quantity,nutriments,countries_tags";
-  /* Corrida em paralelo: responde quem chegar primeiro com resultados. Os dois
-     corredores pedem produto do BRASIL: sem o filtro, "picanha" devolvia
-     hambúrguer importado e "salmão" um produto só; com ele, picanha de
-     verdade e 30 coxinhas em vez de 9. A busca mundial (A) virou reserva,
-     junto com o proxy: só entra se o Brasil não responder nada. */
-  const ABr=`https://search.openfoodfacts.org/search?q=${encodeURIComponent(q+' countries_tags:"en:brazil"')}&langs=pt,main&page_size=50&fields=${FIELDS}`;
-  const A=`https://search.openfoodfacts.org/search?q=${enc}&langs=pt,main&page_size=40&fields=${FIELDS}`;
-  const B=`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${enc}&search_simple=1&action=process&json=1&page_size=24&cc=br&lc=pt&fields=${FIELDS}`;
-  const C="https://api.allorigins.win/raw?url="+encodeURIComponent(B);
+  /* Os dois pedem produto do BRASIL primeiro: sem o filtro, "picanha"
+     devolvia hambúrguer importado e "salmão" um produto só. */
+  const CORREDORES=[
+    {id:"cgi",
+     br:`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${enc}&search_simple=1&action=process&json=1&page_size=24&cc=br&lc=pt&fields=${FIELDS}`,
+     mundo:`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${enc}&search_simple=1&action=process&json=1&page_size=24&lc=pt&fields=${FIELDS}`},
+    {id:"sal",
+     br:`https://search.openfoodfacts.org/search?q=${encodeURIComponent(q+' countries_tags:"en:brazil"')}&langs=pt,main&page_size=50&fields=${FIELDS}`,
+     mundo:`https://search.openfoodfacts.org/search?q=${enc}&langs=pt,main&page_size=40&fields=${FIELDS}`},
+  ];
   const hitsOf=d=>(d&&(d.hits||d.products))||[];
-  const hits=await new Promise((resolve,reject)=>{
-    let feito=false,pend=0,vazio=false,reservaTentada=false;
-    const fim=h=>{if(!feito){feito=true;resolve(h);}};
-    /* A reserva (mundo + proxy) não corre junto: entra se os diretos demoram
-       3,5 s ou assim que os dois terminam sem nada — sem esperar o relógio
-       com a pessoa olhando "Buscando…". O proxy, em especial, não entra se já
-       houve resposta: seria mandar o que a pessoa digitou a um terceiro sem
-       necessidade. */
-    const abrirReserva=()=>{if(feito||reservaTentada)return;reservaTentada=true;vazio=false;acompanhar(fetchJSONone(A,9000));acompanhar(fetchJSONone(C,9000));};
-    function acompanhar(p){
-      pend++;
-      p.then(d=>{
-        const h=hitsOf(d);
-        if(h.length)return fim(h);
-        vazio=true;
-        if(--pend!==0)return;
-        if(!reservaTentada)return abrirReserva();   // Brasil vazio: tenta o mundo
-        fim([]);
-      }).catch(()=>{
-        if(--pend!==0)return;
-        if(!reservaTentada)return abrirReserva();
-        vazio?fim([]):(feito||reject(new Error("all failed")));
-      });
+  for(const fase of ["br","mundo"]){
+    let resp=null;
+    for(const c of CORREDORES){
+      /* O toque da pessoa tenta também o que estava de fora: a rede pode ter
+         voltado. A busca sozinha respeita os 10 minutos. */
+      if(!forcar&&(offFora[c.id]||0)>Date.now())continue;
+      if(!offLivre()){const e=new Error("limite");e.limite=true;throw e;}
+      offPedidos.push(Date.now());
+      try{
+        resp=hitsOf(await fetchJSONone(c[fase],OFF_TIMEOUT));
+        delete offFora[c.id];
+        rastro(`internet: ${c.id} ${fase} ok, ${resp.length}`);
+        break;
+      }catch(e){
+        offFora[c.id]=Date.now()+OFF_FORA_MS;
+        rastro(`internet: ${c.id} ${fase} falhou (${String((e&&e.message)||e).slice(0,24)})`);
+      }
     }
-    acompanhar(fetchJSONone(ABr,9000));
-    acompanhar(fetchJSONone(B,9000));
-    setTimeout(abrirReserva,3500);
-  });
-  if(hits.length)offCache.set(q,hits);
-  return hits;
+    if(resp===null)throw new Error("all failed");   // nenhum corredor respondeu
+    if(resp.length){offCache.set(q,resp);return resp;}
+  }
+  return [];
 }
-async function offSearch(q){
+async function offSearch(q,sozinha){
+  /* A busca sozinha que estoura o limite some em silêncio: a linha de
+     buscar continua ali, e o toque explica quanto falta. */
+  if(sozinha&&!offLivre()&&!offCache.has(q)){rastro("internet: limite por minuto");return;}
   pintarDrop(`<div class="opt empty">Buscando "${esc(q)}" na internet…</div>`);
   try{
-    const hits=await offFetch(q);
+    const hits=await offFetch(q,!sozinha);
     if(search.value.trim()!==q)return;          // a pessoa já digitou outra coisa
     const locais=new Set(currentResults.map(f=>norm(f.n)));
     offResults=ordenarOff(hits,q).filter(f=>!locais.has(norm(f.n))).slice(0,15);
@@ -9299,6 +9644,12 @@ async function offSearch(q){
     }
     pintarDrop(offResults.map((f,idx)=>`<div class="opt" data-offidx="${idx}"><span class="n">${esc(f.n)}</span><span class="m">${f.k} kcal · P${f.p} C${f.c} G${f.g} /100g 🌐</span></div>`).join(""));
   }catch(e){
+    if(search.value.trim()!==q)return;
+    if(e&&e.limite){
+      if(sozinha){pintarDrop(linhaOff(q));return;}
+      pintarDrop(`<div class="opt empty">Muitas buscas na internet em pouco tempo. Tente de novo em ${offEsperaS()} s.</div>`);
+      return;
+    }
     pintarDrop(`<div class="opt empty">Não consegui buscar online agora (sem conexão ou serviço indisponível). Tente de novo em instantes.</div>`);
   }
 }
@@ -9313,6 +9664,8 @@ search.addEventListener("keydown",e=>{
   if(e.key==="ArrowDown"){e.preventDefault();hlIndex=Math.min(opts.length-1,hlIndex+1);paint(opts);}
   else if(e.key==="ArrowUp"){e.preventDefault();hlIndex=Math.max(0,hlIndex-1);paint(opts);}
   else if(e.key==="Enter"&&hlIndex>-1){e.preventDefault();selectFood(currentResults[hlIndex]);}
+  /* Enter sem nada escolhido busca na internet na hora, sem esperar. */
+  else if(e.key==="Enter"&&search.value.trim().length>=2&&!manualMode&&!picked){e.preventDefault();clearTimeout(offAutoT);offSearch(search.value.trim());}
 });
 function paint(opts){opts.forEach((o,i)=>o.classList.toggle("hl",i===hlIndex));}
 function closeDrop(){drop.classList.remove("open");drop.innerHTML="";}
@@ -9531,16 +9884,54 @@ function pesoNoDia(dk){
 /* O dia em que o peso de partida foi digitado. Objetivo salvo antes de
    existir a data: o início do plano, que era quando ele mudava. */
 function pesoDesde(g){g=g||{};return g.pesoDesde||g.inicio||"";}
-/* A pesagem que pode propor ajustar a meta: a mais recente desde o peso de
-   partida. */
-function pesagemDoPlano(){
-  const h=todayKey(),ini=pesoDesde(store.goals);
-  const ws=(store.weights||[]).filter(x=>x&&x.w>0&&x.d<=h&&x.d>=ini).sort((a,b)=>a.d<b.d?-1:1);
-  return ws.length?ws[ws.length-1]:null;
-}
 function ultimaPesagem(){
   const h=todayKey(),ws=(store.weights||[]).filter(x=>x&&x.w>0&&x.d<=h).sort((a,b)=>a.d<b.d?-1:1);
   return ws.length?ws[ws.length-1]:null;
+}
+/* ---- Tendência do peso (#84) ----
+   A balança de um dia mistura água, sal e o que ainda está no intestino, e
+   oscila mais do que a gordura muda numa semana. O veredito "No ritmo /
+   Atrasado" lia a pesagem crua, com tolerância menor que essa oscilação, e
+   o cartão "Atualizar / Manter" insistia a cada dia inchado.
+
+   A tendência é uma média exponencial com o intervalo entre as pesagens
+   descontado: cada pesagem puxa a tendência em 1 − 0,9^dias da diferença.
+   Os 10% por dia são os do "The Hacker's Diet" (John Walker), e são
+   ESCOLHA DE PRODUTO, não fisiologia: atrasam uns 9 dias, e em troca a
+   oscilação de um dia para o outro chega à tela bem menor. Quem pesa de vez
+   em quando não fica para trás: depois de uma semana sem pesar, a pesagem
+   nova vale metade (1 − 0,9^7).
+
+   A tendência recomeça no peso de partida (pesoDesde): as pesagens de antes
+   são mais velhas que ele. Só elas propõem ajustar a meta. */
+const TEND_ALFA=0.1,TEND_JANELA=14,TEND_MIN=3,TEND_TOL=0.4,TEND_PREV_MAX=730;
+function tendenciaDe(ws){
+  let t=null,dAnt=null;
+  return ws.map(x=>{
+    if(t===null)t=x.w;
+    else t+=(1-Math.pow(1-TEND_ALFA,Math.max(0,diasEntre(dAnt,x.d))))*(x.w-t);
+    dAnt=x.d;
+    return {d:x.d,w:x.w,t};
+  });
+}
+/* As pesagens do plano: desde o peso de partida até hoje, em ordem. */
+function pesagensDoPlano(){
+  const h=todayKey(),ini=pesoDesde(store.goals);
+  return (store.weights||[]).filter(x=>x&&x.w>0&&x.d<=h&&x.d>=ini).sort((a,b)=>a.d<b.d?-1:1);
+}
+/* A tendência de agora, arredondada como a tela a mostra (é ela que vira o
+   peso da conta no "Atualizar"). */
+function tendenciaAtual(){
+  const ws=pesagensDoPlano();if(!ws.length)return null;
+  const tr=tendenciaDe(ws),u=tr[tr.length-1];
+  return {d:u.d,w:Math.round(u.t*10)/10,n:ws.length};
+}
+/* Pesagens nos últimos TEND_JANELA dias (hoje incluído). Com menos de
+   TEND_MIN, o app não dá veredito nem previsão: com uma pesagem por semana,
+   nem a tendência separa o ritmo da oscilação. */
+function pesagensRecentes(ws){
+  const corte=keyOf(addDays(new Date(),-(TEND_JANELA-1))),h=todayKey();
+  return ws.filter(x=>x.d>=corte&&x.d<=h).length;
 }
 /* Os passos guardam o peso com que foram contados: uma pesagem nova não
    muda o passado. Registro de antes disto, sem peso, segue com o peso do
@@ -9655,18 +10046,101 @@ function renderMacros(){
       <div><i style="background:var(--mg)"></i>Gordura <b>${kgTxt(m.g)}g</b> <s>${Math.round(pg)}%</s></div>
     </div>`;
 }
+/* ---- Sequência (#85) ----
+   Antes: dias seguidos com déficit de 90% do planejado, sem limite de cima.
+   Comer 500 kcal num dia de cutting contava como meta batida, e um dia sem
+   lançamento zerava semanas de esforço.
+
+   Agora a conta é por SEMANA do calendário (segunda a domingo, a mesma do
+   "Déficit da semana"): ela conta com SEQ_DIAS (5) dias na meta, e a
+   sequência é de semanas seguidas. Os 5 de 7 são regra do app, não ciência.
+   - No cutting, dia com menos que o piso lançado não conta: 1.200 kcal para
+     mulheres e 1.500 para homens (e sem sexo informado), o mesmo mínimo
+     seguro que a prévia do objetivo já usa. Vale sempre, mesmo quando a
+     meta do dia fica abaixo dele, e a tela explica. O texto é um fato
+     ("menos de 1.500 kcal lançadas"), porque quase sempre é registro
+     incompleto, não fome.
+   - Hoje nunca é falha: o dia ainda está correndo.
+   - O lado de cima continua o de antes (até a meta + 10% do déficit), e o
+     bulking continua sem teto.
+   - Só a sequência muda. "Déficit da semana" e "Acúmulo do mês" são balanço
+     de energia, e o déficit daquele dia aconteceu: o dia abaixo do piso só
+     é marcado lá.
+   - Mudar o prazo, o alvo ou o objetivo rejulga os dias que passaram (o
+     déficit planejado não é guardado por dia), como as barras e o mês. */
+const SEQ_DIAS=5,PISO_F=1200,PISO_M=1500;
+function pisoKcal(){return (store.goals||{}).sexo==="F"?PISO_F:PISO_M;}
+function diaSeq(t,dk){
+  const hoje=todayKey();
+  if(dk>hoje)return "futuro";
+  const log=hasLog(dk);
+  const naMeta=log&&t.daily>0&&Math.min(dayMetric(t,dk),t.daily)/t.daily>=0.9;
+  const abaixo=t.mode!=="bulking"&&log&&consumedKcal(dk)<pisoKcal();
+  if(naMeta&&!abaixo)return "meta";
+  if(dk===hoje)return "hoje";
+  if(abaixo)return "abaixo";
+  return log?"fora":"vazio";
+}
+function semanaSeq(t,mon){
+  const dias=[];
+  for(let i=0;i<7;i++){const dk=keyOf(addDays(mon,i));dias.push({dk,s:diaSeq(t,dk)});}
+  return {dias,n:dias.filter(x=>x.s==="meta").length};
+}
+/* A semana de agora conta na sequência quando já fechou os 5; enquanto não
+   fecha, ela não quebra nada: ainda há dias pela frente. */
+function sequencia(t){
+  const mon=weekStartMon(new Date()),atual=semanaSeq(t,mon);
+  let seguidas=atual.n>=SEQ_DIAS?1:0;
+  for(let w=1;w<520;w++){if(semanaSeq(t,addDays(mon,-7*w)).n>=SEQ_DIAS)seguidas++;else break;}
+  return {atual,seguidas};
+}
+const SEQ_DIA_PT=["seg","ter","qua","qui","sex","sáb","dom"];
+function seqDiaTxt(s){
+  return s==="meta"?"na meta":s==="abaixo"?`menos de ${nPt(pisoKcal())} kcal lançadas`:s==="hoje"?"hoje, ainda contando":s==="futuro"?"ainda não chegou":s==="fora"?"fora da meta":"sem lançamento";
+}
+function seqPontos(sem){
+  return `<span class="seq-dots" aria-hidden="true">${sem.dias.map((x,i)=>`<i class="sq-${x.s}" title="${SEQ_DIA_PT[i]}: ${seqDiaTxt(x.s)}"></i>`).join("")}</span>`;
+}
+function seqChama(hot){
+  return hot
+    ?`<svg viewBox="0 0 100 110"><defs><linearGradient id="fg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFB300"/><stop offset=".55" stop-color="#F97316"/><stop offset="1" stop-color="#EA3D0C"/></linearGradient></defs><path fill="url(#fg2)" d="M50 4c3 16 15 23 22 38 8 16 6 36-6 49-9 10-24 13-35 6C18 89 13 74 18 58c4-12 12-18 17-28 3 8 8 11 12 12-3-14 0-28 3-38z"/><path fill="#FFD54F" d="M50 58c7 8 12 14 12 24 0 11-6 19-12 19s-12-8-12-19c0-10 5-16 12-24z"/></svg>`
+    :`<svg viewBox="0 0 100 110"><path fill="#C9D0CC" d="M50 4c3 16 15 23 22 38 8 16 6 36-6 49-9 10-24 13-35 6C18 89 13 74 18 58c4-12 12-18 17-28 3 8 8 11 12 12-3-14 0-28 3-38z"/><path fill="#E4E9E6" d="M50 58c7 8 12 14 12 24 0 11-6 19-12 19s-12-8-12-19c0-10 5-16 12-24z"/></svg>`;
+}
+/* O que a sequência diz, em texto: o mesmo na Alimentação e no Início. */
+function seqResumo(t){
+  const q=sequencia(t),n=q.atual.n,y=q.seguidas;
+  const semTxt=y>0?`${y} ${y===1?"semana seguida":"semanas seguidas"}`:`a semana conta com ${SEQ_DIAS} dias na meta`;
+  /* O piso vale mesmo quando a meta fica abaixo dele: a tela explica. */
+  let nota="";
+  if(t.mode!=="bulking"){
+    const meta=goalMeta(t,todayKey()),piso=pisoKcal();
+    if(meta>0&&meta<piso)nota=`Sua meta de hoje (${nPt(meta)}) fica abaixo do mínimo que o app usa (${nPt(piso)}): dia com menos de ${nPt(piso)} kcal lançadas não conta na sequência.`;
+  }
+  return {q,n,y,semTxt,nota,hot:n>0||y>0,
+    aria:`${n} de 7 dias na meta nesta semana; ${semTxt}. `+q.atual.dias.map((x,i)=>`${SEQ_DIA_PT[i]}: ${seqDiaTxt(x.s)}`).join(", ")};
+}
 function renderStreak(t){
   const el=$("streakLine");if(!el)return;
   if(!t||!t.configured||store.getd<=0){el.innerHTML="";return;}
-  const onTarget=dk=>hasLog(dk)&&t.daily>0&&Math.min(dayMetric(t,dk),t.daily)/t.daily>=0.9;
-  let streak=0,d=new Date();
-  if(!hasLog(keyOf(d)))d=addDays(d,-1);
-  for(let i=0;i<400;i++){const dk=keyOf(d);if(onTarget(dk)){streak++;d=addDays(d,-1);}else break;}
-  const hot=streak>0;
-  const flame=hot
-    ?`<svg viewBox="0 0 100 110"><defs><linearGradient id="fg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFB300"/><stop offset=".55" stop-color="#F97316"/><stop offset="1" stop-color="#EA3D0C"/></linearGradient></defs><path fill="url(#fg2)" d="M50 4c3 16 15 23 22 38 8 16 6 36-6 49-9 10-24 13-35 6C18 89 13 74 18 58c4-12 12-18 17-28 3 8 8 11 12 12-3-14 0-28 3-38z"/><path fill="#FFD54F" d="M50 58c7 8 12 14 12 24 0 11-6 19-12 19s-12-8-12-19c0-10 5-16 12-24z"/></svg>`
-    :`<svg viewBox="0 0 100 110"><path fill="#C9D0CC" d="M50 4c3 16 15 23 22 38 8 16 6 36-6 49-9 10-24 13-35 6C18 89 13 74 18 58c4-12 12-18 17-28 3 8 8 11 12 12-3-14 0-28 3-38z"/><path fill="#E4E9E6" d="M50 58c7 8 12 14 12 24 0 11-6 19-12 19s-12-8-12-19c0-10 5-16 12-24z"/></svg>`;
-  el.innerHTML=`<span class="streak-pill${hot?"":" cold"}" title="Dias seguidos batendo a meta">${flame}<span class="sn">${streak}</span><span class="st">${streak===1?"dia":"dias"} de sequência</span></span>`;
+  const r=seqResumo(t);
+  el.innerHTML=`<div class="seq-pill${r.hot?"":" cold"}" role="img" aria-label="${esc(r.aria)}">${seqChama(r.hot)}<span class="sn">${r.n}</span><span class="st">de 7 nesta semana</span>${seqPontos(r.q.atual)}</div>`
+    +`<div class="seq-sub">${r.semTxt}${r.nota?`<br>${r.nota}`:""}</div>`;
+}
+/* No Início, uma linha como a dos passos e a do peso; o toque abre o
+   Progresso, onde estão as barras da mesma semana. */
+function renderFdSeq(t){
+  const el=$("fdSeq");if(!el)return;
+  if(!t||!t.configured||store.getd<=0){el.hidden=true;return;}
+  const r=seqResumo(t);
+  el.hidden=false;
+  el.setAttribute("aria-label",r.aria+". Toque para ver a semana no Progresso.");
+  /* Duas linhas: em 320 px, "3 de 7 dias na meta nesta semana · 2 semanas
+     seguidas" numa linha só saía cortado no meio de "meta". Os sete pontos,
+     de segunda a domingo, já dizem que é a semana. */
+  $("fdSeqTx").innerHTML=`<b>${r.n} de 7</b> dias na meta`;
+  $("fdSeqPts").innerHTML=seqPontos(r.q.atual);
+  $("fdSeqSub").textContent=r.y>0?r.semTxt:`a semana fecha com ${SEQ_DIAS}`;
+  $("fdSeqIco").innerHTML=seqChama(r.hot);
 }
 let wtView="30";
 function renderWeight(){
@@ -9676,36 +10150,72 @@ function renderWeight(){
   if(all.length===0){el.innerHTML=`<div class="ins-empty">Registre seu peso abaixo para acompanhar a curva rumo à meta${alvo?` de <b>${kgTxt(alvo)} kg</b>`:""}.</div>`;return;}
   const bulking=(g.objetivo||((parseFloat(g.pesoAlvo)||0)>(parseFloat(g.pesoAtual)||0)?"bulking":"cutting"))==="bulking";
   const lastAll=all[all.length-1];
-  // tendência e ritmo calculados sobre TODO o histórico
+  /* A curva é a TENDÊNCIA (#84), e as pesagens ficam como pontos. Ela
+     recomeça no peso de partida: as pesagens de antes são mais velhas que
+     ele (tendenciaDe, pesagensDoPlano). */
+  const ini=pesoDesde(g);
+  const doPlano=all.filter(x=>x.d>=ini),antes=all.filter(x=>x.d<ini);
+  const trend=tendenciaDe(antes).concat(tendenciaDe(doPlano));
+  const tDe={};trend.forEach(x=>{tDe[x.d]=x.t;});
+  const tAgora=trend[trend.length-1].t;
+  const pAtual=parseFloat(g.pesoAtual)||0,meses=parseFloat(g.meses)||0;
+  const hasPlan=alvo>0&&pAtual>0&&meses>0;
+  /* "Desde o início do plano": a tendência menos o peso de partida. Somado
+     a "Faltam", dá o objetivo do cabeçalho. Sem peso de partida, desde a
+     primeira pesagem, como era. */
+  const doInicio=pAtual>0&&doPlano.length>0;
   let trendHtml="",lineCol="var(--primary)",good=null;
-  if(all.length>=2){
-    const overall=lastAll.w-all[0].w;
+  if(doInicio||all.length>=2){
+    const overall=tAgora-(doInicio?pAtual:all[0].w);
     const dir=Math.abs(overall)<0.05?"flat":overall<0?"down":"up";
     good=dir==="flat"?null:(bulking?dir==="up":dir==="down");
     const arrow=dir==="down"?"↓":dir==="up"?"↑":"→";
     const word=dir==="down"?"Descendo":dir==="up"?"Subindo":"Estável";
     const col=good===null?"var(--muted)":good?"var(--ok)":"var(--warn)";
     lineCol=good===false?"var(--warn)":"var(--primary)";
-    trendHtml=`<div class="wt-trendrow"><span class="wt-trend" style="color:${col}">${arrow} ${word} · ${overall>0?"+":""}${kgTxt(overall)} kg desde o início</span></div>`;
+    trendHtml=`<div class="wt-trendrow"><span class="wt-trend" style="color:${col}">${arrow} ${word} · ${overall>0?"+":""}${kgTxt(overall)} kg ${doInicio?"desde o início do plano":"desde a primeira pesagem"}</span></div>`;
   }
-  const pAtual=parseFloat(g.pesoAtual)||0,meses=parseFloat(g.meses)||0;
-  const hasPlan=alvo>0&&pAtual>0&&meses>0;
-  let paceHtml="";
+  const recentes=pesagensRecentes(doPlano);
+  const mesesPt=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+  const mesAno=d=>mesesPt[d.getMonth()]+"/"+String(d.getFullYear()).slice(2);
+  let paceHtml="",prevTxt="";
   if(hasPlan){
     const inicioK=(g.inicio)||all[0].d;
     const iniT=dateFromKey(inicioK).getTime();
     const dlT=iniT+meses*30.44*86400000;
-    const f=Math.max(0,Math.min(1,(dateFromKey(lastAll.d).getTime()-iniT)/Math.max(1,dlT-iniT)));
-    const expNow=pAtual+(alvo-pAtual)*f;
-    const diff=lastAll.w-expNow,tol=0.4;
-    let cls,txt;
-    if(Math.abs(diff)<=tol){cls="var(--ok)";txt=`🎯 No ritmo do plano (esperado ${kgTxt(expNow)} kg para hoje)`;}
-    else{
-      const ahead=bulking?diff>0:diff<0;
-      cls=ahead?"var(--ok)":"var(--warn)";
-      txt=ahead?`Adiantado: ${kgTxt(Math.abs(diff))} kg à frente do plano (esperado ${kgTxt(expNow)} kg)`:`Atrasado: ${kgTxt(Math.abs(diff))} kg ${bulking?"abaixo":"acima"} do esperado (${kgTxt(expNow)} kg)`;
+    const plano=d=>pAtual+(alvo-pAtual)*Math.max(0,Math.min(1,(dateFromKey(d).getTime()-iniT)/Math.max(1,dlT-iniT)));
+    if(recentes>=TEND_MIN){
+      /* O veredito compara a tendência com a linha do plano filtrada do
+         MESMO jeito: a média exponencial do quanto cada pesagem ficou acima
+         ou abaixo do plano naquele dia. Comparar a tendência direto com o
+         plano de hoje deixaria "Atrasado" para sempre quem está exatamente
+         no plano: a tendência anda uns 9 dias atrás. */
+      const res=tendenciaDe(doPlano.map(x=>({d:x.d,w:x.w-plano(x.d)})));
+      const diff=res[res.length-1].t,tol=TEND_TOL;   // 0,4 kg: escolha de produto
+      let cls,txt;
+      if(Math.abs(diff)<=tol){cls="var(--ok)";txt="🎯 No ritmo do plano, pela tendência";}
+      else{
+        const ahead=bulking?diff>0:diff<0;
+        cls=ahead?"var(--ok)":"var(--warn)";
+        txt=ahead?`Adiantado: ${kgTxt(Math.abs(diff))} kg à frente do plano, pela tendência`:`Atrasado: ${kgTxt(Math.abs(diff))} kg ${bulking?"abaixo":"acima"} do plano, pela tendência`;
+      }
+      paceHtml=`<div class="wt-pace" style="color:${cls}">${txt}</div>`;
+      /* Previsão: quando a tendência cruza a meta, no ritmo das últimas
+         duas semanas da própria tendência. */
+      const tr=tendenciaDe(doPlano),u=tr[tr.length-1],corte=keyOf(addDays(dateFromKey(u.d),-TEND_JANELA));
+      let ref=tr[0];for(const x of tr)if(x.d<=corte)ref=x;
+      const span=diasEntre(ref.d,u.d),porDia=span>0?(u.t-ref.t)/span:0;
+      const chegou=bulking?u.t>=alvo:u.t<=alvo;
+      if(chegou)prevTxt="A tendência já chegou à meta.";
+      else{
+        const rumo=bulking?porDia>0:porDia<0,dias=rumo?(alvo-u.t)/porDia:Infinity;
+        prevTxt=span>=7&&rumo&&dias<=TEND_PREV_MAX
+          ?`Pela tendência, a meta chega em <b>${mesAno(addDays(dateFromKey(u.d),Math.ceil(dias)))}</b>.`
+          :span>=7?"Pela tendência, a meta ainda não está à vista.":"";
+      }
+    }else{
+      paceHtml=`<div class="wt-pace" style="color:var(--muted)">Para saber se está no ritmo do plano, pese-se ${TEND_MIN} vezes em ${TEND_JANELA} dias (${recentes===0?"nenhuma pesagem":recentes===1?"1 pesagem":recentes+" pesagens"} até agora).</div>`;
     }
-    paceHtml=`<div class="wt-pace" style="color:${cls}">${txt}</div>`;
   }
   // ---- janela do período ----
   let ws=all,emptyMsg="";
@@ -9714,7 +10224,7 @@ function renderWeight(){
     ws=all.filter(x=>x.d>=cut);
     if(ws.length===0){ws=all.slice(-1);emptyMsg=`<div class="ins-empty" style="padding:2px 2px 8px">Sem registros nos últimos ${nd} dias — mostrando o mais recente.</div>`;}
   }else if(all.length>15){
-    // agregação semanal (média) na visão Tudo
+    // agregação semanal (média) na visão Tudo; a tendência fica a do último dia da semana
     const wk={};
     all.forEach(x=>{const k=keyOf(weekStartMon(dateFromKey(x.d)));(wk[k]=wk[k]||[]).push(x);});
     ws=Object.keys(wk).sort().map(k=>{const arr=wk[k];return {d:arr[arr.length-1].d,w:arr.reduce((a,x)=>a+x.w,0)/arr.length};});
@@ -9723,7 +10233,7 @@ function renderWeight(){
   // ---- largura deslizável: espaço fixo por ponto ----
   const H=150,padL=18,padR=56,padT=24,padB=26,GAP=44;
   const W=Math.max(300,padL+padR+(ws.length-1)*GAP+20);
-  const vals=ws.map(x=>x.w).concat(alvo>0?[alvo]:[]);
+  const vals=ws.map(x=>x.w).concat(ws.map(x=>tDe[x.d]).filter(v=>v>0)).concat(alvo>0?[alvo]:[]);
   let yMin=Math.min(...vals),yMax=Math.max(...vals);
   if(yMax-yMin<2){yMin-=1.2;yMax+=1.2;}else{const pd=(yMax-yMin)*0.18;yMin-=pd;yMax+=pd;}
   const xAt=i=>ws.length===1?W/2:padL+i*GAP;
@@ -9731,31 +10241,38 @@ function renderWeight(){
   const fmtD=k=>{const d=dateFromKey(k);return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0");};
   const tgt=alvo>0?`<line x1="${padL}" y1="${yAt(alvo).toFixed(1)}" x2="${W-padR+10}" y2="${yAt(alvo).toFixed(1)}" stroke="var(--warn)" stroke-width="1.4" stroke-dasharray="5 4" opacity=".65"/><text x="${(W-padR+14).toFixed(1)}" y="${(yAt(alvo)+3).toFixed(1)}" class="cap-label" fill="var(--warn)" style="font-weight:800">meta ${kgTxt(alvo)}</text>`:"";
   const pts=ws.map((x,i)=>({x:xAt(i),y:yAt(x.w)}));
+  /* A linha é a tendência; ela não atravessa o recomeço no peso de partida. */
+  const tp=ws.map((x,i)=>({x:xAt(i),y:yAt(tDe[x.d]>0?tDe[x.d]:x.w),novo:i>0&&ws[i-1].d<ini&&x.d>=ini}));
   let path="";
-  if(pts.length>1){
-    path=`M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
-    for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1],mx=((a.x+b.x)/2).toFixed(1);path+=` C ${mx} ${a.y.toFixed(1)}, ${mx} ${b.y.toFixed(1)}, ${b.x.toFixed(1)} ${b.y.toFixed(1)}`;}
+  if(tp.length>1){
+    tp.forEach((p,i)=>{
+      if(i===0||p.novo){path+=`${path?" ":""}M ${p.x.toFixed(1)} ${p.y.toFixed(1)}`;return;}
+      const a=tp[i-1],mx=((a.x+p.x)/2).toFixed(1);
+      path+=` C ${mx} ${a.y.toFixed(1)}, ${mx} ${p.y.toFixed(1)}, ${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
+    });
   }
-  const line=pts.length>1?`<path d="${path}" fill="none" stroke="${lineCol}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>`:"";
+  const line=path?`<path class="wt-tend" d="${path}" fill="none" stroke="${lineCol}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>`:"";
   let dots="",wLabels="",dLabels="";
   ws.forEach((x,i)=>{
     const px=pts[i].x,py=pts[i].y,isLast=i===ws.length-1,isFirst=i===0;
-    dots+='<circle cx="'+px.toFixed(1)+'" cy="'+py.toFixed(1)+'" r="'+(isLast?4.6:3.2)+'" fill="'+(isLast?lineCol:"var(--primary)")+'"'+(isLast?' stroke="var(--surface)" stroke-width="2"':(isFirst?"":' opacity=".3"'))+"/>";
+    dots+='<circle cx="'+px.toFixed(1)+'" cy="'+py.toFixed(1)+'" r="'+(isLast?4.6:3.2)+'" fill="'+(isLast?lineCol:"var(--primary)")+'"'+(isLast?' stroke="var(--surface)" stroke-width="2"':' opacity=".35"')+"/>";
     if(isFirst||isLast){
       const anch=px<24?"start":"middle";
       wLabels+='<text x="'+px.toFixed(1)+'" y="'+Math.max(10,py-10).toFixed(1)+'" text-anchor="'+anch+'" class="wt-pt'+(isLast?" last":"")+'">'+kgTxt(x.w)+"</text>";
       dLabels+='<text x="'+px.toFixed(1)+'" y="'+(H-4)+'" text-anchor="'+anch+'" class="cap-label">'+fmtD(x.d)+"</text>";
     }
   });
-  let prevHtml="";
+  /* O prazo do plano tinha o nome de "Previsão"; a previsão de verdade vem
+     da tendência, na linha de baixo. */
+  let prazoHtml="";
   if(hasPlan){
-    const inicioK2=(g.inicio)||all[0].d;
-    const dEnd=new Date(dateFromKey(inicioK2).getTime()+meses*30.44*86400000);
-    const mesesPt=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
-    prevHtml='<div><div class="k">Previsão</div><div class="v">'+mesesPt[dEnd.getMonth()]+"/"+String(dEnd.getFullYear()).slice(2)+"</div></div>";
+    const dEnd=new Date(dateFromKey((g.inicio)||all[0].d).getTime()+meses*30.44*86400000);
+    prazoHtml='<div><div class="k">Prazo</div><div class="v">'+mesAno(dEnd)+"</div></div>";
   }
+  const ultTxt=lastAll.d===todayKey()?"hoje":lastAll.d===keyOf(addDays(new Date(),-1))?"ontem":"em "+fmtD(lastAll.d);
+  const nota=`<div class="wt-nota"><span class="wt-leg"><i class="lt" style="background:${lineCol}"></i>tendência</span><span class="wt-leg"><i class="pt"></i>pesagens</span><span>Última pesagem: <b>${kgTxt(lastAll.w)} kg</b>, ${ultTxt}.</span>${prevTxt?`<span>${prevTxt}</span>`:""}</div>`;
   el.innerHTML=trendHtml+paceHtml+emptyMsg+'<div class="wt-scroll"><svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+" "+H+'">'+tgt+line+dots+wLabels+dLabels+"</svg></div>"+
-    '<div class="wt-stats"><div><div class="k">Atual</div><div class="v">'+kgTxt(lastAll.w)+' kg</div></div>'+(alvo>0?'<div><div class="k">Faltam</div><div class="v">'+kgTxt(Math.abs(lastAll.w-alvo))+" kg</div></div>":"")+prevHtml+"</div>";
+    '<div class="wt-stats"><div><div class="k">Tendência</div><div class="v">'+kgTxt(tAgora)+' kg</div></div>'+(alvo>0?'<div><div class="k">Faltam</div><div class="v">'+kgTxt(Math.abs(tAgora-alvo))+" kg</div></div>":"")+prazoHtml+"</div>"+nota;
   const sc=el.querySelector(".wt-scroll");if(sc)sc.scrollLeft=sc.scrollWidth;
 }
 const wtOverlay=$("wtOverlay");
@@ -9821,7 +10338,7 @@ function renderGoals(){
     const mon=weekStartMon(dateFromKey(viewKey));let wd=0;
     const diasPt=["seg","ter","qua","qui","sex","sáb","dom"];
     const todayK=todayKey();const now=new Date();now.setHours(23,59,59,0);
-    let barsHtml="",daysLeft=0;
+    let barsHtml="",daysLeft=0;const abaixoN=[];
     for(let i=0;i<7;i++){
       const dk=keyOf(addDays(mon,i));
       const logged=hasLog(dk);
@@ -9830,8 +10347,11 @@ function renderGoals(){
       const pct=t.daily>0?Math.min(100,v/t.daily*100):0;
       const isToday=dk===todayK;
       if(isToday||dateFromKey(dk)>now)daysLeft++;
-      const col=isToday?"var(--primary);opacity:.55":(logged?"var(--primary)":"var(--line)");
-      barsHtml+='<div class="wb"><div class="wbcol"><span style="height:'+(logged?Math.max(8,pct):8)+'%;background:'+col+'"></span></div><div class="wbl'+(isToday?" on":"")+'">'+diasPt[i]+"</div></div>";
+      /* Dia com menos que o piso lançado (#85): marcado, mas a soma não muda
+         — o déficit daquele dia aconteceu. Só a sequência não o conta. */
+      const abaixo=diaSeq(t,dk)==="abaixo";if(abaixo)abaixoN.push(diasPt[i]);
+      const col=isToday?"var(--primary);opacity:.55":abaixo?"var(--warn);opacity:.6":(logged?"var(--primary)":"var(--line)");
+      barsHtml+='<div class="wb'+(abaixo?" abaixo":"")+'"'+(abaixo?' title="menos de '+nPt(pisoKcal())+' kcal lançadas"':"")+'><div class="wbcol"><span style="height:'+(logged?Math.max(8,pct):8)+'%;background:'+col+'"></span></div><div class="wbl'+(isToday?" on":"")+'">'+diasPt[i]+"</div></div>";
     }
     if($("weekBars"))$("weekBars").innerHTML=barsHtml;
     $("weekDefVal").textContent=r0(wd)+" / "+r0(t.weekly)+" kcal";
@@ -9840,6 +10360,7 @@ function renderGoals(){
       if(restW<=0)$("weekHint").innerHTML="Meta da semana batida! 🎉";
       else if(daysLeft>0)$("weekHint").innerHTML="Faltam <b>"+r0(restW)+" kcal</b> de "+(bulking?"superávit":"déficit")+" até domingo — ≈ <b>"+r0(restW/daysLeft)+"</b>/dia nos próximos "+daysLeft+(daysLeft===1?" dia.":" dias.");
       else $("weekHint").innerHTML="Semana encerrada — "+(bulking?"superávit":"déficit")+" acumulado de <b>"+r0(wd)+" kcal</b>.";
+      if(abaixoN.length)$("weekHint").innerHTML+=`<span class="wk-abaixo">${listaTxt(abaixoN)}: menos de ${nPt(pisoKcal())} kcal lançadas. Entra no déficit, mas não conta na sequência.</span>`;
     }
     const ym=viewKey.slice(0,7);let md=0;
     Object.keys(store.days).forEach(dk=>{if(dk.slice(0,7)===ym&&hasLog(dk))md+=dcap(dk);});
@@ -10417,8 +10938,11 @@ function propostaGetd(){
   /* Sem pesagem no plano (a que foi aceita em "Atualizar" foi apagada), a
      referência volta a ser o peso de partida: senão o GETD ficaria preso num
      peso que não existe mais. */
-  let ult=pesagemDoPlano();
-  if(!ult){if(!g.pesoConta)return null;ult={d:"inicio",w:parseFloat(g.pesoAtual)||0};}
+  /* A tendência das pesagens do plano, e não a pesagem do dia (#84): um dia
+     inchado não propõe nada, e com a oscilação o cartão não insiste. Com
+     uma pesagem só, a tendência é ela. O número é o mesmo do Progresso. */
+  let ult=tendenciaAtual();
+  if(!ult){if(!g.pesoConta)return null;ult={d:"inicio",w:parseFloat(g.pesoAtual)||0,n:0};}
   /* "Manter" vale para aquela pesagem: data e peso. Corrigir o peso do mesmo
      dia pergunta de novo. */
   const m=g.mantido;
@@ -10429,7 +10953,7 @@ function propostaGetd(){
   if(!(antes>0)||!(depois>0))return null;
   const dif=Math.round(depois-antes);
   if(Math.abs(dif)<GETD_AVISO)return null;
-  return {dif,novo:store.getd+dif,peso:ult.w,d:ult.d};
+  return {dif,novo:store.getd+dif,peso:ult.w,d:ult.d,n:ult.n};
 }
 /* A meta de hoje como ficaria com a proposta: a conta inteira (passos,
    treino, rotina), não só o GETD somado. */
@@ -10445,7 +10969,8 @@ function pintarAjuste(el){
   el.hidden=!p;
   if(!p){el.innerHTML="";return;}
   const t=goalTargets(),meta=t.configured?goalMeta(t,todayKey()):0,depois=meta>0?metaComAjuste(p,t):0;
-  const origem=p.d==="inicio"?"o peso de partida do plano, sem pesagem registrada":"pesagem de "+quandoTxt(p.d);
+  const origem=p.d==="inicio"?"o peso de partida do plano, sem pesagem registrada"
+    :p.n>1?`tendência das suas pesagens; a última, de ${quandoTxt(p.d)}`:"pesagem de "+quandoTxt(p.d);
   el.innerHTML=`<p class="am-tx">Com <b>${kgTxt(p.peso)} kg</b> (${origem}), seu gasto estimado ${p.dif<0?"cai":"sobe"} <b>${nPt(Math.abs(p.dif))} kcal</b> por dia.${meta>0?` Meta de hoje: <b>${nPt(depois)}</b> (era ${nPt(meta)}).`:""}</p>`
     +`<div class="am-bts"><button class="btn" type="button" data-ajuste="sim">Atualizar</button><button class="btn secondary" type="button" data-ajuste="nao">Manter</button></div>`;
   el.querySelector('[data-ajuste="sim"]').onclick=()=>aplicarAjuste(true);
@@ -10694,7 +11219,8 @@ function openHist(){
     const kc=consumedKcal(k),d=dateFromKey(k);
     const lbl=dias[d.getDay()]+" "+String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0");
     let sub=`${(store.days[k]||[]).filter(i=>i.status==="consumido").length} itens`;
-    if(store.getd>0&&t.configured){const m=Math.min(dayMetric(t,k),t.daily);sub+=` · ${t.mode==="bulking"?"superávit":"déficit"} ${r0(m)} kcal`;}
+    if(store.getd>0&&t.configured){const m=Math.min(dayMetric(t,k),t.daily);sub+=` · ${t.mode==="bulking"?"superávit":"déficit"} ${r0(m)} kcal`;
+      if(diaSeq(t,k)==="abaixo")sub+=` · <span class="h-abaixo">menos de ${nPt(pisoKcal())} kcal lançadas</span>`;}
     return `<button class="hist-row" data-k="${k}"><div><div class="hn">${lbl}${k===todayKey()?" · hoje":""}</div><div class="hs">${sub}</div></div><span class="hk">${r0(kc)} kcal</span></button>`;
   }).join(""):'<div class="proto-empty" style="margin-bottom:12px">Nenhum dia registrado ainda.</div>';
   $("histList").querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{viewKey=b.dataset.k;histOverlay.classList.remove("open");afterDayChange();});

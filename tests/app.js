@@ -18,6 +18,10 @@ const PONTE = `
 /* injetado apenas na cópia de teste */
 window.__t={
   get store(){return store}, get trS(){return trS}, get trRestEnd(){return trRestEnd},
+  get trRestTotal(){return trRestTotal}, get trRestEx(){return trRestEx}, get trRestIdx(){return trRestIdx},
+  abrirProf:()=>abrirProf(), renderPerfilTreinador:()=>renderPerfilTreinador(), aplicarNuvem:(d)=>aplicarNuvem(d),
+  tamanhoFs, tamanhoDoc, get nuvemBytes(){return nuvemBytes}, NUVEM_AVISO, NUVEM_MAX, OFF_POR_MIN, OFF_ESPERA,
+  diaSeq, sequencia, pisoKcal, SEQ_DIAS, goalTargets, SUG_DESCANSO, DESC_MAX, tendenciaDe, tendenciaAtual, pesagensRecentes, TEND_ALFA, TEND_MIN, TEND_JANELA,
   trElapsedMs:()=>trS?trElapsedMs():null, lastExSession, alarmWav, ALARM_VOL, todayKey,
   ALARM_DUR, ALARM_CICLO, restTick, ALARM_SONS, EX_POR_GRUPO,
   somDoAlarme:()=>somDoAlarme(), idadeDe, idadeAtual, computeTMB, buscaAlimentos, alimPontos, mapOff, ordenarOff, FOODS,
@@ -266,6 +270,12 @@ async function isolarRede(context) {
   await context.route('**/firebasejs/**/firebase-firestore.js', r => r.fulfill(js(FB_FS)));
   await context.route('**/firebasejs/**/firebase-functions.js', r => r.fulfill(js(FB_FN)));
   await context.route('**/fonts.googleapis.com/**', r => r.fulfill({ status: 200, contentType: 'text/css', body: '' }));
+  /* O carregador do Sentry de verdade fica de fora. Na sessão o proxy já o
+     bloqueava; no GitHub Actions há internet, e ele carregava por cima do
+     Sentry falso dos testes (as mensagens não chegavam ao teste) e mandava
+     ao projeto do dono o que os testes provocam. Quem testa o carregador é
+     tests/sentry.spec.js, com page.route, que vence esta rota. */
+  await context.route('**/js.sentry-cdn.com/**', r => r.abort());
 }
 
 /** Coleta erros de JavaScript, ignorando 404 de ícone sob file://. */

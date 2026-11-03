@@ -122,7 +122,9 @@ test.describe('Vírgula', () => {
     await abrirApp(page, st);
     await clicar(page, '#fdIrProgresso');
     await page.waitForTimeout(400);
-    const curva = await page.evaluate(() => document.querySelector('.wt-stats').textContent);
+    /* A curva mostra a tendência (#84), e a última pesagem fica na linha
+       embaixo dos números. */
+    const curva = await page.evaluate(() => document.getElementById('weightChart').textContent);
     expect(curva).toContain('82,4 kg');
     expect(curva).not.toMatch(/\d\.\d/);
     await irPara(page, 'perfil');

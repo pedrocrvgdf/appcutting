@@ -348,16 +348,18 @@ voltava para hoje). Por isso o objetivo passou a guardar dois pesos:
   e `macroTargets`). Ausente, vale o `pesoAtual`. Só muda quando a pessoa
   toca **"Atualizar"**.
 
-**A meta nunca muda sozinha.** Quando a pesagem mais recente muda o gasto
+**A meta nunca muda sozinha.** Quando a **tendência** das pesagens (#84, veja
+abaixo) muda o gasto
 estimado em `GETD_AVISO` (25) kcal ou mais, um cartão no Início (`#fdAjuste`)
 e na Alimentação (`#alAjuste`) diz quanto e mostra a meta de hoje antes e
 depois (`metaComAjuste`, a conta inteira, com passos e treino):
 
 - "Atualizar" troca `pesoConta` e o GETD (`aplicarAjuste`); o plano, o
   `inicio` e o `pesoAtual` não mudam.
-- "Manter" grava a pesagem (`goals.mantido = {d, w}`): a próxima pesagem, ou
-  o peso do mesmo dia corrigido, pergunta de novo.
-- **Só pesagem desde o peso de partida propõe** (`pesagemDoPlano`, data a
+- "Manter" grava a proposta (`goals.mantido = {d, w}`, a tendência e a
+  data da última pesagem): a próxima pesagem, ou o peso do mesmo dia
+  corrigido, pergunta de novo.
+- **Só pesagem desde o peso de partida propõe** (`pesagensDoPlano`, data a
   partir de `pesoDesde(g)`): a de antes é mais velha que ele. Pelo mesmo
   motivo, nos passos e no cardio (`pesoNoDia`, que `userWeight` usa) vale o
   peso de partida até a primeira pesagem depois dele.
@@ -375,6 +377,14 @@ depois (`metaComAjuste`, a conta inteira, com passos e treino):
   dica diz qual peso entra quando não é o do campo.
 - O limiar é decisão de produto: abaixo dele a diferença some no erro da
   própria estimativa.
+- **A tendência, e não a pesagem do dia** (#84, decisão do dono): um dia de
+  balança baixa não propõe nada, e com a oscilação o cartão não insiste.
+  `tendenciaAtual()` é a tendência das pesagens do plano, arredondada como a
+  tela a mostra; é ela que vira o `pesoConta`. Com uma pesagem só, a
+  tendência é ela, e o cartão diz "pesagem de hoje"; com mais, "tendência
+  das suas pesagens; a última, de hoje". O número é o mesmo do Progresso.
+  **Nos passos, no cardio e no peso do corpo continua a pesagem do dia**
+  (`pesoNoDia`): é o peso daquele dia que entra na conta daquele dia.
 - `saveGoals` remonta `store.goals` do zero: **`pesoConta`, `pesoDesde`,
   `getdManual`, `mantido` e `tIntro` são carregados junto**, como `nasc` e
   o exógeno (sem o `tIntro`, a apresentação do Treino voltava depois de
@@ -383,6 +393,39 @@ depois (`metaComAjuste`, a conta inteira, com passos e treino):
   outro prazo, alvo ou objetivo; com outro peso de partida, a conta parte
   dele. Depois de salvar, o Perfil e o Início são redesenhados: o prazo
   antigo ficava na tela até trocar de aba.
+
+**A tendência do peso (#84).** A balança oscila de um dia para o outro mais
+do que a gordura muda numa semana, e o veredito do Progresso lia a pesagem
+crua, com tolerância menor que essa oscilação.
+
+- **A conta** (`tendenciaDe`): média exponencial de `TEND_ALFA` (10%) por
+  dia, com o intervalo descontado: cada pesagem puxa `1 − 0,9^dias` da
+  diferença. Os 10% são os do "The Hacker's Diet" (John Walker) e são
+  **escolha de produto, não fisiologia**: atrasam uns 9 dias e, em troca, a
+  oscilação diária chega bem menor à tela. Ela **recomeça no peso de
+  partida** (`pesoDesde`); as pesagens de antes viram um trecho à parte, e a
+  linha do gráfico não atravessa o recomeço.
+- **O gráfico** desenha a tendência como linha e as pesagens como pontos.
+  Embaixo: "Tendência", "Faltam" (pela tendência) e "Prazo" (o fim do plano,
+  que antes se chamava "Previsão"), e uma linha com a legenda, a última
+  pesagem e a previsão.
+- **O veredito compara a tendência com o plano filtrado do mesmo jeito**: a
+  média exponencial do quanto cada pesagem ficou acima ou abaixo da linha do
+  plano naquele dia. Comparada direto com o plano de hoje, a tendência, que
+  anda ~9 dias atrás, diria "Atrasado" para sempre a quem está exatamente
+  no plano. Existe teste. A tolerância continua 0,4 kg (`TEND_TOL`, escolha
+  de produto).
+- **Sem veredito nem previsão com menos de `TEND_MIN` (3) pesagens em
+  `TEND_JANELA` (14) dias**: com uma por semana, nem a tendência separa o
+  ritmo da oscilação. A tela diz quantas faltam.
+- **"Desde o início do plano"** é a tendência menos o peso de partida;
+  somado a "Faltam", dá o objetivo do cabeçalho.
+- **A previsão** é a data em que a tendência cruza a meta, no ritmo das
+  últimas duas semanas dela, em mês/ano. Sem rumo para a meta, ou acima de
+  2 anos (`TEND_PREV_MAX`), "ainda não está à vista"; na meta, "já chegou".
+- Em 320 px os três quadros encolhem (fonte e espaçamento): "TENDÊNCIA" e
+  "78,1 kg" passavam da borda.
+- Coberto em `tests/tendencia.spec.js`.
 
 **O GETD de cada dia** (`store.getdHist`, `{desde, getd, base}`): mudar o
 GETD não pode reescrever o saldo dos dias que passaram — a semana, o mês e a
@@ -438,8 +481,8 @@ causas, e nenhuma era o tamanho do banco.
   duas cópias do `includes`; consertar uma e esquecer a outra é como o defeito
   volta.
 - **A internet entra sozinha quando o banco responde pouco** (menos de
-  `OFF_MIN` nomes, hoje 3), 700 ms depois de a pessoa parar de digitar
-  (`offAutoT`). "Linguiça" tinha um nome só no banco e o dono concluía que o
+  `OFF_MIN` nomes, hoje 3), `OFF_ESPERA` (1,2 s) depois de a pessoa parar
+  de digitar (`offAutoT`); o Enter busca na hora. "Linguiça" tinha um nome só no banco e o dono concluía que o
   app "não acha linguiça". O que vem de fora entra **embaixo** do que é local
   (`pintarDrop` redesenha os dois), sem repetir nome; com o banco vazio a
   lista vira só internet. Com resposta farta a internet **não** é consultada
@@ -451,16 +494,34 @@ causas, e nenhuma era o tamanho do banco.
   justamente os rótulos brasileiros. **Os dois corredores pedem produto do
   Brasil** (`countries_tags:"en:brazil"` no search-a-licious, `cc=br` no
   cgi): sem o filtro, "picanha" devolvia hambúrguer importado e "salmão" um
-  produto só; com ele, 30 coxinhas em vez de 9. A busca mundial é
-  **reserva**, junto com o proxy (`api.allorigins.win`): entram se os
-  diretos demoram 3,5 s ou assim que os dois terminam sem nada. O proxy não
-  entra se já houve resposta — seria mandar o que a pessoa digitou a um
-  terceiro sem necessidade. Produto do Brasil vem antes (`ordenarOff`), e **o
+  produto só; com ele, 30 coxinhas em vez de 9. Produto do Brasil vem antes (`ordenarOff`), e **o
   que não tem nenhuma palavra da pergunta no nome nem na marca sai da lista**
   (o serviço casa por ingrediente: "banana" trazia barra de proteína), desde
   que sobre alguma coisa que tenha. **Cuidado nos testes:** a lista de
   campos da URL também contém `countries_tags`; quem distingue o pedido do
   Brasil é o trecho com o valor.
+- **Um pedido por vez, e poucos** (#87). O serviço limita as buscas por
+  minuto e pede para não buscar a cada tecla, e cada frase disparava até
+  quatro pedidos (dois em paralelo e dois de reserva). Hoje (`offFetch`):
+  - **cascata**, um corredor por vez: o cgi primeiro (o único com CORS
+    aberto quando responde), o search-a-licious se ele falhar. **O que falha
+    fica de fora por `OFF_FORA_MS` (10 min)**; o toque da pessoa tenta de
+    novo mesmo assim, porque a rede pode ter voltado. O regime normal é **1
+    pedido por frase**;
+  - **o mundo só entra se o Brasil respondeu, e respondeu vazio**;
+  - no máximo **`OFF_POR_MIN` (8) pedidos por minuto**, abaixo dos 10 por
+    IP da documentação deles. A busca sozinha que estoura **some calada**
+    (a linha de buscar continua ali), também no meio da cascata; o toque
+    diz quanto falta ("Tente de novo em 23 s");
+  - **o proxy `api.allorigins.win` saiu**: mandava o que a pessoa digita a
+    um terceiro que a política de privacidade não citava, e estava fora do
+    ar. A política agora diz que o texto da busca vai à Open Food Facts.
+  - **Cada pedido deixa no rastro** o corredor, a fase e o resultado
+    ("internet: cgi br ok, 12", "internet: cgi br falhou (HTTP 503)"),
+    nunca o que foi digitado. É o caminho A combinado com o dono: medir pelo
+    `diag.html`, no celular, se a busca chega, antes de decidir levá-la para
+    uma função em `functions/` (caminho B). O dono também preenche o
+    formulário de uso da API da Open Food Facts.
 - **A TACO está no banco local** (`const TACO`, 591 alimentos, por 100 g):
   Tabela Brasileira de Composição de Alimentos, 4ª edição, NEPA/UNICAMP,
   2011. É ela que cobre a comida genérica e o prato pronto que a internet
@@ -596,6 +657,42 @@ horário, embaixo do anel de água (`renderLiqHist`).
   mesmo defeito ao contrário. Se você tirar o esmaecido, tire também a rolagem,
   ou ninguém descobre que há mais.
 
+### A sequência: "5 de 7 dias na meta" (#85)
+
+Antes, a sequência era de dias seguidos com déficit de 90% do planejado, sem
+limite de cima: comer 500 kcal num dia de cutting contava como meta batida, e
+um dia sem lançamento zerava semanas de esforço.
+
+- **A conta é por semana do calendário**, de segunda a domingo (a mesma do
+  "Déficit da semana"): ela conta com `SEQ_DIAS` (5) dias na meta, e a
+  sequência é de semanas seguidas (`sequencia`, `semanaSeq`). Os 5 de 7 são
+  **regra do app, não ciência**. A semana de agora entra quando fecha os 5,
+  e enquanto não fecha não quebra nada.
+- **No cutting, dia com menos que o piso lançado não conta** (`diaSeq` →
+  `"abaixo"`): 1.200 kcal para mulheres e 1.500 para homens (e sem sexo
+  informado), o mínimo seguro que a prévia do objetivo já usa (`pisoKcal`).
+  Vale sempre, mesmo quando a meta do dia fica abaixo dele (plano agressivo,
+  GETD baixo digitado à mão), e a tela explica. O texto é um fato, "menos de
+  1.500 kcal lançadas": quase sempre é registro incompleto, não fome.
+- **Hoje nunca é falha**: o dia ainda está correndo (`"hoje"`). Isso também
+  corrige o bulking, que zerava a sequência durante o dia.
+- O lado de cima continua o de antes (até a meta + 10% do déficit
+  planejado), e **o bulking continua sem teto**: comer 6.000 kcal conta.
+  Fica anotado; mudar é decisão do dono.
+- **Só a sequência muda.** "Déficit da semana" e "Acúmulo do mês" são balanço
+  de energia, e o déficit daquele dia aconteceu: o dia abaixo do piso só é
+  marcado nas barras (cor de alerta, e uma linha embaixo) e no Histórico.
+  Existe teste que confere a soma.
+- **Onde aparece:** na Alimentação (`#streakLine`: "3 de 7 nesta semana", um
+  ponto por dia e as semanas seguidas embaixo) e no Início (`#fdSeq`, antes
+  dos atalhos, em duas linhas, com o toque abrindo o Progresso). Em 320 px,
+  numa linha só, o texto saía cortado no meio de "meta".
+- **Mudar o prazo, o alvo ou o objetivo rejulga os dias que passaram**: o
+  déficit planejado não é guardado por dia (o `getdHist` guarda o GETD e a
+  base). As barras e o mês já se comportam assim. Guardar seria mexer no
+  formato do histórico, na mescla e nos aparelhos com versão anterior.
+- Coberto em `tests/sequencia.spec.js` (com o relógio fixo num sábado).
+
 ### A aba Início e o feed
 
 O Início é a tela de entrada (`showView("inicio")`). Ele reúne três coisas:
@@ -687,6 +784,10 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 | `tests/alarme.spec.js` | Volume e ausência de distorção do alarme de descanso |
 | `tests/sentry.spec.js` | Configuração do monitoramento, limpeza de dados pessoais, app abrindo sem a Sentry |
 | `tests/alarme-descanso.spec.js` | Tela do alarme, interrupção da música, insistência, permissão |
+| `tests/sequencia.spec.js` | Sequência por semana: 5 de 7, dia vazio que não zera, piso de 1.500/1.200 no cutting, hoje nunca é falha, semana atual, bulking sem piso nem teto; Alimentação, Início abrindo o Progresso, nota da meta abaixo do piso, marca nas barras e no Histórico com a soma igual; 320/390px |
+| `tests/bastidor.spec.js` | Open Food Facts: um pedido por frase, sem o proxy; 1,2 s de espera e o Enter na hora; mesma frase sem pedido; o mundo só com o Brasil vazio; corredor caído fora por 10 min; 8 por minuto, calado na busca sozinha e explicado no toque; rastro sem o texto; política de privacidade. Nuvem: regras de tamanho, aviso no Perfil acima de 700 KB e a faixa no Sentry uma vez. Aparelho sem espaço: o lançamento segue, um aviso, a linha no Perfil, e solta a cópia antes. Leitura recusada na abertura: o código ao Sentry, e nada sem sinal |
+| `tests/tendencia.spec.js` | Tendência do peso: conta com o intervalo descontado, recomeço no peso de partida; "No ritmo" para quem está no plano apesar do atraso, "Atrasado"/"Adiantado", dia inchado, sem veredito com menos de 3 em 14 dias; "desde o início do plano", prazo e previsão; vírgula; 320/390px; o cartão "Atualizar/Manter" pela tendência |
+| `tests/descanso.spec.js` | Descanso da sessão: continua ao avançar, voltar, trocar e desfazer, com o nome do exercício; "−15 s"/"+30 s" sem redesenhar, pular no fim, teto de 1 h, só este descanso; push do último toque e em fila; Android reagendado e cancelado ao finalizar; app descartado; sugestões em 90 s; 320/390px |
 | `tests/abertura.spec.js` | Splash, avisos de espera, instalação como app |
 | `tests/push.spec.js` | Aviso com o app fechado, e o app funcionando sem ele |
 | `tests/feed.spec.js` | Feed do Início: ordem, progressão, cartão que expande, sessão inteira, vírgula decimal |
@@ -702,6 +803,7 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 | `tests/app-nativo.spec.js` | Caminho web desligado quando o app Android está presente |
 | `tests/service-worker.spec.js` | Cache do app, versão, e a página de diagnóstico |
 | `tests/treinador.spec.js` | Treinador e aluno: conta de treinador (abas, cadastro sem data, código), protocolo só do aluno aberto e plano sem a marca interna, sem sinal e a volta, séries com carga e RIR, evolução, peso só com permissão, desfazer dos dois lados, trocar e enviar o código; aluno: código e consentimento, treino só de leitura, mudança que chega, plano de outro treinador ignorado, diário sem o que não foi aceito, ligar o peso, link do convite, outra conta no celular, excluir dados; conta nova que não perde o nome; 320/390px |
+| `tests/professor.spec.js` | "Sou treinador" numa conta que já existe: o pedido do código de professor, código errado, trava depois de 5 erros, o certo virando treinador com o código de convite e a tela Alunos, os protocolos de antes fora do aluno, ligado a um treinador ou com treino em andamento, modo local, outro aparelho, o código fora do arquivo, 320/390px |
 | `tests/convite.spec.js` | Página do convite: código à vista e só no formato certo, botão do Obtainium com a configuração e o filtro que deixa só o APK, navegador com o código, iPhone primeiro no navegador, copiar, nada de script de terceiro, 320px e tema escuro |
 | `tests-regras/regras.test.js` | As regras do Firestore no emulador: cada conta só no próprio documento; convite com formato e dono; vínculo só pelo aluno e com convite de verdade; plano só pelo treinador ligado; diário só pelo aluno, peso só com permissão; desfeita a ligação, o acesso acaba |
 | `tests/app.js` | Utilitários: Firebase falso (com `__docs` para as coleções do treinador e do aluno), estado inicial, atalhos de navegação |
@@ -712,7 +814,11 @@ do módulo. Se a linha `$("mealSel").value=defaultMeal();` for renomeada, a
 injeção quebra e o próprio teste avisa — ajuste `ANCORA` em `tests/app.js`.
 
 O login é interceptado com `page.route()` devolvendo módulos falsos do Firebase;
-sem isso a sessão trava esperando a rede.
+sem isso a sessão trava esperando a rede. **O carregador do Sentry de verdade
+é bloqueado em `isolarRede`**: na sessão o proxy já o barrava, mas no GitHub
+Actions há internet, ele carregava por cima do Sentry falso dos testes e
+mandava ao projeto do dono o que os testes provocam. Quem testa o carregador
+é `tests/sentry.spec.js`, com `page.route`, que vence a rota do contexto.
 
 **A suíte não substitui olhar.** Dois defeitos reais desta base — placeholder de
 carga cortado ("57," em vez de "57,5") e a linha de referência despedaçada em
@@ -736,6 +842,7 @@ Chaves usadas no armazenamento local, úteis para montar cenários:
 | `tresults.publicado` | `{uid, m}`: o plano de cada aluno que a nuvem já confirmou |
 | `tresults.diarioPub` | `{uid, j}`: o diário que a nuvem já confirmou |
 | `tresults.conviteLink` | Código que chegou por link (`?convite=`), até a pessoa entrar |
+| `tresults.profTrava` | `{n, ate}`: erros seguidos do código de professor, e até quando está travado |
 | `__docs` (testes) | Nuvem falsa dos outros caminhos: `{"vinculos/a1": {...}}` |
 
 ---
@@ -751,6 +858,31 @@ Chaves usadas no armazenamento local, úteis para montar cenários:
 - **O alarme do descanso é agendado no relógio do áudio** (`scheduleAlarm`), não
   por `setTimeout` — timers de JavaScript congelam em segundo plano. Ele passa
   por um limitador para ficar alto sem distorcer.
+- **O descanso é da sessão, não da tela** (#83). `renderTr` terminava em
+  `stopRest()`: "Próximo exercício" apagava a contagem enquanto o alarme do
+  Android, ou o push, seguia agendado sem dono. Hoje avançar, voltar, trocar
+  e desfazer não mexem no descanso, e ele guarda o próprio total e de qual
+  exercício é (`trRestTotal`, `trRestEx`, `trRestIdx`, que `trPersist` leva).
+  Fora do exercício dele, o botão diz "Descanso · Supino reto", sem artigo.
+  **Finalizar, cancelar e a troca de conta passam por `encerrarDescanso()`**,
+  que avisa o Android e o servidor: só `stopRest()` deixava o alarme do
+  sistema tocar depois do treino.
+- **"−15 s" / "+30 s"** (`ajustarDescanso`, `#trAjuste`, só com o descanso
+  correndo) valem **só para este descanso**: nem o protocolo, nem o próximo
+  descanso. Reagendam nos três caminhos (`descansoReagendar`): o Android
+  troca o agendamento pela mesma `iniciarDescanso` (sem APK novo); no
+  navegador, o som e a notificação na hora, e o push **só do último toque**
+  (`PUSH_ESPERA_MS`), porque o servidor envia só o último pedido. Os pedidos
+  ao servidor saem **em fila** (`pushEmFila`): fora de ordem, um "pular"
+  chegava antes do agendar e o aviso de um descanso encerrado tocava.
+  "−15" com 15 s ou menos encerra **como pular, sem alarme**; o teto é 1 h
+  (`DESC_MAX`), o limite da ponte e do servidor. O total fica inteiro: ele
+  vai para a notificação. As calorias continuam pelo descanso prescrito.
+- **As sugestões prontas descansam 90 s** (`SUG_DESCANSO`), no cutting e no
+  bulking: Singer et al. 2024, PMID 39205815 (vantagem pequena acima de 60 s,
+  nenhuma acima de 90 s). O cutting usava 60 s "para manter o gasto alto",
+  sem fonte, e o texto não promete mais nada sobre o gasto.
+- Coberto em `tests/descanso.spec.js`.
 - **O alarme se comporta como o temporizador do celular:** toma o áudio com
   `transient-solo` (interrompe a música, não só abaixa), repete por
   `ALARM_DUR` segundos, vibra em ciclo e abre `#restDone`, que toma a tela
@@ -1098,7 +1230,8 @@ nascer "tem" — sem aviso falso para quem já tinha marcado.
   no editor (`renderTpEquip`); estado na lista de academias. **Avisa, nunca
   esconde, reordena treino nem troca sozinho.**
 - **"Tem, sim" chama só `pintarFalta()`, nunca `renderTr()`**: `renderTr`
-  termina em `stopRest()` e mataria o descanso. Existe teste.
+  redesenha as séries (fecha o teclado), e até o #83 também matava o
+  descanso. Existe teste.
 - Exercício trocado (`e.orig`) não avisa: foi escolhido numa lista que já
   mostrava o que falta. "Desfazer" traz o aviso de volta.
 - Id de aparelho que esta versão não conhece fica guardado e é ignorado na
@@ -1134,6 +1267,32 @@ grava por cima às cegas. Três regras saem disso, e cada uma tem teste em
   existia: campo de treino que esta versão não conhece continua nele.
 - **O histórico de líquidos (`liqLog`) sobe.** Antes ele ficava só no
   aparelho, e o `store` remontado pela nuvem o apagava a cada abertura do app.
+
+### O tamanho do documento, e o aparelho sem espaço (#87)
+
+- **O Firestore recusa documento acima de 1 MiB** (`NUVEM_MAX`), e o app
+  grava tudo num documento só: a recusa seria calada, e o que fosse lançado
+  depois nunca subiria. **A transação mede o documento antes de gravar**
+  (`medirNuvem`, `tamanhoDoc`, `tamanhoFs`), pelas regras de tamanho da
+  documentação do Firestore: texto, bytes em UTF-8 + 1; número e data, 8;
+  verdadeiro/falso e nulo, 1; lista e mapa, a soma, com o nome de cada campo
+  contado como texto; documento, o nome + 32. A página oficial não abre da
+  sessão: as regras foram conferidas no README do pacote `firestore-size`,
+  que as transcreve. Confira lá quando puder.
+- A partir de `NUVEM_AVISO` (700 KB), **uma linha no Perfil** (`#pfEspaco`):
+  "Seus dados na nuvem: 712 KB de 1.024 KB. Perto do limite." **Sem pop-up**:
+  a pessoa não tem o que fazer. O **Sentry recebe só a faixa** ("700–800
+  KB"), uma vez por abertura. Na estimativa do roteiro, uso completo chega a
+  1 MiB em 5 a 9 meses: a medição real decide quando começar a "dividir a
+  nuvem por mês" (perto de 500 KB).
+- **Sem espaço no aparelho, o `save()` parava no meio** (o `setItem` lança):
+  quem o chamou não terminava, e a nuvem não recebia. Hoje `guardarLocal`
+  segura o erro. Antes de desistir, solta o que é só cópia: a base da mescla
+  (sem ela a mescla junta tudo, o lado seguro) e o rastro. Se nem assim
+  couber, o lançamento continua na memória e sobe para a nuvem, e a pessoa
+  sabe: **um aviso por abertura** e a linha no Perfil, que some quando volta
+  a caber.
+- Coberto em `tests/bastidor.spec.js`.
 
 ### Nada do que foi lançado sem sinal se perde
 
@@ -1230,15 +1389,21 @@ Como as peças se encaixam:
 - **Outra conta entrando descarta a marca e a base da anterior**
   (`limparSync`), junto com o treino em andamento.
 - Recusa que não é falta de sinal (documento grande demais, permissão) manda
-  ao Sentry **só o código do erro**, uma vez por abertura.
+  ao Sentry **só o código do erro**, uma vez por abertura. **A leitura da
+  abertura também** (#87): uma regra do Firestore que recusa a leitura deixa
+  a pessoa na abertura com "Conexão lenta", e antes nada chegava ao dono.
 - **O que ainda não resolve:** abrir o app **sem sinal** continua parado na
   abertura (a tela espera o `getDoc`); é a ideia "Abrir na hora", que muda
   uma regra desta página e precisa ser combinada. E aparelho com versão
   anterior à v44 ainda grava às cegas.
-- O semeador dos testes marca que já semeou em `sessionStorage` **e** em
-  `window.name`: numa rodada com a máquina cheia, a reabertura chegou a
-  semear de novo, e o aparelho voltava ao estado inicial — parecia perda de
-  dado do app, e era o teste.
+- O semeador dos testes marca que já semeou **no próprio armazenamento
+  local** (`__semeado`), junto com o estado semeado, e a volta do sinal
+  também (`__ligarNaProxima`). As duas marcas já moraram no `sessionStorage`
+  (e no `window.name`): numa rodada com a máquina cheia, a página recarregada
+  não as via, e a reabertura semeava de novo (o aparelho voltava ao estado
+  inicial) ou o sinal não voltava (#98). Parecia perda de dado do app, e era
+  o teste. O que ainda falha às vezes sob carga, na `main` também, é o
+  "apagado aqui sem sinal continua apagado" (1 em 24 com 4 processos).
 - Nos testes, **espere pelo estado, não por tempo** (`assentar`: sem marca
   pendente e sem envio no meio). O envio da abertura sai depois da leitura
   da nuvem e dos 800 ms de espera; num CI lento, uma espera fixa de 1 s
@@ -1299,8 +1464,8 @@ segundos.
   ficavam escondidas e não iam para o histórico. Exercício de tempo que da
   última vez foi contado em reps (referência com reps e sem segundos)
   **começa em reps**, a não ser que a sessão já tenha segundos digitados.
-- **"+ carga" e "contar em…" não chamam `renderTr()`**: ele termina em
-  `stopRest()` e mataria o descanso. Mostram o campo pelo DOM e gravam
+- **"+ carga" e "contar em…" não chamam `renderTr()`**: ele redesenha as
+  séries, e até o #83 também matava o descanso. Mostram o campo pelo DOM e gravam
   `comCarga`/`medida` no exercício da sessão (`trPersist` leva). Existe teste.
 - **Série feita é carga, reps ou segundos** (`serieFeita` sobre `serieDe`), e
   o mesmo critério vale no finalizar e nos avisos do fim do descanso.
@@ -1436,6 +1601,29 @@ dele(a) e ver as cargas e as RIR e afins". Decisões do dono:
   (`body.treinador`), o Perfil perde o objetivo e o alarme, e `showView`
   manda para Alunos qualquer tela de quem treina. Para treinar, o
   treinador usa outra conta.
+- **Conta que já existe vira de treinador pelo Perfil** (#103): "Sou
+  treinador" (`#pfSouTreinador`, no cartão "Treinador", só com conta e sem
+  treinador ligado) abre "Favor colocar o código de professor"
+  (`#profOverlay`). Com o código certo, `virarTreinador` grava o papel,
+  troca os ouvintes de aluno pelos de treinador (`pararPapel`,
+  `iniciarPapel`, que gera o código de convite) e abre Alunos. Cuidados:
+  - **O código não está no arquivo, só o resumo SHA-256** (`PROF_HASH`, com
+    o prefixo `tresults-professor:`), conferido por `crypto.subtle`. Ler a
+    página não basta para achá-lo, mas **não é segurança**: são 4
+    algarismos, o arquivo é público e as regras deixam qualquer conta criar
+    convite. Barreira de verdade é conferir no servidor (uma função, ou uma
+    lista de professores nas regras). Trocar o código é trocar o resumo.
+    Cinco erros seguidos travam por 5 minutos (`tresults.profTrava`).
+  - **O que a pessoa já tinha é dela**: na conversão, protocolos e treinos
+    sem dono ganham `pessoal: true`, e `listaProtocolos` (do treinador) e
+    `carimbarAlunos` os pulam. Sem isso, o primeiro aluno aberto os recebia
+    no plano: o carimbo põe o aluno em tudo o que não tem dono.
+  - Ligada a um treinador, ou com treino em andamento, a conta não converte:
+    a tela diz o que fazer antes.
+  - **Virou de treinador em outro aparelho**: `aplicarNuvem` vê o papel
+    mudar e troca os ouvintes e a tela.
+  - Ainda **não existe o caminho de volta** (deixar de ser treinador).
+  - Coberto em `tests/professor.spec.js`.
 - **O aluno se liga por código** (6 letras e números, sem 0/O/1/I,
   `COD_RE`), digitado no Perfil ou vindo no link `?convite=` (guardado em
   `tresults.conviteLink` até a pessoa entrar). **Antes de aceitar, ele vê o
