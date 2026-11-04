@@ -36,6 +36,7 @@ window.__t={
   carimbarTid, raizTreino, acadsExcluidas, fracaoCorpo, tipoDe, corpoKgDe, corpoKgSessao, medidasSessao, PC_SEG,
   publicarPlanos:()=>publicarPlanos(), publicarDiario:f=>publicarDiario(f), sessoesParaTreinador, planoDe,
   get vinc(){return vinc}, get alunoAberto(){return alunoAberto}, ehTreinador:()=>ehTreinador(),
+  askDanger:o=>askDanger(o),
   get ladoTrein(){return ladoTrein}, useTSug:(p,d)=>useTSug(p,d), acadResumo, protOrfao, materializarProtocolos:()=>materializarProtocolos(),
   appAlert, appConfirm, pausas:()=>pausas(), diasEntre, ultimoTreino, retornoDe, prDe, pausaAberta, PAUSA_AVISO_DIAS, PAUSA_QUEDA_DIAS, get trRecorde(){return trRecorde},
   EQUIP, EQUIP_ID, EX_EQUIP, EX_POR_GRUPO_: EX_POR_GRUPO, exEquip, equipFalta, equipFaltam,

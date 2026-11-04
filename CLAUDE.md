@@ -177,8 +177,45 @@ tokens do `:root`.
   cartão. O teste antigo usava estado vazio ("0", "+0") e não pegava; o novo
   usa números de verdade (`tests/interface.spec.js`).
 - **O tema escuro segue a mesma estrutura**: grafite esverdeado, fio fino, o
-  mesmo saldo fosco um tom acima. Ainda não houve rodada de revisão dele com
-  o dono.
+  mesmo saldo fosco um tom acima. O destaque dele continua o menta
+  (`--primary` #2FB39A, em botão, texto e no relógio do treino): mudá-lo é
+  decisão do dono.
+
+**Parte 2 (#65): as telas secundárias e os pop-ups, nos dois temas.** A
+revisão tela a tela (entrada, cadastro, imersão, treino em andamento,
+alarme, cada pop-up, privacidade, diagnóstico e convite) achou o que tinha
+ficado do visual antigo. As regras vivem no mesmo bloco do CSS, em "Parte 2":
+
+- **Nenhum emoji colorido.** Os botões e avisos usam ícones de traço da cor
+  do texto (`.ico`, o mesmo traço da barra): o claquete do "Como fazer", as
+  setas do "Trocar", o brilho das sugestões, a lupa da busca na internet, o
+  aviso e o cadeado de `askDanger` (`ico: "aviso" | "cadeado"`, que vira
+  `ICO_AVISO`/`ICO_CADEADO`). Existe teste que procura emoji no
+  `index.html` inteiro, comentários inclusive. Os sinais de texto do ritmo
+  do objetivo ("Seguro ✓", "Agressivo ⚠") ficaram: são marca de texto, não
+  pictograma.
+- **Chip marcado é tinta clara, fio e texto verdes, com "✓"** (`.synchips
+  button.on`: aparelhos, sinergistas, academias do treino). Em bloco
+  chapado, os 44 aparelhos marcados viravam uma parede verde (menta, no
+  escuro).
+- **O alarme do descanso é o verde fosco do saldo** (`#restDone`,
+  `#restPop`, `--saldo-bg`), e não o verde cheio: no escuro o verde cheio é
+  o menta, e a tela inteira virava neon. Ela continua tomando a tela, com
+  som e vibração.
+- **A marca (abertura, imersão, entrada) é o verde da marca nos dois temas,
+  sem brilho em volta**: o brilho era sombra difusa colorida.
+- **`privacidade.html` segue a direção**: Sora, os tokens do app, cartão
+  com fio e 22 px, e **o tema escolhido no app** (`tresults.theme` vira
+  `data-theme`, antes do primeiro desenho). Antes, era Quicksand, fundo
+  esverdeado, cantos de 26 px e sombra difusa, e seguia só o tema do
+  celular.
+- **`diag.html` usa as cores e os cantos do app, e a fonte do sistema de
+  propósito**: a página precisa abrir sem depender de rede. O botão
+  "Forçar atualização" é de contorno: branco sobre âmbar não se lia no
+  escuro.
+- O fundo do `manifest.json` (a tela que o Android mostra ao abrir o app
+  instalado) é o `--bg`.
+- Coberto em `tests/visual.spec.js`.
 
 ### Criar conta, e a idade que não envelhece errada
 
@@ -781,6 +818,7 @@ cobre, **acrescente um teste** — foi assim que ela cresceu.
 | `tests/academias.spec.js` | Academias: sem cadastro o app fica igual; cada academia um bloco que abre os protocolos dela; treino novo nascendo na aberta; "Iniciar" grava a sessão nela; referência, selo e gráfico só da mesma academia ("Academia nova", carga do zero); copiar protocolo independente, levando o já feito ali; excluir sem apagar treino nem histórico; nuvem; 320px; tocar de novo na aberta recolhe e ela segue escolhida |
 | `tests/pausa.spec.js` | Diário de pausas (musculação e cardio): registrar, em aberto, recusas, conferência das datas, excluir, fechar ao treinar (cada tipo o seu), dica, marcador no feed; aviso do recorde: nota, linha, pergunta sem porcentagem, "Mudar a carga", uma vez por exercício, limiar 13/14/28, cardio não zera, outra academia, peso do corpo, vírgula vence, descanso continua, diálogos em fila, trocar e desfazer; nuvem, mescla, privacidade, 320px |
 | `tests/historico.spec.js` | Referência da última sessão, sugestões, indicador de progressão de carga |
+| `tests/visual.spec.js` | Direção visual, parte 2 (#65): nenhum emoji no `index.html`, alarme e aviso do descanso no verde fosco, marca sem brilho, chip marcado em tinta clara com "✓", ícones de aviso e cadeado, privacidade com a direção e o tema do app, diagnóstico e manifesto com o fundo do app, nos dois temas |
 | `tests/interface.spec.js` | Zoom bloqueado, diálogos internos, layout em 390/320px (inclusive no meio da troca de aba), tema claro e escuro |
 | `tests/alarme.spec.js` | Volume e ausência de distorção do alarme de descanso |
 | `tests/sentry.spec.js` | Configuração do monitoramento, limpeza de dados pessoais, app abrindo sem a Sentry |

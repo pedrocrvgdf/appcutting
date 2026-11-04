@@ -85,7 +85,7 @@ test.describe('O veredito do Progresso', () => {
     for (let a = 29; a >= 0; a--) weights.push({ d: diaISO(a), w: r1(noPlano(a)) });
     await abrirApp(page, base({}, { weights }));
     const p = await progresso(page);
-    expect(p.ritmo).toBe('🎯 No ritmo do plano, pela tendência');
+    expect(p.ritmo).toBe('No ritmo do plano, pela tendência');
     const t = await page.evaluate(() => __t.tendenciaAtual().w);
     expect(t - weights[weights.length - 1].w, 'a tendência atrasa: é por isso a comparação filtrada').toBeGreaterThan(0.5);
   });
@@ -107,7 +107,7 @@ test.describe('O veredito do Progresso', () => {
     for (let a = 13; a >= 0; a--) weights.push({ d: diaISO(a), w: r1(noPlano(a) + (a === 0 ? 1.6 : 0)) });
     await abrirApp(page, base({}, { weights }));
     const p = await progresso(page);
-    expect(p.ritmo, 'pela balança crua seriam 1,6 kg acima').toBe('🎯 No ritmo do plano, pela tendência');
+    expect(p.ritmo, 'pela balança crua seriam 1,6 kg acima').toBe('No ritmo do plano, pela tendência');
   });
 
   test('com menos de 3 pesagens em 14 dias, não há veredito nem previsão', async ({ page }) => {
