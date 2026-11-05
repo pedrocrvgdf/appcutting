@@ -877,6 +877,18 @@ falham cerca de 1 vez em 10 por `file://`, na `main` também.
 - **O service worker é um vazio**, sem ouvinte de fetch. Em localhost o
   registro acontece, e um 404 viraria erro no console.
 
+**Teste de carga** (`tests-carga/cem-pessoas.js`, k6, fora do `npm test`):
+cem pessoas ao mesmo tempo, cada uma com uma conta de teste no Firebase de
+produção (`carga-<rodada>-<n>@example.com`), abrindo o app e salvando o
+documento inteiro (~39 KB) a cada 5 a 15 s. As contas e os documentos são
+apagados no fim. A API REST recusa `beginTransaction` ao login de uma pessoa
+comum (403), então a transação do app vira uma leitura e uma gravação. A
+função `chavePush` fica bloqueada pela rede da sessão. As leituras que
+devolvem 404 (a conta nova ainda sem documento) contam como falha no
+`http_req_failed`. Rodada de 2026-11-05: 1.890 de 1.892 salvamentos (as 2
+falhas foram da rede da sessão, sem resposta), p95 de 1,25 s para salvar e
+1,11 s para abrir.
+
 **A suíte não substitui olhar.** Dois defeitos reais desta base — placeholder de
 carga cortado ("57," em vez de "57,5") e a linha de referência despedaçada em
 telas estreitas — só apareceram em captura de tela. Tire captura do que mudou e
