@@ -29,7 +29,7 @@
      falha se as duas se desencontrarem.
 ========================================================================= -->
 <script>
-window.APP_RELEASE = "tresults-v60";
+window.APP_RELEASE = "tresults-v61";
 (function(){
   /* mascara o que puder identificar a pessoa ou revelar dado de saúde */
   var EMAIL=/[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
@@ -1347,6 +1347,48 @@ window.APP_RELEASE = "tresults-v60";
      mais claro ao mais fundo, que é o que distingue um macro do outro. */
   .macros2 .m2:nth-child(n){background:var(--bg);box-shadow:inset 0 0 0 1px var(--line);border-radius:16px}
 
+  /* ---- Parte 2 (#65): telas secundárias, pop-ups e o tema escuro ----
+     A revisão tela a tela achou o que tinha ficado do visual antigo. */
+
+  /* Ícones de traço, da cor do texto, no lugar dos emojis coloridos (o
+     claquete do "Como fazer", as setas do "Trocar", o brilho das sugestões,
+     o aviso, o cadeado e a lupa): eram o resto do visual cartoon, e cada
+     aparelho os desenha de um jeito. Mesmo traço dos ícones da barra. Há
+     teste que procura emoji no arquivo inteiro. */
+  .ico{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round}
+  .btn .ico{width:18px;height:18px}
+  .off-row .ico{width:15px;height:15px;margin-right:5px;vertical-align:-3px}
+  .pm-item .how{display:grid;place-items:center;color:var(--primary)}
+  .dg-ico{background:rgba(216,69,43,.10);color:var(--warn)}
+  .dg-ico svg{width:28px;height:28px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .dg-ico.neutro{background:var(--primary-08);color:var(--primary)}
+
+  /* Chip marcado (aparelhos, sinergistas, academias do treino): tinta clara,
+     fio e texto verdes, e o "✓" para não depender só da cor. Em bloco
+     chapado, os 44 aparelhos marcados viravam uma parede verde, e no tema
+     escuro uma parede menta. */
+  .synchips button.on{background:var(--primary-08);border-color:var(--primary-14);color:var(--primary)}
+  .synchips button.on::before{content:"✓";margin-right:5px}
+
+  /* O alarme do descanso, na tela cheia e no aviso de baixo: o verde fosco
+     do saldo, e não o verde cheio. No tema escuro o verde cheio é o menta,
+     e a tela inteira virava neon. A tela cheia continua tomando tudo, com
+     som e vibração: é isso que se reconhece de relance. */
+  #restDone{background:var(--saldo-bg)}
+  .rd-ring{border-color:var(--saldo-anel)}
+  .rd-ring svg{stroke:var(--saldo-anel)}
+  @keyframes rdPulse{0%,100%{box-shadow:0 0 0 0 rgba(140,199,181,.35)}50%{box-shadow:0 0 0 18px rgba(140,199,181,0)}}
+  .rd-go{color:var(--saldo-bg);box-shadow:none}
+  #restPop{background:var(--saldo-bg);box-shadow:0 10px 30px rgba(0,0,0,.22)}
+  .rp-ico{background:rgba(255,255,255,.10)}
+  .rp-ico svg{stroke:var(--saldo-anel)}
+  .rp-ok{color:var(--saldo-bg)}
+
+  /* A marca da abertura, da imersão, da entrada e das boas-vindas: o verde
+     da marca nos dois temas (no escuro ela virava um quadrado menta), sem o
+     brilho verde em volta, que era sombra difusa colorida. */
+  .login-brand .mark,.sp-mark,.im-marca{background:#0E7C6B;box-shadow:none}
+
   /* MARCA D'ÁGUA: uma figura por aba, ligada ao que a tela faz, em traço da
      cor do texto a 3,5% — aparece com a tela quieta e some atrás de qualquer
      cartão. É máscara sobre var(--ink), então acompanha o tema sozinha. Fica
@@ -2079,7 +2121,7 @@ window.APP_RELEASE = "tresults-v60";
         <div id="protArea">
           <div class="prot-lista" id="protLista"></div>
           <button class="btn secondary" id="protNovo" style="margin-top:10px">＋ Novo protocolo</button>
-          <button class="btn secondary" id="tSugBtn" style="margin-top:8px">✨ Ver sugestões de treino</button>
+          <button class="btn secondary" id="tSugBtn" style="margin-top:8px"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 3.5l1.8 4.9 4.9 1.8-4.9 1.8L11 16.9l-1.8-4.9-4.9-1.8 4.9-1.8zM18 14.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>Ver sugestões de treino</button>
         </div>
       </div>
       <div id="tTabAvulso" style="display:none">
@@ -2286,7 +2328,7 @@ window.APP_RELEASE = "tresults-v60";
 <!-- RISCOS DO EXÓGENO — abre ao marcar uma opção, antes de ela valer -->
 <div class="overlay" id="exogRiscoOverlay" style="z-index:135">
   <div class="modal" style="max-width:460px">
-    <div class="dg-ico">⚠️</div>
+    <div class="dg-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10.3 4.6L2.9 17.8A2 2 0 0 0 4.6 21h14.8a2 2 0 0 0 1.7-3.2L13.7 4.6a2 2 0 0 0-3.4 0z"/><path d="M12 9.5v4.5M12 17.4v.1"/></svg></div>
     <h3 id="exogRiscoTitulo" style="text-align:center;margin-bottom:4px"></h3>
     <p class="exog-fonte" id="exogRiscoFonte"></p>
     <ul class="exog-riscos" id="exogRiscoLista"></ul>
@@ -2301,7 +2343,7 @@ window.APP_RELEASE = "tresults-v60";
 <!-- CONFIRMAÇÃO (ações destrutivas) -->
 <div class="overlay" id="dangerOverlay" style="z-index:110">
   <div class="modal" style="max-width:420px">
-    <div class="dg-ico" id="dgIco">⚠️</div>
+    <div class="dg-ico" id="dgIco" aria-hidden="true"></div>
     <h3 id="dgTitle" style="text-align:center;margin-bottom:8px">Confirmar</h3>
     <p id="dgMsg" style="font-size:14px;color:var(--muted);line-height:1.6;text-align:center"></p>
     <div class="field" id="dgPwWrap" style="display:none;margin-top:14px"><label class="lbl" for="dgPw">Sua senha</label><input class="in" id="dgPw" type="password" autocomplete="current-password" placeholder="••••••••"></div>
@@ -2321,8 +2363,8 @@ window.APP_RELEASE = "tresults-v60";
     <div class="tr-trocado" id="trTrocado"></div>
     <div class="tr-falta" id="trFalta"></div>
     <div class="tr-links">
-      <button class="howlink" id="trHow">🎬 Como fazer este exercício</button>
-      <button class="howlink" id="trTrocar">🔁 Trocar exercício</button>
+      <button class="howlink" id="trHow"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M10.2 8.8l4.8 3.2-4.8 3.2z"/></svg>Como fazer este exercício</button>
+      <button class="howlink" id="trTrocar"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8.5h14l-3.5-3.5M20 15.5H6l3.5 3.5"/></svg>Trocar exercício</button>
     </div>
     <div id="trSets"></div>
     <button class="btn secondary" id="trRest" style="margin-top:12px"></button>
@@ -2367,7 +2409,7 @@ window.APP_RELEASE = "tresults-v60";
     <p class="tp-ro-nota" id="tpRoNota" style="display:none;margin:10px 2px 14px"></p>
     <div id="tprotoList"></div>
     <button id="tpNew" class="btn secondary">＋ Novo treino</button>
-    <button id="tpSugAqui" class="btn secondary" style="display:none">✨ Preencher com uma sugestão</button>
+    <button id="tpSugAqui" class="btn secondary" style="display:none"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 3.5l1.8 4.9 4.9 1.8-4.9 1.8L11 16.9l-1.8-4.9-4.9-1.8 4.9-1.8zM18 14.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>Preencher com uma sugestão</button>
     <!-- Exportar em PDF (#92): a folha vai para a impressão do sistema, que tem "Salvar como PDF". -->
     <button id="tpPdf" class="btn secondary" type="button">Exportar em PDF</button>
     <p class="tp-pdf-nota" id="tpPdfNota">Abre a impressão do celular: escolha "Salvar como PDF".</p>
@@ -5625,7 +5667,7 @@ $("tpCancel").onclick=()=>tpEditOverlay.classList.remove("open");
 tpEditOverlay.onclick=e=>{if(e.target===tpEditOverlay)tpEditOverlay.classList.remove("open");};
 function renderTpEx(){
   const ex=tpEditing.ex||[];
-  $("tpExList").innerHTML=ex.length?ex.map((e,i)=>`<div class="pm-item${i===tpExEdit?" editando":""}"><button type="button" class="pm-txt" data-ed="${i}"><span class="pn">${esc(e.n)}</span><div class="pm-mac">${TG[e.g]||"—"}${(e.sec&&e.sec.length)?` (+${e.sec.map(k=>TG[k]).join(", ")})`:""} · ${qtdTxt(e.s,"série","séries")} · ${r0(e.rest||90)}s de descanso${tipoDe(e)!=="carga"&&e.pesoCorpo!==false?' · <span class="pm-corpo">peso do corpo</span>':""}</div></button><button type="button" class="ed" data-ed="${i}" title="Editar exercício" aria-label="Editar ${esc(e.n)}"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/></svg></button><button class="how" data-how="${i}" title="Como fazer">🎬</button><button class="rm" data-i="${i}" aria-label="Excluir ${esc(e.n)}">×</button></div>`).join(""):'<div class="ins-empty" style="padding:4px 0 8px">Nenhum exercício ainda — adicione abaixo.</div>';
+  $("tpExList").innerHTML=ex.length?ex.map((e,i)=>`<div class="pm-item${i===tpExEdit?" editando":""}"><button type="button" class="pm-txt" data-ed="${i}"><span class="pn">${esc(e.n)}</span><div class="pm-mac">${TG[e.g]||"—"}${(e.sec&&e.sec.length)?` (+${e.sec.map(k=>TG[k]).join(", ")})`:""} · ${qtdTxt(e.s,"série","séries")} · ${r0(e.rest||90)}s de descanso${tipoDe(e)!=="carga"&&e.pesoCorpo!==false?' · <span class="pm-corpo">peso do corpo</span>':""}</div></button><button type="button" class="ed" data-ed="${i}" title="Editar exercício" aria-label="Editar ${esc(e.n)}"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/></svg></button><button class="how" data-how="${i}" title="Como fazer" aria-label="Como fazer"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M10.2 8.8l4.8 3.2-4.8 3.2z"/></svg></button><button class="rm" data-i="${i}" aria-label="Excluir ${esc(e.n)}">×</button></div>`).join(""):'<div class="ins-empty" style="padding:4px 0 8px">Nenhum exercício ainda — adicione abaixo.</div>';
   $("tpExList").querySelectorAll(".how[data-how]").forEach(b=>b.onclick=()=>openHow(tpEditing.ex[+b.dataset.how].n));
   $("tpExList").querySelectorAll("[data-ed]").forEach(b=>b.onclick=()=>editarExTp(+b.dataset.ed));
   $("tpExList").querySelectorAll(".rm[data-i]").forEach(b=>b.onclick=()=>{
@@ -6320,7 +6362,7 @@ function restFinish(soar){
   const agendado=!!trRestInt; // alarme já estava agendado no áudio
   stopRest();
   b.classList.remove("resting");b.classList.add("done");
-  b.innerHTML=`<span class="rtxt">✅ Descanso concluído — próxima série!</span>`;
+  b.innerHTML=`<span class="rtxt">Descanso concluído — próxima série!</span>`;
   /* Dentro do app Android quem alarma é o sistema, com tela cheia por cima de
      tudo. Repetir aqui daria som dobrado e duas telas de aviso disputando. */
   if(soar!==false&&!appNativo){
@@ -7848,7 +7890,7 @@ async function ligarAtalhoDigital(){
     return appAlert("Entre na sua conta primeiro.","Sem conta");
 
   const r=await askDanger({
-    ico:"🔒",title:"Entrar com a digital",
+    ico:"cadeado",title:"Entrar com a digital",
     msg:"Sua senha vai ficar <b>guardada neste aparelho</b>, cifrada por uma chave que só a sua digital abre — é ela que a digital vai usar para entrar.<br><br>Ela não sai daqui e não vai para a nuvem. Cadastrar uma digital nova no celular apaga o atalho.<br><br>Digite sua senha para confirmar:",
     confirm:"Guardar",pw:true
   });
@@ -7934,9 +7976,14 @@ function abrirDialogo(opt){
 }
 function appAlert(msg,title){return appDialog({msg,title:title||"",okText:"Entendi"});}
 function appConfirm(msg,opt){opt=opt||{};return appDialog({msg,title:opt.title||"Confirmar",cancel:true,danger:opt.danger!==false,okText:opt.okText||"Confirmar",cancelText:opt.cancelText||"Voltar"});}
+const ICO_AVISO='<svg viewBox="0 0 24 24"><path d="M10.3 4.6L2.9 17.8A2 2 0 0 0 4.6 21h14.8a2 2 0 0 0 1.7-3.2L13.7 4.6a2 2 0 0 0-3.4 0z"/><path d="M12 9.5v4.5M12 17.4v.1"/></svg>';
+const ICO_CADEADO='<svg viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="9.5" rx="2.5"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/></svg>';
 function askDanger(opt){
   return new Promise(res=>{
-    $("dgIco").textContent=opt.ico||"⚠️";
+    /* Ícone de traço, como os da barra (#65): o emoji colorido era o resto do
+       visual antigo. "cadeado" é o da digital; o resto é aviso. */
+    $("dgIco").innerHTML=opt.ico==="cadeado"?ICO_CADEADO:ICO_AVISO;
+    $("dgIco").classList.toggle("neutro",opt.ico==="cadeado");
     $("dgTitle").textContent=opt.title;
     $("dgMsg").innerHTML=opt.msg;
     $("dgPwWrap").style.display=opt.pw?"block":"none";$("dgPw").value="";$("dgErr").textContent="";
@@ -7964,7 +8011,7 @@ function askDanger(opt){
 async function resetData(){
   const comConta=!!(cloudEnabled&&user&&user.email);
   const r=await askDanger({
-    ico:"⚠️",title:"Excluir dados",
+    ico:"aviso",title:"Excluir dados",
     msg:ehTreinador()
       /* Treinador (#95): o que some é o treino dos alunos, e eles sentem.
          E o Pessoal dele (#104), que também mora nesta conta. */
@@ -9535,7 +9582,7 @@ let offAutoT=null;
    EMBAIXO do que é local, sem repetir nome; com o banco vazio, a lista vira só
    internet, como antes. */
 const OFF_MIN=3;
-const linhaOff=raw=>`<div class="opt off-row" data-off="1"><span class="n" style="color:var(--primary)">🔎 Buscar "${esc(raw)}" na internet</span><span class="m">Open Food Facts</span></div>`;
+const linhaOff=raw=>`<div class="opt off-row" data-off="1"><span class="n" style="color:var(--primary)"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg>Buscar "${esc(raw)}" na internet</span><span class="m">Open Food Facts</span></div>`;
 /* Redesenha a lista: os nomes locais de `currentResults` em cima, e `extra`
    (linha de buscar, aviso ou resultados da internet) embaixo. */
 function pintarDrop(extra){
@@ -9702,7 +9749,7 @@ async function offSearch(q,sozinha){
       pintarDrop(`<div class="opt empty">${currentResults.length?"Nada mais na internet.":"Nada encontrado com dados de calorias. Tente outro nome ou use \"Inserir manualmente\"."}</div>`);
       return;
     }
-    pintarDrop(offResults.map((f,idx)=>`<div class="opt" data-offidx="${idx}"><span class="n">${esc(f.n)}</span><span class="m">${f.k} kcal · P${f.p} C${f.c} G${f.g} /100g 🌐</span></div>`).join(""));
+    pintarDrop(offResults.map((f,idx)=>`<div class="opt" data-offidx="${idx}"><span class="n">${esc(f.n)}</span><span class="m">${f.k} kcal · P${f.p} C${f.c} G${f.g} /100g · internet</span></div>`).join(""));
   }catch(e){
     if(search.value.trim()!==q)return;
     if(e&&e.limite){
@@ -10253,7 +10300,7 @@ function renderWeight(){
       const res=tendenciaDe(doPlano.map(x=>({d:x.d,w:x.w-plano(x.d)})));
       const diff=res[res.length-1].t,tol=TEND_TOL;   // 0,4 kg: escolha de produto
       let cls,txt;
-      if(Math.abs(diff)<=tol){cls="var(--ok)";txt="🎯 No ritmo do plano, pela tendência";}
+      if(Math.abs(diff)<=tol){cls="var(--ok)";txt="No ritmo do plano, pela tendência";}
       else{
         const ahead=bulking?diff>0:diff<0;
         cls=ahead?"var(--ok)":"var(--warn)";
@@ -10417,7 +10464,7 @@ function renderGoals(){
     $("weekDefVal").textContent=r0(wd)+" / "+r0(t.weekly)+" kcal";
     const restW=Math.max(0,t.weekly-wd);
     if($("weekHint")){
-      if(restW<=0)$("weekHint").innerHTML="Meta da semana batida! 🎉";
+      if(restW<=0)$("weekHint").innerHTML="Meta da semana batida!";
       else if(daysLeft>0)$("weekHint").innerHTML="Faltam <b>"+r0(restW)+" kcal</b> de "+(bulking?"superávit":"déficit")+" até domingo — ≈ <b>"+r0(restW/daysLeft)+"</b>/dia nos próximos "+daysLeft+(daysLeft===1?" dia.":" dias.");
       else $("weekHint").innerHTML="Semana encerrada — "+(bulking?"superávit":"déficit")+" acumulado de <b>"+r0(wd)+" kcal</b>.";
       if(abaixoN.length)$("weekHint").innerHTML+=`<span class="wk-abaixo">${listaTxt(abaixoN)}: menos de ${nPt(pisoKcal())} kcal lançadas. Entra no déficit, mas não conta na sequência.</span>`;
@@ -10449,7 +10496,7 @@ function renderLiqRing(liq,liqT){
     <text x="60" y="73" text-anchor="middle" class="dl">da meta</text>
   </svg>`;
   const rest=Math.max(0,liqT-liq);
-  $("liqSum").innerHTML=`<span class="lq-label">Você bebeu hoje</span><span class="lq-big num">${r0(liq)} <small>ml</small></span><span class="lq-meta">de ${r0(liqT)} ml da meta</span><span class="lq-rest">${rest>0?`Faltam <b>${r0(rest)} ml</b>`:`Meta batida! 🎉`}</span>`;
+  $("liqSum").innerHTML=`<span class="lq-label">Você bebeu hoje</span><span class="lq-big num">${r0(liq)} <small>ml</small></span><span class="lq-meta">de ${r0(liqT)} ml da meta</span><span class="lq-rest">${rest>0?`Faltam <b>${r0(rest)} ml</b>`:`Meta batida!`}</span>`;
 }
 /* ---- histórico de ingestão de líquidos ----
    O total sozinho não responde à pergunta de quem abre o app no meio da tarde:
